@@ -6,6 +6,10 @@ def before_save(doc, method):
     if doc.doctype != "Sales Invoice":
         return
 
+    # Return if doc doesnot edit_payment_due_date field
+    if not hasattr(doc, "edit_payment_due_date"):
+        return
+
     # Respect manual override
     if doc.edit_payment_due_date:
         return
@@ -18,6 +22,9 @@ def before_save(doc, method):
 
     for item in doc.items:
         if not item.due_date_duration:
+            continue
+
+        if not hasattr(item, "due_date_duration"):
             continue
 
         # duration is stored in SECONDS

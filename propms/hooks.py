@@ -4,11 +4,11 @@ from . import __version__ as app_version
 
 app_name = "propms"
 app_title = "Property Management Solution"
-app_publisher = "Aakvatech"
+app_publisher = "VV Systems Developer LTD"
 app_description = "Property Management Solution"
 app_icon = "octicon octicon-home"
 app_color = "grey"
-app_email = "info@aakvatech.com"
+app_email = "info@vvsdtz.com"
 app_license = "MIT"
 
 # Includes in <head>

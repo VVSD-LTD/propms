@@ -15,7 +15,7 @@
  "module": "Property Management Solution",
  "name": "VIVA Property Report",
  "owner": "Administrator",
- "prepared_report": 0,
+ "prepared_report": 1,
  "ref_doctype": "Property",
  "report_name": "VIVA Property Report",
  "report_type": "Script Report",
