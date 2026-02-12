@@ -1,23 +1,6 @@
 [
     {
      "default_value": null,
-     "doc_type": "Property",
-     "docstatus": 0,
-     "doctype": "Property Setter",
-     "doctype_or_field": "DocField",
-     "field_name": "status",
-     "modified": "2020-07-25 17:21:20.402797",
-     "name": "Property-status-options",
-     "parent": null,
-     "parentfield": null,
-     "parenttype": null,
-     "property": "options",
-     "property_type": "Text",
-     "row_name": null,
-     "value": "Available\nBooked\nCommon Area (Not for lease)\nManaged for Customer\nOff Lease in 3 Months\nOn Lease\nOn Sale\nRemoved\nRenewal\nSold\nVacating"
-    },
-    {
-     "default_value": null,
      "doc_type": "Daily Checklist",
      "docstatus": 0,
      "doctype": "Property Setter",

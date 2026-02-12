@@ -1,0 +1,106 @@
+{
+ "actions": [],
+ "autoname": "naming_series:naming_series",
+ "creation": "2025-10-16 14:36:31.334247",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "naming_series",
+  "column_break_dqij",
+  "opening_hours",
+  "closing_hours",
+  "section_break_qcko",
+  "gym_attendance_details",
+  "section_break_18lv",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "default": "GYM-ATT-.",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "column_break_dqij",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "opening_hours",
+   "fieldtype": "Datetime",
+   "label": "Opening Hours",
+   "reqd": 1
+  },
+  {
+   "fieldname": "closing_hours",
+   "fieldtype": "Datetime",
+   "label": "Closing Hours",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_qcko",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "gym_attendance_details",
+   "fieldtype": "Table",
+   "label": "Gym Attendance Details",
+   "options": "Gym Attendance Detail"
+  },
+  {
+   "fieldname": "section_break_18lv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Gym Attendance",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-01-28 11:40:32.098261",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Gym Attendance",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "vimalrathod@vvsdtz.com",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -18,6 +18,7 @@
   "photo",
   "company",
   "cost_center",
+  "territory",
   "section_break_4",
   "unit_owner",
   "title_deed_number",
@@ -37,6 +38,8 @@
   "smoking",
   "furnished",
   "status",
+  "marketing_status",
+  "floor_name",
   "section_break_22",
   "unit_assets",
   "column_break_24",
@@ -46,8 +49,10 @@
   "description_section",
   "description",
   "lft",
-  "rgt",
-  "old_parent"
+  "old_parent",
+  "column_break_pwjr",
+  "remarks",
+  "rgt"
  ],
  "fields": [
   {
@@ -179,9 +184,9 @@
   },
   {
    "fieldname": "status",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Status",
-   "options": "Available\nBooked\nCommon Area (Not for lease)\nManaged for Customer\nOff Lease in 3 Months\nOn Lease\nOn Sale\nRemoved\nRenewal\nSold\nVacating\nIn Renovation"
+   "options": "Property Status"
   },
   {
    "bold": 1,
@@ -271,16 +276,44 @@
    "label": "Old Parent",
    "options": "Property",
    "read_only": 1
+  },
+  {
+   "fieldname": "territory",
+   "fieldtype": "Link",
+   "label": "Territory",
+   "options": "Territory"
+  },
+  {
+   "fieldname": "marketing_status",
+   "fieldtype": "Link",
+   "label": "Marketing Status",
+   "options": "Property Status"
+  },
+  {
+   "fieldname": "floor_name",
+   "fieldtype": "Link",
+   "label": "Floor Name",
+   "options": "Property Floor"
+  },
+  {
+   "fieldname": "column_break_pwjr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Text",
+   "label": "Remarks"
   }
  ],
  "icon": "octicon octicon-home",
  "image_field": "photo",
  "is_tree": 1,
  "links": [],
- "modified": "2021-12-29 14:57:26.678556",
+ "modified": "2026-01-29 14:58:18.340124",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property",
+ "naming_rule": "By fieldname",
  "nsm_parent_field": "parent_property",
  "owner": "Administrator",
  "permissions": [
@@ -360,8 +393,10 @@
    "write": 1
   }
  ],
- "sort_field": "modified",
+ "row_format": "Dynamic",
  "show_name_in_global_search": 1,
+ "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

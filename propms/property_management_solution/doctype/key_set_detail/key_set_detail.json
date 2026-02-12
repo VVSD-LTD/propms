@@ -11,6 +11,8 @@
  "field_order": [
   "key_set",
   "set_name",
+  "shelf_no",
+  "shelf_security_level1",
   "staff_type",
   "taken_by",
   "reason_for_key_taken",
@@ -34,9 +36,9 @@
   },
   {
    "fieldname": "staff_type",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Staff Type",
-   "options": "\nSpik n Span\nViva Staff\nViva Security\nConsultant\nOthers",
+   "options": "Staff Type",
    "reqd": 1
   },
   {
@@ -76,15 +78,32 @@
    "fieldname": "other_remarks",
    "fieldtype": "Text",
    "label": "Other remarks"
+  },
+  {
+   "fetch_from": "key_set.shelf_no",
+   "fieldname": "shelf_no",
+   "fieldtype": "Data",
+   "label": "Shelf No",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "key_set.shelf_security_level",
+   "fieldname": "shelf_security_level1",
+   "fieldtype": "Link",
+   "label": "Shelf Security Level1",
+   "options": "Shelf Security Level",
+   "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "icon": "octicon octicon-key",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-09-21 13:44:44.726925",
+ "modified": "2026-01-29 16:02:44.739647",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Key Set Detail",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -100,7 +119,9 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

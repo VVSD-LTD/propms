@@ -1,0 +1,110 @@
+{
+ "actions": [],
+ "creation": "2022-11-25 16:54:07.472109",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "floor_no",
+  "location",
+  "label",
+  "equipment_type",
+  "qty",
+  "dvr_port_no",
+  "dvr_no",
+  "next_service_date",
+  "next_service_duration"
+ ],
+ "fields": [
+  {
+   "columns": 1,
+   "fieldname": "floor_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Floor No",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Location",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Label",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "equipment_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Equipment Type",
+   "options": "Property Equipment Type",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fetch_if_empty": 1,
+   "fieldname": "dvr_port_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "DVR Port No"
+  },
+  {
+   "columns": 1,
+   "fieldname": "dvr_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "label": "DVR No"
+  },
+  {
+   "columns": 2,
+   "fieldname": "next_service_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Next Service Date",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "next_service_duration",
+   "fieldtype": "Duration",
+   "hide_seconds": 1,
+   "in_list_view": 1,
+   "label": "Next Service Duration"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-02-05 17:38:40.352444",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Property Installed Equipment Detail",
+ "owner": "vimalrathod@vvsdtz.com",
+ "permissions": [],
+ "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,46 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2026-01-28 12:01:03.806880",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": null,
+ "modified": "2026-01-28 15:06:58.322489",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "VIVA Property Report",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Property",
+ "report_name": "VIVA Property Report",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Property Manager"
+  },
+  {
+   "role": "Maintenance Job in-charge"
+  },
+  {
+   "role": "Floor Maintenance Supervisor"
+  },
+  {
+   "role": "Maintenance Manager"
+  },
+  {
+   "role": "POS User"
+  },
+  {
+   "role": "Accounts User"
+  }
+ ],
+ "timeout": 0
+}

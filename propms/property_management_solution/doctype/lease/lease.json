@@ -11,19 +11,28 @@
   "lease_basic_info_section",
   "company",
   "property",
+  "naming_series",
   "column_break_4",
   "lease_date",
   "lease_status",
   "document_reminders_section",
   "signed_agreement_received",
+  "agreement_status",
   "column_break_1",
   "stamp_duty_paid_by_tenant",
+  "agreement_addendum",
+  "agreement_addendum_status",
   "lease_parties_section",
   "property_owner",
   "lease_customer",
   "column_break_8",
   "customer",
   "property_user",
+  "unit_details_section",
+  "builtup_area",
+  "carpet_area",
+  "column_break_fhvp",
+  "rent_rate_per_square_meter",
   "lease_dates_section",
   "start_date",
   "column_break_13",
@@ -32,6 +41,7 @@
   "frequency",
   "lease_item_table_section",
   "lease_item",
+  "lease_instructions",
   "section_break_11",
   "lease_invoice_schedule",
   "section_break_13",
@@ -39,6 +49,7 @@
   "notice_period",
   "column_break_23",
   "fit_out_period",
+  "parking_card_status",
   "security_deposit_details_section",
   "security_deposit_currency",
   "security_deposit",
@@ -46,6 +57,8 @@
   "column_break_27",
   "security_received_payment",
   "security_returned_reference",
+  "lease_documents_section",
+  "lease_document_detail",
   "other_lease_details_section",
   "late_payment_interest_percentage",
   "wtax_paid_by",
@@ -107,6 +120,7 @@
    "default": "0",
    "fieldname": "stamp_duty_paid_by_tenant",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Stamp duty paid by tenant"
   },
   {
@@ -117,7 +131,9 @@
   {
    "fieldname": "property_owner",
    "fieldtype": "Data",
+   "in_filter": 1,
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Property Owner",
    "options": "Customer",
    "read_only": 1
@@ -125,7 +141,9 @@
   {
    "fieldname": "lease_customer",
    "fieldtype": "Link",
+   "in_filter": 1,
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Lease Customer",
    "options": "Customer",
    "reqd": 1
@@ -324,11 +342,95 @@
    "default": "0",
    "fieldname": "skip_end_date",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Skip End Date"
+  },
+  {
+   "fieldname": "lease_instructions",
+   "fieldtype": "Long Text",
+   "label": "Lease Instructions"
+  },
+  {
+   "default": "0 - Pending Delivery to Tenant",
+   "fieldname": "agreement_status",
+   "fieldtype": "Link",
+   "label": "Agreement Status",
+   "options": "Agreement Status"
+  },
+  {
+   "default": "0",
+   "fieldname": "agreement_addendum",
+   "fieldtype": "Check",
+   "label": "Agreement Addendum?"
+  },
+  {
+   "default": "0 - Pending Delivery to Tenant",
+   "depends_on": "eval: doc.agreement_addendum === 1;",
+   "fieldname": "agreement_addendum_status",
+   "fieldtype": "Link",
+   "label": "Agreement Addendum Status",
+   "options": "Agreement Addendum Status"
+  },
+  {
+   "fieldname": "parking_card_status",
+   "fieldtype": "Select",
+   "label": "Parking Card Status",
+   "options": "\nIssued\nNot Issued",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lease_documents_section",
+   "fieldtype": "Section Break",
+   "label": "Lease Documents"
+  },
+  {
+   "fieldname": "lease_document_detail",
+   "fieldtype": "Table",
+   "label": "Lease Document Detail",
+   "options": "Lease Document Detail"
+  },
+  {
+   "fieldname": "unit_details_section",
+   "fieldtype": "Section Break",
+   "label": "Unit Details"
+  },
+  {
+   "fetch_from": "property.builtup_area",
+   "fetch_if_empty": 1,
+   "fieldname": "builtup_area",
+   "fieldtype": "Float",
+   "label": "Builtup Area",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_fhvp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "rent_rate_per_square_meter",
+   "fieldtype": "Float",
+   "label": "Rent Rate Per Square Meter"
+  },
+  {
+   "fetch_from": "property.carpet_area",
+   "fieldname": "carpet_area",
+   "fieldtype": "Float",
+   "label": "Carpet Area",
+   "read_only": 1
+  },
+  {
+   "default": "LEASE-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series",
+   "print_hide": 1,
+   "read_only": 1,
+   "report_hide": 1
   }
  ],
  "links": [],
- "modified": "2025-07-25 09:29:01.856610",
+ "modified": "2026-02-12 12:34:05.836714",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Lease",
