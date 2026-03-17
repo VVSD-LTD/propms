@@ -1,0 +1,171 @@
+<style>
+  @page { size: A4 landscape; margin: 18mm 14mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #1a1a1a; background: #fff;
+         -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .rpt-header { text-align: center; border-bottom: 2.5px solid #1a3f5c; padding-bottom: 12px; margin-bottom: 16px; }
+  .rpt-header h1 { font-size: 17px; font-weight: 700; letter-spacing: 1px; color: #1a3f5c; }
+  .rpt-header .sub { font-size: 11px; color: #555; margin-top: 4px; }
+
+  .rpt-meta { display: flex; justify-content: space-between; font-size: 10px; color: #555;
+              margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #ddd; }
+
+  .kpi-row { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid #bbb; border-radius: 2px; overflow: hidden;
+             -webkit-page-break-inside: avoid; page-break-inside: avoid; }
+  .kpi-box { flex: 1; text-align: center; padding: 10px 6px; border-right: 1px solid #bbb; }
+  .kpi-box:last-child { border-right: none; }
+  .kpi-val { font-size: 18px; font-weight: 800; color: #1a3f5c; }
+  .kpi-lbl { font-size: 8px; color: #555; margin-top: 2px; text-transform: uppercase; letter-spacing: .3px; }
+
+  .sec-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+               color: #fff; background: #1a3f5c; padding: 5px 10px; margin: 18px 0 0;
+               -webkit-page-break-after: avoid; page-break-after: avoid; }
+
+  table.rpt { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.rpt thead th { background: #2c5f8a; color: #000000; padding: 6px 9px; text-align: left; font-weight: 600; }
+  table.rpt tbody td { padding: 5px 9px; border-bottom: 1px solid #e8e8e8; }
+  table.rpt tbody tr { -webkit-page-break-inside: avoid; page-break-inside: avoid; }
+  table.rpt tfoot td { padding: 6px 9px; font-weight: 700; background: #eef2f8; border-top: 2px solid #1a3f5c; }
+
+  .footer { margin-top: 24px; border-top: 1px solid #ccc; padding-top: 8px;
+            font-size: 9px; color: #888; display: flex; justify-content: space-between; }
+</style>
+
+{% var statuses = ["Open","In Progress","Awaiting Parts","Under Observation","In Discussion","Appointment","Hold","Closed"] %}
+{% function skey(s) { return "status_" + s.toLowerCase().replace(/ /g,"_").replace(/-/g,"_"); } %}
+{% var grand = data[0] %}
+{% var rows  = data.slice(1) %}
+{% var total = grand.total || 0 %}
+
+<!-- HEADER -->
+<div class="rpt-header">
+  <h1>JOBCARDS SUMMARY REPORT</h1>
+  <div class="sub">As on {{ filters.to_date }}</div>
+</div>
+<!-- 
+<div class="rpt-meta">
+  <span><strong>Report Period:</strong> {{ filters.from_date || "—" }} – {{ filters.to_date || "—" }}</span>
+  <span><strong>Total Jobcards:</strong> {{ total }}</span>
+</div> -->
+
+<!-- KPI STRIP -->
+<div class="kpi-row">
+  <div class="kpi-box">
+    <div class="kpi-val">{{ total }}</div>
+    <div class="kpi-lbl">Total</div>
+  </div>
+  {% for (var i=0; i<statuses.length; i++) { %}
+  <div class="kpi-box">
+    <div class="kpi-val">{{ grand[skey(statuses[i])] || 0 }}</div>
+    <div class="kpi-lbl">{{ statuses[i] }}</div>
+  </div>
+  {% } %}
+</div>
+
+<!-- TABLE 1: DESCRIPTION BY STATUS -->
+<div class="sec-title">Description by Status</div>
+<table class="rpt">
+  <thead>
+    <tr>
+      <th style="width:45px;">S/No</th>
+      <th>Description by Status</th>
+      <th style="text-align:center;width:85px;">Number</th>
+      <th style="text-align:center;width:110px;">% from Total JC</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for (var i=0; i<statuses.length; i++) { %}
+    {% var n = grand[skey(statuses[i])] || 0 %}
+    {% var pct = total ? ((n / total) * 100).toFixed(1) : "0.0" %}
+    <tr style="background: {{ i%2===0 ? '#fff' : '#f8f8f8' }};">
+      <td>{{ i+1 }}</td>
+      <td>{{ statuses[i] }}</td>
+      <td style="text-align:center;">{{ n }}</td>
+      <td style="text-align:center;">{{ pct }}%</td>
+    </tr>
+    {% } %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="2">Cumulative Value (Total Jobcards)</td>
+      <td style="text-align:center;">{{ total }}</td>
+      <td style="text-align:center;">100%</td>
+    </tr>
+  </tfoot>
+</table>
+
+<!-- TABLE 2: JOBCARD BY ISSUE TYPE -->
+<div class="sec-title">Jobcard by Issue Type</div>
+<table class="rpt">
+  <thead>
+    <tr>
+      <th style="width:45px;">S/No</th>
+      <th>Issue Type</th>
+      <th style="text-align:center;width:110px;">Jobcards Assigned</th>
+      <th style="text-align:center;width:120px;">% of Total JC</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for (var r=0; r<rows.length; r++) { %}
+    {% var row = rows[r] %}
+    {% var pct = total ? ((row.total / total) * 100).toFixed(2) : "0.00" %}
+    <tr style="background: {{ r%2===0 ? '#fff' : '#f8f8f8' }};">
+      <td>{{ r+1 }}</td>
+      <td>{{ row.issue_type }}</td>
+      <td style="text-align:center;">{{ row.total }}</td>
+      <td style="text-align:center;">{{ pct }}%</td>
+    </tr>
+    {% } %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="2">Total</td>
+      <td style="text-align:center;">{{ total }}</td>
+      <td style="text-align:center;">100.00%</td>
+    </tr>
+  </tfoot>
+</table>
+
+<!-- TABLE 3: ISSUE TYPE BREAKDOWN BY STATUS -->
+<div class="sec-title">Issue Type Breakdown by Status</div>
+<table class="rpt" style="font-size:10px;">
+  <thead>
+    <tr>
+      <th style="width:35px;">S/No</th>
+      <th style="min-width:110px;">Issue Type</th>
+      {% for (var i=0; i<statuses.length; i++) { %}
+      <th style="font-size:9px;padding:5px 3px;text-align:center;">{{ statuses[i] }}</th>
+      {% } %}
+      <th style="text-align:center;font-size:9px;padding:5px 4px;">TOTAL</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for (var r=0; r<rows.length; r++) { %}
+    {% var row = rows[r] %}
+    <tr style="background: {{ r%2===0 ? '#fff' : '#f8f8f8' }};">
+      <td>{{ r+1 }}</td>
+      <td><strong>{{ row.issue_type }}</strong></td>
+      {% for (var i=0; i<statuses.length; i++) { %}
+      {% var cnt = row[skey(statuses[i])] || 0 %}
+      <td style="text-align:center;">{{ cnt > 0 ? "<strong>"+cnt+"</strong>" : "–" }}</td>
+      {% } %}
+      <td style="text-align:center;font-weight:700;">{{ row.total }}</td>
+    </tr>
+    {% } %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="2" style="padding-left:9px;">Grand Total</td>
+      {% for (var i=0; i<statuses.length; i++) { %}
+      <td style="text-align:center;">{{ grand[skey(statuses[i])] || 0 }}</td>
+      {% } %}
+      <td style="text-align:center;">{{ total }}</td>
+    </tr>
+  </tfoot>
+</table>
+<!-- 
+<div class="footer">
+  <span>Jobcards Summary Report</span>
+  <span>Period: {{ filters.from_date || "—" }} – {{ filters.to_date || "—" }}</span>
+</div> -->

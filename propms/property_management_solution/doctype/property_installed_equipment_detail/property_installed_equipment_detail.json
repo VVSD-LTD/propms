@@ -13,7 +13,12 @@
   "dvr_port_no",
   "dvr_no",
   "next_service_date",
-  "next_service_duration"
+  "column_break_bhzc",
+  "enable",
+  "disable",
+  "job_card",
+  "enabled",
+  "last_service_date"
  ],
  "fields": [
   {
@@ -82,19 +87,50 @@
    "reqd": 1
   },
   {
-   "columns": 1,
-   "fieldname": "next_service_duration",
-   "fieldtype": "Duration",
-   "hide_seconds": 1,
-   "in_list_view": 1,
-   "label": "Next Service Duration"
+   "fieldname": "column_break_bhzc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "job_card",
+   "fieldtype": "Link",
+   "label": "Last Serviced Job Card",
+   "options": "Equipment Maintenance Job Card",
+   "read_only": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Enabled",
+   "print_hide": 1,
+   "read_only": 1,
+   "report_hide": 1
+  },
+  {
+   "depends_on": "eval: !doc.enabled",
+   "fieldname": "enable",
+   "fieldtype": "Button",
+   "label": "Enable"
+  },
+  {
+   "depends_on": "eval: doc.enabled",
+   "fieldname": "disable",
+   "fieldtype": "Button",
+   "label": "Disable"
+  },
+  {
+   "fieldname": "last_service_date",
+   "fieldtype": "Date",
+   "label": "Last Service Date",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-02-05 17:38:40.352444",
+ "modified": "2026-03-03 13:34:15.422224",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property Installed Equipment Detail",

@@ -7,10 +7,13 @@
  "engine": "InnoDB",
  "field_order": [
   "equipment",
+  "interval_days",
   "column_break_2",
   "alert_days_before",
   "section_break_4",
-  "table_5"
+  "table_5",
+  "disabled_equipment_section",
+  "disabled_equipment"
  ],
  "fields": [
   {
@@ -34,22 +37,41 @@
   },
   {
    "fieldname": "section_break_4",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Enabled Equipment"
   },
   {
    "fieldname": "table_5",
    "fieldtype": "Table",
    "options": "Property Installed Equipment Detail",
    "reqd": 1
+  },
+  {
+   "fieldname": "interval_days",
+   "fieldtype": "Int",
+   "label": "Interval Days",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "disabled_equipment_section",
+   "fieldtype": "Section Break",
+   "label": "Disabled Equipment"
+  },
+  {
+   "fieldname": "disabled_equipment",
+   "fieldtype": "Table",
+   "options": "Property Installed Equipment Detail"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-27 17:05:01.658632",
+ "modified": "2026-03-03 10:49:29.154133",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property Installed Equipment",
+ "naming_rule": "By fieldname",
  "owner": "vimalrathod@vvsdtz.com",
  "permissions": [
   {

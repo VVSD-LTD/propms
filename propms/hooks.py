@@ -34,7 +34,10 @@ page_js = {
 doctype_js = {
     "Sales Invoice": "property_management_solution/sales_invoice.js",
     "Journal Entry Account": "property_management_solution/journal_entry_account.js",
-    "Issue": "property_management_solution/issue.js",
+    "Issue": [
+        "property_management_solution/issue.js",
+        # "public/js/maintenance_jobcard.js",
+    ],
     "Company": "property_management_solution/company.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
@@ -102,6 +105,24 @@ after_migrate = [
 
 
 doc_events = {
+    # "Tenant": {
+    #     "before_insert": "propms.property_management_solution.doctype.tenant.tenant.before_insert",
+    #     "validate": "propms.property_management_solution.doctype.tenant.tenant.validate",
+    #     "after_insert": "propms.property_management_solution.doctype.tenant.tenant.after_insert",
+    #     "on_update": "propms.property_management_solution.doctype.tenant.tenant.on_update",
+    # },
+    # "Maintenance Users": {
+    #     "before_insert": "propms.property_management_solution.doctype.maintenance_users.maintenance_users.before_insert",
+    #     "validate": "propms.property_management_solution.doctype.maintenance_users.maintenance_users.validate",
+    #     "after_insert": "propms.property_management_solution.doctype.maintenance_users.maintenance_users.after_insert",
+    #     "on_update": "propms.property_management_solution.doctype.maintenance_users.maintenance_users.on_update",
+    # },
+    # "Sub Contractor User": {
+    #     "before_insert": "propms.property_management_solution.doctype.sub_contractor_user.sub_contractor_user.before_insert",
+    #     "validate": "propms.property_management_solution.doctype.sub_contractor_user.sub_contractor_user.validate",
+    #     "after_insert": "propms.property_management_solution.doctype.sub_contractor_user.sub_contractor_user.after_insert",
+    #     "on_update": "propms.property_management_solution.doctype.sub_contractor_user.sub_contractor_user.on_update",
+    # },
     "Issue": {
         "validate": [
             "propms.issue_hook.validate",
@@ -125,6 +146,7 @@ scheduler_events = {
     "daily": [
         "propms.auto_custom.statusChangeBeforeLeaseExpire",
         "propms.auto_custom.statusChangeAfterLeaseExpire",
+        "propms.custom.custom.create_maintenance_job_card",
     ],
     "cron": {
         # "00 12 * * *": ["propms.lease_invoice.leaseInvoiceAutoCreate"],

@@ -1,9 +1,9 @@
-# Copyright (c) 2026, Aakvatech and contributors
+# Copyright (c) 2026, VV Systems Developer LTD and contributors
 # For license information, please see license.txt
 
 # import frappe
 from frappe.model.document import Document
 
 
-class VivaMaintenanceJobCard(Document):
+class SubContractorShiftAssignment(Document):
 	pass

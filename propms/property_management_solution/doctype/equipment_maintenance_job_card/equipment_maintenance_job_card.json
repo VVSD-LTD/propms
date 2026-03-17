@@ -13,15 +13,25 @@
   "subject_section",
   "naming_series",
   "subject",
-  "customer",
-  "raised_by",
   "cb00",
+  "customer",
+  "section_break_eqst",
+  "person_in_charge",
+  "sub_contractor",
+  "equipment_type",
+  "column_break_stnp",
+  "person_in_charge_name",
+  "sub_contractor_name",
+  "raised_by",
+  "column_break_idda",
   "status",
   "priority",
   "issue_type",
   "issue_split_from",
   "sb_details",
   "description",
+  "column_break_qngc",
+  "defect_found",
   "material_request_section",
   "materials_required",
   "materials_billed",
@@ -71,7 +81,7 @@
    "fieldtype": "Select",
    "label": "Series",
    "no_copy": 1,
-   "options": "ISS-.YYYY.-",
+   "options": "VMJC-.YYYY.-",
    "print_hide": 1,
    "set_only_once": 1
   },
@@ -87,12 +97,14 @@
   {
    "fieldname": "customer",
    "fieldtype": "Link",
+   "hidden": 1,
    "in_global_search": 1,
    "label": "Customer",
    "oldfieldname": "customer",
    "oldfieldtype": "Link",
    "options": "Customer",
    "print_hide": 1,
+   "report_hide": 1,
    "search_index": 1
   },
   {
@@ -327,6 +339,7 @@
    "collapsible": 1,
    "fieldname": "additional_info",
    "fieldtype": "Section Break",
+   "hidden": 1,
    "label": "Reference",
    "options": "fa fa-pushpin",
    "read_only": 1
@@ -411,14 +424,73 @@
    "fieldtype": "Table",
    "label": "Materials Billed",
    "options": "Issue Materials Billed"
+  },
+  {
+   "fieldname": "section_break_eqst",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "person_in_charge",
+   "fieldtype": "Link",
+   "label": "Person In Charge",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "column_break_stnp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "person_in_charge.employee_name",
+   "fieldname": "person_in_charge_name",
+   "fieldtype": "Data",
+   "label": "Person In Charge Name",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "sub_contractor",
+   "fieldtype": "Link",
+   "label": "Sub Contractor",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "column_break_idda",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "sub_contractor.supplier_name",
+   "fieldname": "sub_contractor_name",
+   "fieldtype": "Data",
+   "label": "Sub Contractor Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_qngc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "bold": 1,
+   "fieldname": "defect_found",
+   "fieldtype": "Text Editor",
+   "in_global_search": 1,
+   "label": "Defect Found",
+   "oldfieldname": "problem_description",
+   "oldfieldtype": "Text"
+  },
+  {
+   "fieldname": "equipment_type",
+   "fieldtype": "Link",
+   "label": "Equipment Type",
+   "options": "Property Equipment Type",
+   "reqd": 1
   }
  ],
  "icon": "fa fa-ticket",
  "links": [],
- "modified": "2026-01-30 16:24:06.229151",
+ "modified": "2026-03-03 12:45:52.361894",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
- "name": "Viva Maintenance Job Card",
+ "name": "Equipment Maintenance Job Card",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
@@ -434,7 +506,6 @@
    "write": 1
   }
  ],
- "quick_entry": 1,
  "row_format": "Dynamic",
  "search_fields": "status,customer,subject,raised_by",
  "sender_field": "raised_by",

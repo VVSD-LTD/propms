@@ -1,0 +1,285 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "SBC-CKIN-.MM.-.YYYY.-.######",
+ "creation": "2026-03-02 13:10:19.042526",
+ "default_view": "List",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sub_contractor",
+  "sub_contractor_name",
+  "log_type",
+  "shift",
+  "column_break_4",
+  "time",
+  "device_id",
+  "skip_auto_attendance",
+  "attendance",
+  "location_section",
+  "latitude",
+  "column_break_yqpi",
+  "longitude",
+  "section_break_ksbo",
+  "fetch_geolocation",
+  "geolocation",
+  "shift_timings_section",
+  "shift_start",
+  "shift_end",
+  "offshift",
+  "column_break_vyyt",
+  "shift_actual_start",
+  "shift_actual_end"
+ ],
+ "fields": [
+  {
+   "fieldname": "log_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Log Type",
+   "options": "\nIN\nOUT"
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Link",
+   "label": "Shift",
+   "options": "Shift Type",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Now",
+   "fieldname": "time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Time",
+   "permlevel": 1,
+   "read_only_depends_on": "eval:doc.attendance;",
+   "reqd": 1
+  },
+  {
+   "fieldname": "device_id",
+   "fieldtype": "Data",
+   "label": "Location / Device ID"
+  },
+  {
+   "default": "0",
+   "fieldname": "skip_auto_attendance",
+   "fieldtype": "Check",
+   "label": "Skip Auto Attendance"
+  },
+  {
+   "fieldname": "attendance",
+   "fieldtype": "Link",
+   "label": "Attendance Marked",
+   "options": "Attendance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "location_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Location"
+  },
+  {
+   "fieldname": "latitude",
+   "fieldtype": "Float",
+   "label": "Latitude",
+   "precision": "7",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_yqpi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "longitude",
+   "fieldtype": "Float",
+   "label": "Longitude",
+   "precision": "7",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_ksbo",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "hide_border": 1
+  },
+  {
+   "fieldname": "fetch_geolocation",
+   "fieldtype": "Button",
+   "label": "Fetch Geolocation"
+  },
+  {
+   "fieldname": "geolocation",
+   "fieldtype": "Geolocation",
+   "label": "Geolocation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shift_timings_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Shift Timings"
+  },
+  {
+   "fieldname": "shift_start",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Shift Start"
+  },
+  {
+   "fieldname": "shift_end",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Shift End"
+  },
+  {
+   "default": "0",
+   "fieldname": "offshift",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Off-shift",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_vyyt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "shift_actual_start",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Shift Actual Start"
+  },
+  {
+   "fieldname": "shift_actual_end",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Shift Actual End"
+  },
+  {
+   "fieldname": "sub_contractor",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Sub Contractor",
+   "options": "Sub Contractor",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "sub_contractor.sub_contractor_name",
+   "fieldname": "sub_contractor_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sub Contractor Name",
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-02 13:30:36.927033",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Sub Contractor Checkin",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Sub Contractor",
+   "write": 1
+  },
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Sub Contractor"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "sub_contractor_name",
+ "track_changes": 1
+}

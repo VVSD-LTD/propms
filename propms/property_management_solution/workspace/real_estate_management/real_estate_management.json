@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"HaSFT_63sT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Summary Tables <br></b></span>\",\"col\":12}},{\"id\":\"ocKJbkl7Uq\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Properties\",\"col\":4}},{\"id\":\"74IgMjpDlT\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Leases\",\"col\":4}},{\"id\":\"7IQ5o5tu3V\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Shortcuts</span>\",\"col\":12}},{\"id\":\"mmDDbmrwfx\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Leases\",\"col\":4}},{\"id\":\"Ko3y3DNVaO\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vacting Leases\",\"col\":4}},{\"id\":\"lAcUHIxxmt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Unmaterialised Leases\",\"col\":4}},{\"id\":\"Lvkou7FPSj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Available Properties\",\"col\":4}},{\"id\":\"OCXSFF46BT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vacating Properties\",\"col\":4}},{\"id\":\"l-d27Twl0h\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Booked Properties\",\"col\":4}},{\"id\":\"TFO4ffcN4B\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Expired Leases\",\"col\":4}},{\"id\":\"8StaNmlZu7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Terminated Leases\",\"col\":4}},{\"id\":\"ce2zDTCx9A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pre-mature Lease Exits\",\"col\":4}},{\"id\":\"Kcd7OKvXzM\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lost Keys\",\"col\":4}},{\"id\":\"zSgvRHZOiy\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Keys in Posession\",\"col\":4}},{\"id\":\"Dpf3B4OldR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Assigned Keys\",\"col\":4}},{\"id\":\"R5oN93DdB9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lost Tools\",\"col\":4}},{\"id\":\"bArhtanAEk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Tools in Posession\",\"col\":4}},{\"id\":\"lqYekUAd7m\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Assigned Tools\",\"col\":4}},{\"id\":\"nt1DT-vX4o\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Documents</b></span>\",\"col\":12}},{\"id\":\"4OvHczRAAh\",\"type\":\"card\",\"data\":{\"card_name\":\"Property Management\",\"col\":4}},{\"id\":\"bjKUDrqDcX\",\"type\":\"card\",\"data\":{\"card_name\":\"Utilities and Tools\",\"col\":4}},{\"id\":\"-bjzyOR-Eh\",\"type\":\"card\",\"data\":{\"card_name\":\"Keys and Security\",\"col\":4}},{\"id\":\"5Dhgd1tVx2\",\"type\":\"card\",\"data\":{\"card_name\":\"Outsourcing\",\"col\":4}},{\"id\":\"a4xwDEBSQp\",\"type\":\"card\",\"data\":{\"card_name\":\"Monitoring and Maintanance\",\"col\":4}},{\"id\":\"mzh_YnVPt5\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports <br></b></span>\",\"col\":12}},{\"id\":\"vPLCvgOuuL\",\"type\":\"card\",\"data\":{\"card_name\":\"Monitoring Reports\",\"col\":4}},{\"id\":\"UDhmPoiQbA\",\"type\":\"card\",\"data\":{\"card_name\":\"Attendance Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"HaSFT_63sT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Summary Tables <br></b></span>\",\"col\":12}},{\"id\":\"ocKJbkl7Uq\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Properties\",\"col\":4}},{\"id\":\"74IgMjpDlT\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Leases\",\"col\":4}},{\"id\":\"7IQ5o5tu3V\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Shortcuts</span>\",\"col\":12}},{\"id\":\"mmDDbmrwfx\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Leases\",\"col\":4}},{\"id\":\"Ko3y3DNVaO\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vacting Leases\",\"col\":4}},{\"id\":\"lAcUHIxxmt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Unmaterialised Leases\",\"col\":4}},{\"id\":\"Lvkou7FPSj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Available Properties\",\"col\":4}},{\"id\":\"OCXSFF46BT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vacating Properties\",\"col\":4}},{\"id\":\"l-d27Twl0h\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Booked Properties\",\"col\":4}},{\"id\":\"TFO4ffcN4B\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Expired Leases\",\"col\":4}},{\"id\":\"8StaNmlZu7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Terminated Leases\",\"col\":4}},{\"id\":\"ce2zDTCx9A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pre-mature Lease Exits\",\"col\":4}},{\"id\":\"Kcd7OKvXzM\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lost Keys\",\"col\":4}},{\"id\":\"zSgvRHZOiy\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Keys in Posession\",\"col\":4}},{\"id\":\"Dpf3B4OldR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Assigned Keys\",\"col\":4}},{\"id\":\"R5oN93DdB9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lost Tools\",\"col\":4}},{\"id\":\"bArhtanAEk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Tools in Posession\",\"col\":4}},{\"id\":\"lqYekUAd7m\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Assigned Tools\",\"col\":4}},{\"id\":\"nt1DT-vX4o\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Documents</b></span>\",\"col\":12}},{\"id\":\"4OvHczRAAh\",\"type\":\"card\",\"data\":{\"card_name\":\"Property Management\",\"col\":4}},{\"id\":\"bjKUDrqDcX\",\"type\":\"card\",\"data\":{\"card_name\":\"Utilities and Tools\",\"col\":4}},{\"id\":\"-bjzyOR-Eh\",\"type\":\"card\",\"data\":{\"card_name\":\"Keys and Security\",\"col\":4}},{\"id\":\"5Dhgd1tVx2\",\"type\":\"card\",\"data\":{\"card_name\":\"Outsourcing\",\"col\":4}},{\"id\":\"a4xwDEBSQp\",\"type\":\"card\",\"data\":{\"card_name\":\"Monitoring and Maintanance\",\"col\":4}},{\"id\":\"F8OHSF5J2E\",\"type\":\"card\",\"data\":{\"card_name\":\"Installed Equipments\",\"col\":4}},{\"id\":\"A3zUhCaBv9\",\"type\":\"card\",\"data\":{\"card_name\":\"Sub Contractor\",\"col\":4}},{\"id\":\"mzh_YnVPt5\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports <br></b></span>\",\"col\":12}},{\"id\":\"vPLCvgOuuL\",\"type\":\"card\",\"data\":{\"card_name\":\"Monitoring Reports\",\"col\":4}},{\"id\":\"UDhmPoiQbA\",\"type\":\"card\",\"data\":{\"card_name\":\"Attendance Reports\",\"col\":4}}]",
  "creation": "2025-03-12 16:48:28.235868",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,70 +13,6 @@
  "is_hidden": 0,
  "label": "Real Estate Management",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Utilities and Tools",
-   "link_count": 5,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Insurance",
-   "link_count": 0,
-   "link_to": "Insurance",
-   "link_type": "DocType",
-   "onboard": 0,
-   "only_for": "",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Meter",
-   "link_count": 0,
-   "link_to": "Meter",
-   "link_type": "DocType",
-   "onboard": 0,
-   "only_for": "",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Meter Reading",
-   "link_count": 0,
-   "link_to": "Meter Reading",
-   "link_type": "DocType",
-   "onboard": 0,
-   "only_for": "",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Tool Item Set",
-   "link_count": 0,
-   "link_to": "Tool Item Set",
-   "link_type": "DocType",
-   "onboard": 0,
-   "only_for": "",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Tool Item Record",
-   "link_count": 0,
-   "link_to": "Tool Item Record",
-   "link_type": "DocType",
-   "onboard": 0,
-   "only_for": "",
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -125,48 +61,6 @@
    "label": "Security Attendance",
    "link_count": 0,
    "link_to": "Security Attendance",
-   "link_type": "DocType",
-   "onboard": 0,
-   "only_for": "",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Monitoring and Maintanance",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Daily Checklist",
-   "link_count": 0,
-   "link_to": "Daily Checklist",
-   "link_type": "DocType",
-   "onboard": 0,
-   "only_for": "",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Checklist Checkup Area",
-   "link_count": 0,
-   "link_to": "Checklist Checkup Area",
-   "link_type": "DocType",
-   "onboard": 0,
-   "only_for": "",
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Custom Error Log",
-   "link_count": 0,
-   "link_to": "Custom Error Log",
    "link_type": "DocType",
    "onboard": 0,
    "only_for": "",
@@ -364,8 +258,242 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Monitoring Reports",
+   "label": "Utilities and Tools",
    "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Insurance",
+   "link_count": 0,
+   "link_to": "Insurance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Meter",
+   "link_count": 0,
+   "link_to": "Meter",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Meter Reading",
+   "link_count": 0,
+   "link_to": "Meter Reading",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Tool Item Set",
+   "link_count": 0,
+   "link_to": "Tool Item Set",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Tool Item Record",
+   "link_count": 0,
+   "link_to": "Tool Item Record",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Free Parking Card Detail",
+   "link_count": 0,
+   "link_to": "Free Parking Card Detail",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Installed Equipments",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Property Equipment",
+   "link_count": 0,
+   "link_to": "Property Equipment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Property Installed Equipment",
+   "link_count": 0,
+   "link_to": "Property Installed Equipment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Property Equipment Type",
+   "link_count": 0,
+   "link_to": "Property Equipment Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Monitoring and Maintanance",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Daily Checklist",
+   "link_count": 0,
+   "link_to": "Daily Checklist",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Checklist Checkup Area",
+   "link_count": 0,
+   "link_to": "Checklist Checkup Area",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Gym Attendance",
+   "link_count": 0,
+   "link_to": "Gym Attendance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Custom Error Log",
+   "link_count": 0,
+   "link_to": "Custom Error Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor",
+   "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor",
+   "link_count": 0,
+   "link_to": "Sub Contractor",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Category",
+   "link_count": 0,
+   "link_to": "Sub Contractor Category",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Checkin",
+   "link_count": 0,
+   "link_to": "Sub Contractor Checkin",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Assignment",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Assignment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Request",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Schedule Assignment",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Schedule Assignment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Monitoring Reports",
+   "link_count": 7,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -439,9 +567,19 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Jobcards Report",
+   "link_count": 0,
+   "link_to": "Jobcards Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-01-29 16:11:53.261947",
+ "modified": "2026-03-17 12:28:50.836943",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Real Estate Management",
