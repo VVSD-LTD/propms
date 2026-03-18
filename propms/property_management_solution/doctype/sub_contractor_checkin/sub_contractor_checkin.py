@@ -3,6 +3,8 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe import _
+from frappe.utils import cint
 
 
 class SubContractorCheckin(Document):
@@ -51,5 +53,5 @@ def add_log_based_on_subcontractor_field(
     if cint(skip_auto_attendance) == 1:
         doc.skip_auto_attendance = "1"
     doc.insert()
-
+    frappe.db.commit()  # Ensure the document is saved before returning
     return doc
