@@ -54,3 +54,37 @@ def before_save(doc, method):
         # First valid item defines invoice due date
         break
 
+@frappe.whitelist()
+def create_maintenance_job_card():
+    installed_equipments = frappe.db.sql("""
+        SELECT 
+            name, equipment_type, next_service_date, parent, label, location
+        FROM 
+            `tabProperty Installed Equipment Detail`
+        WHERE 
+            enabled = 1
+        AND 
+            next_service_date = CURDATE()  -- filter in SQL, avoids type mismatch
+        AND
+            parentfield = 'table_5'  -- ensure we only get enabled equipments
+        -- AND
+            -- last_service_date != CURDATE()  -- avoid creating multiple job cards for same equipment in a day
+    """, as_dict=True)
+
+    for equipment in installed_equipments:
+        try:
+            job_card = frappe.new_doc("Equipment Maintenance Job Card")
+            job_card.equipment_type = equipment.equipment_type
+            job_card.subject = f"Maintenance of {equipment.parent} - {equipment.label} - {equipment.location}"
+            job_card.insert(ignore_permissions=True)  # use insert() for new docs
+
+            frappe.db.set_value(
+                "Property Installed Equipment Detail",
+                equipment.name,
+                "job_card",
+                job_card.name
+            )
+            frappe.db.commit()
+
+        except Exception as e:
+            frappe.log_error(frappe.get_traceback(), f"Job Card Creation Failed: {equipment.name}")
