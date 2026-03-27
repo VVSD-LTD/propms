@@ -108,7 +108,7 @@ class EquipmentMaintenanceJobCard(Document):
 				"sender": self.raised_by,
 				"content": self.description,
 				"status": "Linked",
-				"reference_doctype": "Issue",
+				"reference_doctype": "Equipment Maintenance Job Card",
 				"reference_name": self.name,
 			}
 		)
@@ -145,7 +145,7 @@ class EquipmentMaintenanceJobCard(Document):
 		communications = frappe.get_all(
 			"Communication",
 			filters={
-				"reference_doctype": "Issue",
+				"reference_doctype": "Equipment Maintenance Job Card",
 				"reference_name": comm_to_split_from.reference_name,
 				"creation": (">=", comm_to_split_from.creation),
 			},
@@ -160,7 +160,7 @@ class EquipmentMaintenanceJobCard(Document):
 			{
 				"doctype": "Comment",
 				"comment_type": "Info",
-				"reference_doctype": "Issue",
+				"reference_doctype": "Equipment Maintenance Job Card",
 				"reference_name": replicated_issue.name,
 				"content": " - Split the Issue from <a href='/app/Form/Issue/{}'>{}</a>".format(
 					self.name, frappe.bold(self.name)
@@ -193,6 +193,24 @@ class EquipmentMaintenanceJobCard(Document):
 					next_service_date = frappe.utils.add_days(frappe.utils.nowdate(), parent_interval_days)
 					frappe.db.set_value("Property Installed Equipment Detail", equipment.name, "next_service_date", next_service_date)
 
+	def before_save_after_submit(self):
+		if self.status == "Closed":
+			get_linked_property_equipment = frappe.db.sql("""
+			SELECT
+				name,
+				parent
+			FROM
+				`tabProperty Installed Equipment Detail`
+			WHERE
+				job_card = %s
+			""", self.name, as_dict=True)
+			if len(get_linked_property_equipment) > 0:
+				for equipment in get_linked_property_equipment:
+					frappe.db.set_value("Property Installed Equipment Detail", equipment.name, "last_service_date", frappe.utils.nowdate())
+					frappe.db.set_value("Property Installed Equipment Detail", equipment.name, "job_card", self.name)
+					parent_interval_days = frappe.db.get_value("Property Installed Equipment", equipment.parent, "interval_days")
+					next_service_date = frappe.utils.add_days(frappe.utils.nowdate(), parent_interval_days)
+					frappe.db.set_value("Property Installed Equipment Detail", equipment.name, "next_service_date", next_service_date)
 
 def get_list_context(context=None):
 	return {
@@ -236,12 +254,12 @@ def get_issue_list(doctype, txt, filters, limit_start, limit_page_length=20, ord
 @frappe.whitelist()
 def set_multiple_status(names, status):
 	for name in json.loads(names):
-		frappe.db.set_value("Issue", name, "status", status)
+		frappe.db.set_value("Equipment Maintenance Job Card", name, "status", status)
 
 
 @frappe.whitelist()
 def set_status(name, status):
-	frappe.db.set_value("Issue", name, "status", status)
+	frappe.db.set_value("Equipment Maintenance Job Card", name, "status", status)
 
 
 def auto_close_tickets():
@@ -250,7 +268,7 @@ def auto_close_tickets():
 		frappe.db.get_value("Support Settings", "Support Settings", "close_issue_after_days") or 7
 	)
 
-	table = frappe.qb.DocType("Issue")
+	table = frappe.qb.DocType("Equipment Maintenance Job Card")
 	issues = (
 		frappe.qb.from_(table)
 		.select(table.name)
@@ -260,7 +278,7 @@ def auto_close_tickets():
 	).run(pluck=True)
 
 	for issue in issues:
-		doc = frappe.get_doc("Issue", issue)
+		doc = frappe.get_doc("Equipment Maintenance Job Card", issue)
 		doc.status = "Closed"
 		doc.flags.ignore_permissions = True
 		doc.flags.ignore_mandatory = True
@@ -277,12 +295,12 @@ def has_website_permission(doc, ptype, user, verbose=False):
 
 def update_issue(contact, method):
 	"""Called when Contact is deleted"""
-	frappe.db.sql("""UPDATE `tabIssue` set contact='' where contact=%s""", contact.name)
+	frappe.db.sql("""UPDATE `tabEquipment Maintenance Job Card` set contact='' where contact=%s""", contact.name)
 
 
 @frappe.whitelist()
 def make_task(source_name, target_doc=None):
-	return get_mapped_doc("Issue", source_name, {"Issue": {"doctype": "Task"}}, target_doc)
+	return get_mapped_doc("Equipment Maintenance Job Card", source_name, {"Equipment Maintenance Job Card": {"doctype": "Task"}}, target_doc)
 
 
 @frappe.whitelist()
@@ -292,7 +310,7 @@ def make_issue_from_communication(communication, ignore_communication_links=Fals
 	doc = frappe.get_doc("Communication", communication)
 	issue = frappe.get_doc(
 		{
-			"doctype": "Issue",
+			"doctype": "Equipment Maintenance Job Card",
 			"subject": doc.subject,
 			"communication_medium": doc.communication_medium,
 			"raised_by": doc.sender or "",
@@ -300,7 +318,7 @@ def make_issue_from_communication(communication, ignore_communication_links=Fals
 		}
 	).insert(ignore_permissions=True)
 
-	link_communication_to_document(doc, "Issue", issue.name, ignore_communication_links)
+	link_communication_to_document(doc, "Equipment Maintenance Job Card", issue.name, ignore_communication_links)
 
 	return issue.name
 
@@ -313,7 +331,7 @@ def get_time_in_timedelta(time):
 
 
 def set_first_response_time(communication, method):
-	if communication.get("reference_doctype") == "Issue":
+	if communication.get("reference_doctype") == "Equipment Maintenance Job Card":
 		issue = get_parent_doc(communication)
 		if is_first_response(issue) and issue.service_level_agreement:
 			first_response_time = calculate_first_response_time(issue, get_datetime(issue.first_responded_on))

@@ -11,6 +11,7 @@
   "sub_contractor_name",
   "log_type",
   "shift",
+  "sub_contractor_category",
   "column_break_4",
   "time",
   "device_id",
@@ -178,10 +179,18 @@
    "in_list_view": 1,
    "label": "Sub Contractor Name",
    "read_only": 1
+  },
+  {
+   "fetch_from": "sub_contractor.sub_contractor_category",
+   "fetch_if_empty": 1,
+   "fieldname": "sub_contractor_category",
+   "fieldtype": "Data",
+   "label": "Sub Contractor Category",
+   "read_only": 1
   }
  ],
  "links": [],
- "modified": "2026-03-02 13:30:36.927033",
+ "modified": "2026-03-27 11:52:44.758980",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Sub Contractor Checkin",

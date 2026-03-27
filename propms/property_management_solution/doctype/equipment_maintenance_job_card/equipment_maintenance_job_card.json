@@ -177,7 +177,6 @@
    "collapsible": 1,
    "fieldname": "service_level_section",
    "fieldtype": "Section Break",
-   "hidden": 1,
    "label": "Service Level Agreement Details"
   },
   {
@@ -480,6 +479,8 @@
   {
    "fieldname": "equipment_type",
    "fieldtype": "Link",
+   "in_filter": 1,
+   "in_standard_filter": 1,
    "label": "Equipment Type",
    "options": "Property Equipment Type",
    "reqd": 1
@@ -487,7 +488,7 @@
  ],
  "icon": "fa fa-ticket",
  "links": [],
- "modified": "2026-03-03 12:45:52.361894",
+ "modified": "2026-03-19 12:33:07.685135",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Equipment Maintenance Job Card",
@@ -507,7 +508,7 @@
   }
  ],
  "row_format": "Dynamic",
- "search_fields": "status,customer,subject,raised_by",
+ "search_fields": "status,customer,subject,raised_by,equipment_type",
  "sender_field": "raised_by",
  "sort_field": "modified",
  "sort_order": "DESC",

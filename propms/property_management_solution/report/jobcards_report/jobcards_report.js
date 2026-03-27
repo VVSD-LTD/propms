@@ -699,19 +699,19 @@ function show_summary_dialog() {
 
 	// ── Table 2: By Issue Type ──
 	const sortedTypes = Object.entries(typeCount).sort((a, b) => b[1] - a[1]);
-	const typeRows = sortedTypes.map(([t, n], i) => {
-		const pct = total ? ((n / total) * 100).toFixed(2) : "0.00";
-		const bar = `<div style="background:#e8e8e8;border-radius:2px;height:7px;width:100%;max-width:180px;display:inline-block;vertical-align:middle;">
-			<div style="background:#2c5f8a;height:7px;border-radius:2px;width:${Math.min(parseFloat(pct),100)}%;"></div>
-		</div>`;
-		return `<tr style="background:${i%2===0?'#fff':'#fafafa'};">
-			<td style="padding:7px 12px;">${i+1}</td>
-			<td style="padding:7px 12px;font-weight:600;">${t}</td>
-			<td style="text-align:center;font-weight:700;padding:7px 12px;">${n}</td>
-			<td style="text-align:center;padding:7px 12px;">${pct}%</td>
-			<td style="padding:7px 16px;">${bar}</td>
-		</tr>`;
-	}).join("");
+	// const typeRows = sortedTypes.map(([t, n], i) => {
+	// 	const pct = total ? ((n / total) * 100).toFixed(2) : "0.00";
+	// 	const bar = `<div style="background:#e8e8e8;border-radius:2px;height:7px;width:100%;max-width:180px;display:inline-block;vertical-align:middle;">
+	// 		<div style="background:#2c5f8a;height:7px;border-radius:2px;width:${Math.min(parseFloat(pct),100)}%;"></div>
+	// 	</div>`;
+	// 	return `<tr style="background:${i%2===0?'#fff':'#fafafa'};">
+	// 		<td style="padding:7px 12px;">${i+1}</td>
+	// 		<td style="padding:7px 12px;font-weight:600;">${t}</td>
+	// 		<td style="text-align:center;font-weight:700;padding:7px 12px;">${n}</td>
+	// 		<td style="text-align:center;padding:7px 12px;">${pct}%</td>
+	// 		<td style="padding:7px 16px;">${bar}</td>
+	// 	</tr>`;
+	// }).join("");
 
 	// ── Section 3: Per-Issue-Type breakdown cards ──
 	const typeCards = sortedTypes.map(([t, totalForType], i) => {
@@ -790,6 +790,7 @@ function show_summary_dialog() {
 			</tr></tfoot>
 		</table>
 
+		<--
 		<div class="sec-title">Jobcard by Issue Type</div>
 		<table class="data-table">
 			<thead><tr>
@@ -806,7 +807,7 @@ function show_summary_dialog() {
 				<td style="text-align:center;">100.00%</td>
 				<td></td>
 			</tr></tfoot>
-		</table>
+		</table> -->
 
 		<div class="sec-title">Issue Type Breakdown by Status</div>
 		<p style="font-size:11px;color:#888;margin:-6px 0 12px;">Each card shows count per status across all 8 stages</p>
@@ -943,7 +944,7 @@ function print_summary_report() {
       <td style="text-align:center;">100%</td>
     </tr></tfoot>
   </table>
-  <div class="sec-title">Jobcard by Issue Type</div>
+  <!-- <div class="sec-title">Jobcard by Issue Type</div>
   <table class="rpt">
     <thead><tr>
       <th style="width:45px;">S/No</th><th>Issue Type</th>
@@ -957,6 +958,7 @@ function print_summary_report() {
       <td style="text-align:center;">100.00%</td>
     </tr></tfoot>
   </table>
+  -->
   <div class="sec-title">Issue Type Breakdown by Status</div>
   <table class="rpt" style="font-size:10px;">
     <thead><tr>
