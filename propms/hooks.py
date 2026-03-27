@@ -146,10 +146,11 @@ scheduler_events = {
     "daily": [
         "propms.auto_custom.statusChangeBeforeLeaseExpire",
         "propms.auto_custom.statusChangeAfterLeaseExpire",
-        "propms.custom.custom.create_maintenance_job_card",
     ],
     "cron": {
         # "00 12 * * *": ["propms.lease_invoice.leaseInvoiceAutoCreate"],
+        "00 02 * * *": ["propms.custom.custom.create_maintenance_job_card"],
+        # "00 02 * * *": ["propms.custom.custom.get_overdue_sales_invoices"],
         "00 00 * * *": ["propms.lease_invoice_schedule.make_lease_invoice_schedule"],
         "00 12 * * *": ["propms.lease_invoice.enqueue_lease_invoice_auto_create"],
     }
