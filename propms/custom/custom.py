@@ -1,5 +1,6 @@
 import frappe
 from datetime import timedelta
+from frappe.utils.pdf import get_pdf
 
 def before_save(doc, method):
     # Only for Sales Invoice
@@ -77,6 +78,9 @@ def create_maintenance_job_card():
             job_card = frappe.new_doc("Equipment Maintenance Job Card")
             job_card.equipment_type = equipment.equipment_type
             job_card.subject = f"Maintenance of {equipment.parent} - {equipment.label} - {equipment.location}"
+            job_card.label = equipment.label
+            job_card.equipment = equipment.parent
+            job_card.location = equipment.location
             job_card.insert(ignore_permissions=True)  # use insert() for new docs
 
             frappe.db.set_value(
@@ -89,6 +93,7 @@ def create_maintenance_job_card():
 
         except Exception as e:
             frappe.log_error(frappe.get_traceback(), f"Job Card Creation Failed: {equipment.name}")
+
 
 def get_overdue_sales_invoices():
     enabled_email_settings = frappe.db.get_single_value(
@@ -199,9 +204,55 @@ def get_overdue_sales_invoices():
                 "customer_email": customer_email,
                 "subject": rendered_subject,
                 "due_amount": invoice_doc.outstanding_amount,
-                "invoice_no": f"<a href='/app/sales-invoice/{invoice_doc.name}'>{invoice_doc.name}</a>",
+                "invoice_no": invoice.name,
                 "message": rendered_body,
                 "currency": currency,
             })
             notify_doc.insert(ignore_permissions=True)
+
+            # Render and attach PDF if print format is set
+            if doc.print_format:
+                try:
+                    _attach_pdf(notify_doc, invoice_doc, doc.print_format)
+                except Exception as e:
+                    frappe.log_error(
+                        f"Failed to attach PDF for invoice {invoice.name}: {str(e)}",
+                        "Overdue Invoice Email Sending",
+                    )
+
             frappe.db.commit()
+
+
+def _attach_pdf(notify_doc, invoice_doc, print_format):
+    """Render the Sales Invoice as PDF using the given print format
+    and attach it to the Notify Customer doc."""
+
+    # Get the HTML for the print format
+    html = frappe.get_print(
+        doctype="Sales Invoice",
+        name=invoice_doc.name,
+        print_format=print_format,
+        as_pdf=False,  # get HTML first so we can pass it to get_pdf
+    )
+
+    # Convert HTML to PDF bytes
+    pdf_bytes = get_pdf(html)
+
+    # Save as a File record attached to the Notify Customer doc
+    pdf_filename = f"{invoice_doc.name}.pdf"
+
+    _file = frappe.get_doc({
+        "doctype": "File",
+        "file_name": pdf_filename,
+        "attached_to_doctype": notify_doc.doctype,
+        "attached_to_name": notify_doc.name,
+        "attached_to_field": "attachment",
+        "is_private": 1,
+        "content": pdf_bytes,
+    })
+    _file.save(ignore_permissions=True)
+
+    # Update the attachment field on the Notify Customer doc
+    frappe.db.set_value(
+        "Notify Customer", notify_doc.name, "attachment", _file.file_url
+    )
