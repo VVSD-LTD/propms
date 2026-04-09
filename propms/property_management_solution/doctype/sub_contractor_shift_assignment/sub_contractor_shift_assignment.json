@@ -104,7 +104,8 @@
    "fieldtype": "Link",
    "label": "Shift Schedule Assignment",
    "options": "Sub Contractor Shift Schedule Assignment",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "amended_from",
@@ -141,6 +142,7 @@
    "search_index": 1
   },
   {
+   "fetch_from": "sub_contractor.sub_contractor_name",
    "fieldname": "sub_contractor_name",
    "fieldtype": "Data",
    "label": "Sub Contractor Name",
@@ -149,7 +151,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-16 15:31:37.915224",
+ "modified": "2026-04-09 09:12:38.988424",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Sub Contractor Shift Assignment",
