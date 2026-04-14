@@ -1,0 +1,313 @@
+{
+ "actions": [],
+ "autoname": "VPL/RGP./.####",
+ "creation": "2026-03-20 14:59:49.541287",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_pscj",
+  "date",
+  "valid_till",
+  "column_break_kyos",
+  "time",
+  "naming_series",
+  "section_break_nfvx",
+  "residenttenantcompany_name",
+  "department_if_applicable",
+  "column_break_vdkq",
+  "officeshopapartment_no",
+  "material_description_section",
+  "items",
+  "reason_for_the_gate_pass",
+  "authorization_section",
+  "column_break_laec",
+  "authorized_by",
+  "authorized_by_full_name",
+  "column_break_hihq",
+  "authorized_on",
+  "approvals_section",
+  "approved_by",
+  "approved_by_full_name",
+  "column_break_txup",
+  "approved_on",
+  "security_use_section",
+  "item_physically_verified_by",
+  "signature",
+  "column_break_nhce",
+  "remark",
+  "verified_date",
+  "tab_break_lbmt",
+  "doc_remark_section",
+  "note",
+  "amended_from",
+  "connections_tab"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_pscj",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Series",
+   "options": "VPL/NRGP/.MM./.YYYY./"
+  },
+  {
+   "fieldname": "column_break_kyos",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "now",
+   "fieldname": "time",
+   "fieldtype": "Time",
+   "label": "Time",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_nfvx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "residenttenantcompany_name",
+   "fieldtype": "Data",
+   "label": "Resident/Tenant/Company Name"
+  },
+  {
+   "fieldname": "department_if_applicable",
+   "fieldtype": "Data",
+   "label": "Department (if applicable)"
+  },
+  {
+   "fieldname": "column_break_vdkq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "officeshopapartment_no",
+   "fieldtype": "Data",
+   "label": "Office/Shop/Apartment No"
+  },
+  {
+   "fieldname": "material_description_section",
+   "fieldtype": "Section Break",
+   "label": "Material description"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Gate Pass Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reason_for_the_gate_pass",
+   "fieldtype": "Small Text",
+   "label": "Reason For the Gate Pass",
+   "reqd": 1
+  },
+  {
+   "fieldname": "authorization_section",
+   "fieldtype": "Section Break",
+   "label": "Authorization"
+  },
+  {
+   "fieldname": "column_break_hihq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "approvals_section",
+   "fieldtype": "Section Break",
+   "label": "Approvals"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "no_copy": 1,
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tab_break_lbmt",
+   "fieldtype": "Tab Break",
+   "hidden": 1,
+   "label": "Doc Remark"
+  },
+  {
+   "default": "Return Confirmation to be filled upon return.",
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "doc_remark_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Returnable Gate Pass",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "valid_till",
+   "fieldtype": "Datetime",
+   "label": "Valid till",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "column_break_laec",
+   "fieldtype": "Column Break",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_txup",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "authorized_by",
+   "fieldtype": "Link",
+   "label": "Authorized By",
+   "no_copy": 1,
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "authorized_on",
+   "fieldtype": "Datetime",
+   "label": "Authorized On",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "authorized_by.full_name",
+   "fieldname": "authorized_by_full_name",
+   "fieldtype": "Data",
+   "label": "Authorized By Full Name",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "approved_by.full_name",
+   "fieldname": "approved_by_full_name",
+   "fieldtype": "Data",
+   "label": "Approved By Full Name",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "security_use_section",
+   "fieldtype": "Section Break",
+   "label": "Security Use"
+  },
+  {
+   "fieldname": "item_physically_verified_by",
+   "fieldtype": "Data",
+   "label": "Item Physically verified by"
+  },
+  {
+   "fieldname": "signature",
+   "fieldtype": "Signature",
+   "label": "Signature"
+  },
+  {
+   "fieldname": "column_break_nhce",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "remark",
+   "fieldtype": "Data",
+   "label": "Remark"
+  },
+  {
+   "fieldname": "verified_date",
+   "fieldtype": "Date",
+   "label": "Verified Date"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [
+  {
+   "link_doctype": "Gate Pass Item Return",
+   "link_fieldname": "reference_no"
+  }
+ ],
+ "modified": "2026-04-14 11:38:11.930638",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Returnable Gate Pass",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "VIVA Gate Pass",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
