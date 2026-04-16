@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"HaSFT_63sT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Summary Tables <br></b></span>\",\"col\":12}},{\"id\":\"ocKJbkl7Uq\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Properties\",\"col\":4}},{\"id\":\"74IgMjpDlT\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Leases\",\"col\":4}},{\"id\":\"7IQ5o5tu3V\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Shortcuts</span>\",\"col\":12}},{\"id\":\"mmDDbmrwfx\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Leases\",\"col\":4}},{\"id\":\"Ko3y3DNVaO\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vacting Leases\",\"col\":4}},{\"id\":\"lAcUHIxxmt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Unmaterialised Leases\",\"col\":4}},{\"id\":\"Lvkou7FPSj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Available Properties\",\"col\":4}},{\"id\":\"OCXSFF46BT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vacating Properties\",\"col\":4}},{\"id\":\"l-d27Twl0h\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Booked Properties\",\"col\":4}},{\"id\":\"TFO4ffcN4B\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Expired Leases\",\"col\":4}},{\"id\":\"8StaNmlZu7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Terminated Leases\",\"col\":4}},{\"id\":\"ce2zDTCx9A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pre-mature Lease Exits\",\"col\":4}},{\"id\":\"Kcd7OKvXzM\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lost Keys\",\"col\":4}},{\"id\":\"zSgvRHZOiy\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Keys in Posession\",\"col\":4}},{\"id\":\"Dpf3B4OldR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Assigned Keys\",\"col\":4}},{\"id\":\"R5oN93DdB9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lost Tools\",\"col\":4}},{\"id\":\"bArhtanAEk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Tools in Posession\",\"col\":4}},{\"id\":\"lqYekUAd7m\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Assigned Tools\",\"col\":4}},{\"id\":\"nt1DT-vX4o\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Documents</b></span>\",\"col\":12}},{\"id\":\"4OvHczRAAh\",\"type\":\"card\",\"data\":{\"card_name\":\"Property Management\",\"col\":4}},{\"id\":\"bjKUDrqDcX\",\"type\":\"card\",\"data\":{\"card_name\":\"Utilities and Tools\",\"col\":4}},{\"id\":\"-bjzyOR-Eh\",\"type\":\"card\",\"data\":{\"card_name\":\"Keys and Security\",\"col\":4}},{\"id\":\"5Dhgd1tVx2\",\"type\":\"card\",\"data\":{\"card_name\":\"Outsourcing\",\"col\":4}},{\"id\":\"a4xwDEBSQp\",\"type\":\"card\",\"data\":{\"card_name\":\"Monitoring and Maintanance\",\"col\":4}},{\"id\":\"F8OHSF5J2E\",\"type\":\"card\",\"data\":{\"card_name\":\"Installed Equipments\",\"col\":4}},{\"id\":\"A3zUhCaBv9\",\"type\":\"card\",\"data\":{\"card_name\":\"Sub Contractor\",\"col\":4}},{\"id\":\"mzh_YnVPt5\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports <br></b></span>\",\"col\":12}},{\"id\":\"vPLCvgOuuL\",\"type\":\"card\",\"data\":{\"card_name\":\"Monitoring Reports\",\"col\":4}},{\"id\":\"UDhmPoiQbA\",\"type\":\"card\",\"data\":{\"card_name\":\"Attendance Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"HaSFT_63sT\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Summary Tables <br></b></span>\",\"col\":12}},{\"id\":\"ocKJbkl7Uq\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Properties\",\"col\":4}},{\"id\":\"74IgMjpDlT\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Leases\",\"col\":4}},{\"id\":\"7IQ5o5tu3V\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Shortcuts</span>\",\"col\":12}},{\"id\":\"mmDDbmrwfx\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Active Leases\",\"col\":4}},{\"id\":\"Ko3y3DNVaO\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vacting Leases\",\"col\":4}},{\"id\":\"lAcUHIxxmt\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Unmaterialised Leases\",\"col\":4}},{\"id\":\"Lvkou7FPSj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Available Properties\",\"col\":4}},{\"id\":\"OCXSFF46BT\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vacating Properties\",\"col\":4}},{\"id\":\"l-d27Twl0h\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Booked Properties\",\"col\":4}},{\"id\":\"TFO4ffcN4B\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Expired Leases\",\"col\":4}},{\"id\":\"8StaNmlZu7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Terminated Leases\",\"col\":4}},{\"id\":\"ce2zDTCx9A\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pre-mature Lease Exits\",\"col\":4}},{\"id\":\"Kcd7OKvXzM\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lost Keys\",\"col\":4}},{\"id\":\"zSgvRHZOiy\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Keys in Posession\",\"col\":4}},{\"id\":\"Dpf3B4OldR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Assigned Keys\",\"col\":4}},{\"id\":\"R5oN93DdB9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Lost Tools\",\"col\":4}},{\"id\":\"bArhtanAEk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Tools in Posession\",\"col\":4}},{\"id\":\"lqYekUAd7m\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Assigned Tools\",\"col\":4}},{\"id\":\"nt1DT-vX4o\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Documents</b></span>\",\"col\":12}},{\"id\":\"4OvHczRAAh\",\"type\":\"card\",\"data\":{\"card_name\":\"Property Management\",\"col\":4}},{\"id\":\"bjKUDrqDcX\",\"type\":\"card\",\"data\":{\"card_name\":\"Utilities and Tools\",\"col\":4}},{\"id\":\"-bjzyOR-Eh\",\"type\":\"card\",\"data\":{\"card_name\":\"Keys and Security\",\"col\":4}},{\"id\":\"5Dhgd1tVx2\",\"type\":\"card\",\"data\":{\"card_name\":\"Outsourcing\",\"col\":4}},{\"id\":\"a4xwDEBSQp\",\"type\":\"card\",\"data\":{\"card_name\":\"Monitoring and Maintanance\",\"col\":4}},{\"id\":\"F8OHSF5J2E\",\"type\":\"card\",\"data\":{\"card_name\":\"Installed Equipments\",\"col\":4}},{\"id\":\"A3zUhCaBv9\",\"type\":\"card\",\"data\":{\"card_name\":\"Sub Contractor\",\"col\":4}},{\"id\":\"nG-u20dKDt\",\"type\":\"card\",\"data\":{\"card_name\":\"Gate Pass\",\"col\":4}},{\"id\":\"giGyfnClUL\",\"type\":\"card\",\"data\":{\"card_name\":\"Customer Notification\",\"col\":4}},{\"id\":\"mzh_YnVPt5\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports <br></b></span>\",\"col\":12}},{\"id\":\"vPLCvgOuuL\",\"type\":\"card\",\"data\":{\"card_name\":\"Monitoring Reports\",\"col\":4}},{\"id\":\"UDhmPoiQbA\",\"type\":\"card\",\"data\":{\"card_name\":\"Attendance Reports\",\"col\":4}}]",
  "creation": "2025-03-12 16:48:28.235868",
  "custom_blocks": [],
  "docstatus": 0,
@@ -423,8 +423,165 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Monitoring Reports",
+   "label": "Sub Contractor",
    "link_count": 7,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor",
+   "link_count": 0,
+   "link_to": "Sub Contractor",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Category",
+   "link_count": 0,
+   "link_to": "Sub Contractor Category",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Checkin",
+   "link_count": 0,
+   "link_to": "Sub Contractor Checkin",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Assignment",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Assignment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Request",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Schedule Assignment",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Schedule Assignment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Assignment Tool",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Assignment Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Gate Pass",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Returnable Gate Pass",
+   "link_count": 0,
+   "link_to": "Returnable Gate Pass",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Gate Pass Item Return",
+   "link_count": 0,
+   "link_to": "Gate Pass Item Return",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Non Returnable Gate Pass",
+   "link_count": 0,
+   "link_to": "Non Returnable Gate Pass",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Maids-Drivers Gate pass",
+   "link_count": 0,
+   "link_to": "Maids-Drivers Gate pass",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Customer Notification",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Notify Customer",
+   "link_count": 0,
+   "link_to": "Notify Customer",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Property Management Email Setting",
+   "link_count": 0,
+   "link_to": "Property Management Email Setting",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Monitoring Reports",
+   "link_count": 8,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -511,85 +668,16 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor",
-   "link_count": 7,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor",
+   "is_query_report": 1,
+   "label": "Sub Contractor Checkin Summary",
    "link_count": 0,
-   "link_to": "Sub Contractor",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Category",
-   "link_count": 0,
-   "link_to": "Sub Contractor Category",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Checkin",
-   "link_count": 0,
-   "link_to": "Sub Contractor Checkin",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Shift Assignment",
-   "link_count": 0,
-   "link_to": "Sub Contractor Shift Assignment",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Shift Request",
-   "link_count": 0,
-   "link_to": "Sub Contractor Shift Request",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Shift Schedule Assignment",
-   "link_count": 0,
-   "link_to": "Sub Contractor Shift Schedule Assignment",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Shift Assignment Tool",
-   "link_count": 0,
-   "link_to": "Sub Contractor Shift Assignment Tool",
-   "link_type": "DocType",
+   "link_to": "Sub Contractor Checkin Summary",
+   "link_type": "Report",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2026-04-09 15:52:02.974135",
+ "modified": "2026-04-15 12:29:26.801269",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Real Estate Management",

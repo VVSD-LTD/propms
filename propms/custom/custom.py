@@ -94,6 +94,35 @@ def create_maintenance_job_card():
         except Exception as e:
             frappe.log_error(frappe.get_traceback(), f"Job Card Creation Failed: {equipment.name}")
 
+def _get_primary_contact_emails(customer_name):
+    """
+    Returns a set of unique email addresses from all primary contacts of a customer.
+    Pulls all emails from the Contact Email child table only (avoids duplicates since
+    the contact's main email_id is always present in email_ids as is_primary=1).
+    """
+    contacts = frappe.db.get_all(
+        "Contact",
+        filters={
+            "link_doctype": "Customer",
+            "link_name": customer_name,
+            "is_primary_contact": 1,
+        },
+        fields=["name"],
+    )
+
+    emails = set()
+
+    for contact in contacts:
+        all_emails = frappe.db.get_all(
+            "Contact Email",
+            filters={"parent": contact.name},
+            fields=["email_id"],
+        )
+        for row in all_emails:
+            if row.email_id:
+                emails.add(row.email_id.strip().lower())
+
+    return emails
 
 def get_overdue_sales_invoices():
     enabled_email_settings = frappe.db.get_single_value(
@@ -144,30 +173,17 @@ def get_overdue_sales_invoices():
         )
 
         for invoice in overdue_invoices:
-            # Check customer has an email
-            customer_email = frappe.db.get_value(
-                "Customer", invoice.customer, "email_id"
-            )
-            if not customer_email:
+            # Collect all unique emails from primary contacts
+            customer_emails = _get_primary_contact_emails(invoice.customer)
+
+            if not customer_emails:
                 frappe.log_error(
-                    f"No email found for customer {invoice.customer}, skipping invoice {invoice.name}",
+                    f"No primary contact email found for customer {invoice.customer}, skipping invoice {invoice.name}",
                     "Overdue Invoice Email Sending",
                 )
                 continue
 
-            # Skip if already notified today for this invoice
-            already_notified = frappe.db.exists(
-                "Notify Customer",
-                {
-                    "customer": invoice.customer,
-                    "invoice_no": invoice.name,
-                    "posting_date": frappe.utils.today(),
-                },
-            )
-            if already_notified:
-                continue
-
-            # Fetch full docs so every field is available in Jinja
+            # Fetch full docs once, outside the per-email loop
             invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
             customer_doc = frappe.get_doc("Customer", invoice.customer)
             currency = (
@@ -175,7 +191,6 @@ def get_overdue_sales_invoices():
                 or frappe.get_cached_value("Global Defaults", None, "default_currency")
             )
 
-            # Universal context — all fields available at top level and via doc
             context = invoice_doc.as_dict()
             context.update({
                 "doc": invoice_doc,
@@ -196,34 +211,49 @@ def get_overdue_sales_invoices():
                 )
                 continue
 
-            notify_doc = frappe.get_doc({
-                "doctype": "Notify Customer",
-                "posting_date": frappe.utils.today(),
-                "posting_time": frappe.utils.now_datetime().strftime("%H:%M:%S"),
-                "customer": invoice.customer,
-                "customer_email": customer_email,
-                "subject": rendered_subject,
-                "due_amount": invoice_doc.outstanding_amount,
-                "invoice_no": invoice.name,
-                "message": rendered_body,
-                "currency": currency,
-            })
-            notify_doc.insert(ignore_permissions=True)
+            # Create one Notify Customer doc per unique email
+            for email in customer_emails:
+                # Skip if already notified today for this invoice + email combination
+                already_notified = frappe.db.exists(
+                    "Notify Customer",
+                    {
+                        "customer": invoice.customer,
+                        "invoice_no": invoice.name,
+                        "customer_email": email,
+                        "posting_date": frappe.utils.today(),
+                    },
+                )
+                if already_notified:
+                    continue
 
-            # Render and attach PDF if print format is set
-            if doc.print_format:
-                try:
-                    _attach_pdf(notify_doc, invoice_doc, doc.print_format)
-                except Exception as e:
-                    frappe.log_error(
-                        f"Failed to attach PDF for invoice {invoice.name}: {str(e)}",
-                        "Overdue Invoice Email Sending",
-                    )
+                notify_doc = frappe.get_doc({
+                    "doctype": "Notify Customer",
+                    "posting_date": frappe.utils.today(),
+                    "posting_time": frappe.utils.now_datetime().strftime("%H:%M:%S"),
+                    "customer": invoice.customer,
+                    "customer_email": email,
+                    "subject": rendered_subject,
+                    "due_amount": invoice_doc.outstanding_amount,
+                    "invoice_no": invoice.name,
+                    "message": rendered_body,
+                    "currency": currency,
+                })
+                notify_doc.insert(ignore_permissions=True)
+
+                if doc.print_format:
+                    try:
+                        _attach_pdf(notify_doc, invoice_doc, doc.print_format, doc.letter_head)
+                        notify_doc.save(ignore_permissions=True)
+                    except Exception as e:
+                        frappe.log_error(
+                            f"Failed to attach PDF for invoice {invoice.name} to {email}: {str(e)}",
+                            "Overdue Invoice Email Sending",
+                        )
 
             frappe.db.commit()
 
 
-def _attach_pdf(notify_doc, invoice_doc, print_format):
+def _attach_pdf(notify_doc, invoice_doc, print_format, letter_head):
     """Render the Sales Invoice as PDF using the given print format
     and attach it to the Notify Customer doc."""
 
@@ -232,6 +262,8 @@ def _attach_pdf(notify_doc, invoice_doc, print_format):
         doctype="Sales Invoice",
         name=invoice_doc.name,
         print_format=print_format,
+        letterhead=letter_head,
+        no_letterhead=0,
         as_pdf=False,  # get HTML first so we can pass it to get_pdf
     )
 
@@ -247,12 +279,10 @@ def _attach_pdf(notify_doc, invoice_doc, print_format):
         "attached_to_doctype": notify_doc.doctype,
         "attached_to_name": notify_doc.name,
         "attached_to_field": "attachment",
-        "is_private": 1,
+        "is_private": 0,
         "content": pdf_bytes,
     })
     _file.save(ignore_permissions=True)
 
     # Update the attachment field on the Notify Customer doc
-    frappe.db.set_value(
-        "Notify Customer", notify_doc.name, "attachment", _file.file_url
-    )
+    notify_doc.attachment = _file.file_url

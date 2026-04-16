@@ -49,16 +49,6 @@
    "label": "Details"
   },
   {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Returnable Gate Pass",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "hidden": 1,
@@ -174,7 +164,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Returnable Gate Pass",
+   "options": "Non Returnable Gate Pass",
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
