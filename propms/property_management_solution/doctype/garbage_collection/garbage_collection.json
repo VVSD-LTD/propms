@@ -91,7 +91,9 @@
    "allow_on_submit": 1,
    "fieldname": "driver_signature",
    "fieldtype": "Signature",
-   "label": "Driver Signature"
+   "label": "Driver Signature",
+   "no_copy": 1,
+   "read_only_depends_on": "eval: doc.driver_signature && !doc.__unsaved"
   },
   {
    "allow_on_submit": 1,
@@ -114,7 +116,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-24 15:39:18.239604",
+ "modified": "2026-04-24 17:22:30.251412",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Garbage Collection",
