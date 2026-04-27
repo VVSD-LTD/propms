@@ -1,0 +1,205 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2026-04-27 09:35:43.027526",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "posting_date",
+  "column_break_ftio",
+  "time",
+  "naming_series",
+  "section_break_dyyz",
+  "name1",
+  "column_break_ilwe",
+  "bags",
+  "section_break_bccp",
+  "signature",
+  "column_break_osiz",
+  "omary_signature",
+  "section_break_vakv",
+  "created",
+  "created_by",
+  "section_break_wctn",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_wctn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cow Grass",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ftio",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Now",
+   "fieldname": "time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_dyyz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ilwe",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bags",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "No of Bags",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_bccp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "signature",
+   "fieldtype": "Signature",
+   "label": "Signature",
+   "no_copy": 1,
+   "read_only_depends_on": "eval: doc.signature && !doc.__unsaved"
+  },
+  {
+   "fieldname": "column_break_osiz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "omary_signature",
+   "fieldtype": "Signature",
+   "label": "Omary Signature",
+   "no_copy": 1,
+   "read_only_depends_on": "eval: doc.omary_signature && !doc.__unsaved"
+  },
+  {
+   "default": "CG-.",
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Naming Series"
+  },
+  {
+   "fieldname": "section_break_vakv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "created",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Created",
+   "options": "User"
+  },
+  {
+   "fetch_from": "created.full_name",
+   "fieldname": "created_by",
+   "fieldtype": "Data",
+   "label": "Created By ",
+   "no_copy": 1,
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-04-27 11:33:54.989163",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Cow Grass",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Maintenance Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Floor Maintenance Supervisor",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Maintenance Job in-charge",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
