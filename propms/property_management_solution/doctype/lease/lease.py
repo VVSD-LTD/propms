@@ -314,9 +314,147 @@ def getAllLease():
     for lease in lease_list:
         make_lease_invoice_schedule(lease.name)
 
-
 @frappe.whitelist()
 def make_lease_invoice_schedule(leasedoc):
+    lease = frappe.get_doc("Lease", str(leasedoc))
+    try:
+        # ── Step 1: Delete ALL uninvoiced schedules (past, present, future) ──
+        all_schedules = frappe.get_all(
+            "Lease Invoice Schedule",
+            fields=["name", "invoice_number"],
+            filters={"parent": lease.name},
+            parent_doctype="Lease",
+        )
+        for s in all_schedules:
+            if not s.invoice_number or s.invoice_number == "":
+                frappe.delete_doc("Lease Invoice Schedule", s.name)
+
+        # ── Step 2: Nothing to build if no items or lease already ended ──
+        if not lease.lease_item or lease.end_date < getdate(today()):
+            frappe.msgprint("Completed making of invoice schedule.")
+            return
+
+        invoice_start_date = frappe.db.get_single_value(
+            "Property Management Settings", "invoice_start_date"
+        )
+
+        item_invoice_frequency = {
+            "Monthly": 1,
+            "Bi-Monthly": 2,
+            "Quarterly": 3,
+            "6 months": 6,
+            "Annually": 12,
+        }
+
+        # ── Step 3: Find the latest invoiced date so we don't duplicate invoiced periods ──
+        latest_invoiced_schedule = frappe.get_all(
+            "Lease Invoice Schedule",
+            filters={
+                "parent": lease.name,
+                "invoice_number": ["not in", ["", None]],
+            },
+            fields=["date_to_invoice"],
+            order_by="date_to_invoice desc",
+            limit=1,
+        )
+        latest_invoiced_date = (
+            getdate(latest_invoiced_schedule[0].date_to_invoice)
+            if latest_invoiced_schedule
+            else None
+        )
+
+        # ── Step 4: Rebuild schedules for each lease item ──
+        idx = 1
+
+        # First pass: assign idx to invoiced schedules
+        invoiced_schedules = frappe.get_all(
+            "Lease Invoice Schedule",
+            fields=["name", "date_to_invoice"],
+            filters={
+                "parent": lease.name,
+                "invoice_number": ["not in", ["", None]],
+            },
+            order_by="date_to_invoice asc",
+        )
+        for s in invoiced_schedules:
+            frappe.db.set_value("Lease Invoice Schedule", s.name, "idx", idx)
+            idx += 1
+
+        for item in lease.lease_item:
+            frequency_factor = item_invoice_frequency.get(item.frequency)
+            if not frequency_factor:
+                frappe.log_error(
+                    "Frequency incorrect",
+                    f"Invalid frequency: {item.frequency} for {leasedoc}",
+                )
+                continue
+
+            # Effective date range for this item
+            item_start = getdate(item.valid_from) if item.get("valid_from") else getdate(lease.start_date)
+            item_end = getdate(item.valid_to) if item.get("valid_to") else getdate(lease.end_date)
+
+            # Start generating from whichever is latest:
+            # item start, invoice_start_date, or day after last invoiced period
+            invoice_date = item_start
+            if getdate(invoice_start_date) > invoice_date:
+                invoice_date = getdate(invoice_start_date)
+            if latest_invoiced_date and latest_invoiced_date >= invoice_date:
+                invoice_date = add_days(latest_invoiced_date, 1)
+
+            # Skip past periods to land on or after invoice_date
+            period_start = item_start
+            while period_start < invoice_date:
+                period_end = add_days(add_months(period_start, frequency_factor), -1)
+                if add_days(period_end, 1) > invoice_date:
+                    break
+                period_start = add_days(period_end, 1)
+            invoice_date = period_start
+
+            # Generate schedule rows
+            while invoice_date <= item_end:
+                invoice_period_end = add_days(add_months(invoice_date, frequency_factor), -1)
+                if invoice_period_end > item_end:
+                    invoice_qty = getDateMonthDiff(invoice_date, item_end, 1)
+                else:
+                    invoice_qty = float(frequency_factor)
+
+                makeInvoiceSchedule(
+                    invoice_date,
+                    item.lease_item,
+                    item.paid_by,
+                    item.lease_item,
+                    lease.name,
+                    invoice_qty,
+                    item.amount,
+                    idx,
+                    item.currency_code,
+                    item.witholding_tax,
+                    lease.days_to_invoice_in_advance,
+                    item.invoice_item_group,
+                    item.payment_terms,
+                    item.document_type,
+                )
+                idx += 1
+                invoice_date = add_days(invoice_period_end, 1)
+
+        # ── Step 5: Final re-index all schedules by date_to_invoice ──
+        all_schedules = frappe.get_all(
+            "Lease Invoice Schedule",
+            fields=["name", "date_to_invoice"],
+            filters={"parent": lease.name},
+            order_by="date_to_invoice asc",
+        )
+        for index, s in enumerate(all_schedules, start=1):
+            frappe.db.set_value("Lease Invoice Schedule", s.name, "idx", index)
+
+        frappe.msgprint("Completed making of invoice schedule.")
+
+    except Exception as e:
+        frappe.msgprint("Exception error! Check app error log.")
+        app_error_log(frappe.session.user, str(e))
+
+@frappe.whitelist()
+def make_lease_invoice_schedule_2(leasedoc):
     lease = frappe.get_doc("Lease", str(leasedoc))
     try:
         # Delete unnecessary records after lease end date (but keep invoiced records)
