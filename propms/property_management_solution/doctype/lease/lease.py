@@ -563,7 +563,16 @@ def make_lease_invoice_schedule(leasedoc):
                     if invoice_date in existing_schedule_dates:
                         schedule = existing_schedule_dates[invoice_date]
                         if not schedule.invoice_number or schedule.invoice_number == "":
-                            frappe.db.set_value("Lease Invoice Schedule", schedule.name, "idx", idx)
+                            # ✅ Recalculate date_to_invoice in case days_to_invoice_in_advance changed
+                            recalculated_date = add_days(invoice_date, -1 * (lease.days_to_invoice_in_advance or 0))
+                            frappe.db.set_value(
+                                "Lease Invoice Schedule",
+                                schedule.name,
+                                {
+                                    "idx": idx,
+                                    "date_to_invoice": recalculated_date,  # ← add this
+                                }
+                            )
                             idx += 1
                         invoice_period_end = add_days(add_months(invoice_date, frequency_factor), -1)
                         invoice_date = add_days(invoice_period_end, 1)
