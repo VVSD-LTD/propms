@@ -346,6 +346,150 @@ def make_lease_invoice_schedule(leasedoc):
             "Annually": 12,
         }
 
+        # ── Step 3: Assign idx to already-invoiced schedules first ──
+        idx = 1
+        invoiced_schedules = frappe.get_all(
+            "Lease Invoice Schedule",
+            fields=["name", "date_to_invoice"],
+            filters={
+                "parent": lease.name,
+                "invoice_number": ["not in", ["", None]],
+            },
+            order_by="date_to_invoice asc",
+        )
+        for s in invoiced_schedules:
+            frappe.db.set_value("Lease Invoice Schedule", s.name, "idx", idx)
+            idx += 1
+
+        # ── Step 4: Rebuild schedules per item, using per-item last invoiced period ──
+        for item in lease.lease_item:
+            frequency_factor = item_invoice_frequency.get(item.frequency)
+            if not frequency_factor:
+                frappe.log_error(
+                    "Frequency incorrect",
+                    f"Invalid frequency: {item.frequency} for {leasedoc}",
+                )
+                continue
+
+            # Effective date range for this item
+            item_start = getdate(item.valid_from) if item.get("valid_from") else getdate(lease.start_date)
+            item_end = getdate(item.valid_to) if item.get("valid_to") else getdate(lease.end_date)
+
+            # ── FIX: Per-item lookup using schedule_start_date + qty months ──
+            # This avoids the off-by-one that caused duplicate creation when
+            # date_to_invoice (period start) was used as the cutoff directly.
+            latest_item_invoiced = frappe.get_all(
+                "Lease Invoice Schedule",
+                filters={
+                    "parent": lease.name,
+                    "lease_item": item.lease_item,
+                    "invoice_number": ["not in", ["", None]],
+                },
+                fields=["schedule_start_date", "date_to_invoice", "qty"],
+                order_by="schedule_start_date desc",
+                limit=1,
+            )
+
+            if latest_item_invoiced:
+                s = latest_item_invoiced[0]
+                period_start = getdate(s.schedule_start_date or s.date_to_invoice)
+                # qty may be fractional for the last partial period, round up to full periods
+                qty_months = int(round(float(s.qty or frequency_factor)))
+                # Next period starts exactly qty months after the last invoiced period start
+                invoice_date = add_months(period_start, qty_months)
+            else:
+                invoice_date = item_start
+
+            # Apply invoice_start_date floor
+            if getdate(invoice_start_date) > invoice_date:
+                invoice_date = getdate(invoice_start_date)
+
+            # Align invoice_date to the correct period grid starting from item_start
+            # so we don't start mid-period
+            period_start = item_start
+            while period_start < invoice_date:
+                period_end = add_days(add_months(period_start, frequency_factor), -1)
+                next_start = add_days(period_end, 1)
+                if next_start > invoice_date:
+                    break
+                period_start = next_start
+            invoice_date = period_start
+
+            # Generate schedule rows forward from invoice_date
+            while invoice_date <= item_end:
+                invoice_period_end = add_days(add_months(invoice_date, frequency_factor), -1)
+                if invoice_period_end > item_end:
+                    invoice_qty = getDateMonthDiff(invoice_date, item_end, 1)
+                else:
+                    invoice_qty = float(frequency_factor)
+
+                makeInvoiceSchedule(
+                    invoice_date,
+                    item.lease_item,
+                    item.paid_by,
+                    item.lease_item,
+                    lease.name,
+                    invoice_qty,
+                    item.amount,
+                    idx,
+                    item.currency_code,
+                    item.witholding_tax,
+                    lease.days_to_invoice_in_advance,
+                    item.invoice_item_group,
+                    item.payment_terms,
+                    item.document_type,
+                )
+                idx += 1
+                invoice_date = add_days(invoice_period_end, 1)
+
+        # ── Step 5: Final re-index all schedules by date_to_invoice ──
+        all_schedules = frappe.get_all(
+            "Lease Invoice Schedule",
+            fields=["name", "date_to_invoice"],
+            filters={"parent": lease.name},
+            order_by="date_to_invoice asc",
+        )
+        for index, s in enumerate(all_schedules, start=1):
+            frappe.db.set_value("Lease Invoice Schedule", s.name, "idx", index)
+
+        frappe.msgprint("Completed making of invoice schedule.")
+
+    except Exception as e:
+        frappe.msgprint("Exception error! Check app error log.")
+        app_error_log(frappe.session.user, str(e))
+
+@frappe.whitelist()
+def make_lease_invoice_schedule_1(leasedoc):
+    lease = frappe.get_doc("Lease", str(leasedoc))
+    try:
+        # ── Step 1: Delete ALL uninvoiced schedules (past, present, future) ──
+        all_schedules = frappe.get_all(
+            "Lease Invoice Schedule",
+            fields=["name", "invoice_number"],
+            filters={"parent": lease.name},
+            parent_doctype="Lease",
+        )
+        for s in all_schedules:
+            if not s.invoice_number or s.invoice_number == "":
+                frappe.delete_doc("Lease Invoice Schedule", s.name)
+
+        # ── Step 2: Nothing to build if no items or lease already ended ──
+        if not lease.lease_item or lease.end_date < getdate(today()):
+            frappe.msgprint("Completed making of invoice schedule.")
+            return
+
+        invoice_start_date = frappe.db.get_single_value(
+            "Property Management Settings", "invoice_start_date"
+        )
+
+        item_invoice_frequency = {
+            "Monthly": 1,
+            "Bi-Monthly": 2,
+            "Quarterly": 3,
+            "6 months": 6,
+            "Annually": 12,
+        }
+
         # ── Step 3: Find the latest invoiced date so we don't duplicate invoiced periods ──
         latest_invoiced_schedule = frappe.get_all(
             "Lease Invoice Schedule",
@@ -755,3 +899,150 @@ def make_lease_invoice_schedule_2(leasedoc):
     except Exception as e:
         frappe.msgprint("Exception error! Check app error log.")
         app_error_log(frappe.session.user, str(e))
+
+@frappe.whitelist()
+def find_duplicate_invoice_schedules(dry_run=1):
+    """
+    Finds Lease Invoice Schedule rows that are duplicates caused by the
+    global latest_invoiced_date bug — i.e. rows sharing the same
+    (parent, lease_item, schedule_start_date) where more than one row
+    has an invoice_number.
+
+    dry_run=1  → only reports, does NOT delete anything
+    dry_run=0  → deletes the duplicate uninvoiced rows and reports invoices
+                 that were created from duplicates so you can decide what
+                 to do with the actual Sales Invoices.
+
+    Returns a dict with:
+      - duplicates: list of groups with their schedule rows
+      - invoices_to_review: unique invoice numbers found on duplicate rows
+    """
+    dry_run = int(dry_run)
+
+    # Fetch every schedule row with enough info to detect duplicates
+    all_schedules = frappe.db.sql(
+        """
+        SELECT
+            lis.name,
+            lis.parent,
+            lis.lease_item,
+            lis.schedule_start_date,
+            lis.date_to_invoice,
+            lis.qty,
+            lis.rate,
+            lis.invoice_number,
+            lis.idx
+        FROM `tabLease Invoice Schedule` lis
+        ORDER BY lis.parent, lis.lease_item, lis.schedule_start_date, lis.idx
+        """,
+        as_dict=True,
+    )
+
+    # Group by (parent, lease_item, schedule_start_date)
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for row in all_schedules:
+        key = (row.parent, row.lease_item, str(row.schedule_start_date))
+        groups[key].append(row)
+
+    duplicate_groups = []
+    invoices_to_review = set()
+    schedules_to_delete = []
+
+    for key, rows in groups.items():
+        if len(rows) < 2:
+            continue  # not a duplicate
+
+        lease_name, lease_item, period_start = key
+
+        # Separate invoiced vs uninvoiced duplicates
+        invoiced_rows = [r for r in rows if r.invoice_number]
+        uninvoiced_rows = [r for r in rows if not r.invoice_number]
+
+        # Collect invoice numbers from ALL rows (invoiced duplicates are the problem)
+        for r in rows:
+            if r.invoice_number:
+                invoices_to_review.add(r.invoice_number)
+
+        # The duplicate to remove: if there are multiple invoiced rows,
+        # keep the first (lowest idx), mark the rest for deletion.
+        # Uninvoiced duplicates are always safe to delete.
+        rows_sorted = sorted(rows, key=lambda r: r.idx or 0)
+        keeper = rows_sorted[0]
+
+        to_delete = rows_sorted[1:]  # everything after the first
+
+        duplicate_groups.append({
+            "lease": lease_name,
+            "lease_item": lease_item,
+            "period_start": period_start,
+            "total_rows": len(rows),
+            "keeper": {
+                "name": keeper.name,
+                "idx": keeper.idx,
+                "invoice_number": keeper.invoice_number,
+                "qty": keeper.qty,
+                "rate": keeper.rate,
+            },
+            "rows_to_delete": [
+                {
+                    "name": r.name,
+                    "idx": r.idx,
+                    "invoice_number": r.invoice_number,
+                    "qty": r.qty,
+                    "rate": r.rate,
+                }
+                for r in to_delete
+            ],
+        })
+
+        for r in to_delete:
+            schedules_to_delete.append(r.name)
+
+    # ── Report ──
+    report_lines = []
+    report_lines.append(f"{'[DRY RUN] ' if dry_run else ''}Found {len(duplicate_groups)} duplicate group(s).\n")
+
+    for g in duplicate_groups:
+        report_lines.append(
+            f"Lease: {g['lease']} | Item: {g['lease_item']} | Period Start: {g['period_start']}"
+        )
+        report_lines.append(
+            f"  → Keeping row: {g['keeper']['name']} (idx {g['keeper']['idx']}, invoice: {g['keeper']['invoice_number'] or 'none'})"
+        )
+        for r in g["rows_to_delete"]:
+            action = "WOULD DELETE" if dry_run else "DELETED"
+            report_lines.append(
+                f"  → {action}: {r['name']} (idx {r['idx']}, invoice: {r['invoice_number'] or 'none'})"
+            )
+
+    if invoices_to_review:
+        report_lines.append(f"\nInvoices created from duplicate rows — review before cancelling:")
+        for inv in sorted(invoices_to_review):
+            report_lines.append(f"  • {inv}")
+    else:
+        report_lines.append("\nNo Sales Invoices found on duplicate rows.")
+
+    # ── Delete if not dry run ──
+    if not dry_run and schedules_to_delete:
+        for name in schedules_to_delete:
+            # Only delete uninvoiced ones automatically — invoiced ones need manual review
+            row_invoice = frappe.db.get_value("Lease Invoice Schedule", name, "invoice_number")
+            if not row_invoice:
+                frappe.delete_doc("Lease Invoice Schedule", name, ignore_permissions=True)
+                report_lines.append(f"Deleted uninvoiced duplicate: {name}")
+            else:
+                report_lines.append(
+                    f"SKIPPED (has invoice {row_invoice}): {name} — cancel the invoice manually first, then rerun."
+                )
+        frappe.db.commit()
+
+    report_text = "\n".join(report_lines)
+    frappe.msgprint(f"<pre>{report_text}</pre>", title="Duplicate Schedule Audit", wide=True)
+
+    return {
+        "duplicate_groups": duplicate_groups,
+        "invoices_to_review": sorted(invoices_to_review),
+        "schedules_that_would_be_deleted": schedules_to_delete,
+        "dry_run": bool(dry_run),
+    }
