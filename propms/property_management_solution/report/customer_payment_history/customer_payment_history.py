@@ -204,6 +204,7 @@ def get_data(filters):
         due_date     = inv["due_date"]
         amount       = flt(inv["amount"])
         cost_center  = inv["cost_center"]
+        is_pos        = inv["is_pos"]
 
         # Penalty check: based on item names, NOT invoice name suffix
         inv_items    = items_map.get(inv_name, [])
@@ -250,11 +251,11 @@ def get_data(filters):
             "cost_center":     cost_center,
             "invoice_date":    invoice_date,
             "due_date":        due_date,
-            "payment_date":    payment_date,
+            "payment_date":    payment_date if not is_pos else invoice_date,
             "payment_source":  payment_source,
-            "days_delay":      days_delay_display,
+            "days_delay":      days_delay_display if not is_pos else "N/A",
             "_days_delay_raw": days_delay_raw,
-            "remarks":         remarks,
+            "remarks":         remarks if not is_pos else "POS",
         })
 
     return data
