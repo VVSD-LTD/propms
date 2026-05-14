@@ -85,158 +85,187 @@ def get_columns():
 # ── Main data fetch ───────────────────────────────────────────────────────────
 
 def get_data(filters):
-	customer  = filters.get("customer")
-	from_date = filters.get("from_date")
-	to_date   = filters.get("to_date")
-	# company   = filters.get("company")
-	is_pos    = filters.get("is_pos")   # checkbox: 1 = POS invoices, 0/None = non-POS
+    customer  = filters.get("customer")
+    from_date = filters.get("from_date")
+    to_date   = filters.get("to_date")
+    # company   = filters.get("company")
+    is_pos    = filters.get("is_pos")   # checkbox: 1 = POS invoices, 0/None = non-POS
 
-	if not customer:
-		return []
+    if not customer:
+        return []
 
-	# ── 1. Build invoice query conditions ────────────────────────────────────
-	conds = [
-		"si.customer = %(customer)s",
-		"si.docstatus = 1",
-		"si.posting_date BETWEEN %(from_date)s AND %(to_date)s",
-	]
+    # ── 1. Build invoice query conditions ────────────────────────────────────
+    conds = [
+        "si.customer = %(customer)s",
+        "si.docstatus = 1",
+        "si.posting_date BETWEEN %(from_date)s AND %(to_date)s",
+    ]
 
-	# if company:
-	# 	conds.append("si.company = %(company)s")
+    # if company:
+    # 	conds.append("si.company = %(company)s")
 
-	# is_pos filter: checked = show POS invoices, unchecked = exclude POS
-	if not is_pos:
-		conds.append("si.is_pos = 0")
+    # is_pos filter: checked = show POS invoices, unchecked = exclude POS
+    if not is_pos:
+        conds.append("si.is_pos = 0")
 
-	where = " AND ".join(conds)
+    where = " AND ".join(conds)
 
-	invoices = frappe.db.sql(
-		f"""
-		SELECT
-			si.name               AS invoice_no,
-			si.posting_date       AS invoice_date,
-			si.due_date           AS due_date,
-			si.grand_total        AS amount,
-			si.outstanding_amount AS outstanding_amount,
-			si.from_date          AS lease_from,
-			si.to_date            AS lease_to,
-			si.remarks            AS invoice_remarks,
-			si.status             AS status,
-			si.is_pos             AS is_pos,
+    invoices = frappe.db.sql(
+        f"""
+        SELECT
+            si.name               AS invoice_no,
+            si.posting_date       AS invoice_date,
+            si.due_date           AS due_date,
+            si.grand_total        AS amount,
+            si.outstanding_amount AS outstanding_amount,
+            si.from_date          AS lease_from,
+            si.to_date            AS lease_to,
+            si.remarks            AS invoice_remarks,
+            si.status             AS status,
+            si.is_pos             AS is_pos,
             si.cost_center         AS cost_center
-		FROM
-			`tabSales Invoice` si
-		WHERE
-			{where}
-		ORDER BY
-			si.posting_date ASC
-		""",
-		{
-			"customer":  customer,
-			"from_date": from_date,
-			"to_date":   to_date,
-		},
-		as_dict=True,
-	)
+        FROM
+            `tabSales Invoice` si
+        WHERE
+            {where}
+        ORDER BY
+            si.posting_date ASC
+        """,
+        {
+            "customer":  customer,
+            "from_date": from_date,
+            "to_date":   to_date,
+        },
+        as_dict=True,
+    )
 
-	if not invoices:
-		return []
+    if not invoices:
+        return []
 
-	invoice_names = [inv["invoice_no"] for inv in invoices]
+    invoice_names = [inv["invoice_no"] for inv in invoices]
 
-	# ── 2. Fetch payments from both Payment Entry and Journal Entry ───────────
-	pe_map = _payment_dates_from_pe(invoice_names)
-	jv_map = _payment_dates_from_jv(invoice_names)
+    invoice_names = [inv["invoice_no"] for inv in invoices]
 
-	# Merge: keep earliest date; note the source for display
-	payment_map = {}
-	for name in invoice_names:
-		pe_row = pe_map.get(name)   # (date, "Payment Entry") or None
-		jv_row = jv_map.get(name)   # (date, "Journal Entry") or None
+    # ── 2. Batch-fetch item names for ALL invoices in ONE query ───────────────
+    #
+    # This is the ONLY reliable way to detect penalty invoices.
+    # ERPNext uses the same -N suffix for both amendments (ACC-SINV-2026-00012-1)
+    # and penalty invoices (ACC-SINV-2025-03543-2), so name-based regex fails.
+    # Instead, we check what items are actually on the invoice.
+    #
+    # Penalty items will have names like "Penalty", "Late Payment Charges", etc.
+    # Normal items will be "Commercial Rent", "Service Charge - Commercial", etc.
+    #
+    item_rows = frappe.db.sql(
+        """
+        SELECT
+            parent      AS invoice_no,
+            item_code   AS item_code,
+            item_name   AS item_name
+        FROM
+            `tabSales Invoice Item`
+        WHERE
+            parent IN %(names)s
+            AND docstatus = 1
+        """,
+        {"names": invoice_names},
+        as_dict=True,
+    )
 
-		if pe_row and jv_row:
-			payment_map[name] = pe_row if pe_row[0] <= jv_row[0] else jv_row
-		elif pe_row:
-			payment_map[name] = pe_row
-		elif jv_row:
-			payment_map[name] = jv_row
+    # Build {invoice_name: [list of lowercase item names/codes]}
+    items_map = {}
+    for row in item_rows:
+        key = row["invoice_no"]
+        items_map.setdefault(key, [])
+        items_map[key].append((row["item_code"] or "").lower())
+        items_map[key].append((row["item_name"] or "").lower())
 
-	# ── 3. Build report rows ──────────────────────────────────────────────────
-	data = []
-	for inv in invoices:
-		inv_name     = inv["invoice_no"]
-		invoice_date = inv["invoice_date"]
-		due_date     = inv["due_date"]
-		amount       = flt(inv["amount"])
-		is_penalty   = _is_penalty_invoice(inv)
-		cost_center  = inv["cost_center"]
+    # ── 3. Fetch payments: Payment Entry + Journal Entry ──────────────────────
+    pe_map = _payment_dates_from_pe(invoice_names)
+    jv_map = _payment_dates_from_jv(invoice_names)
 
-		# Period ──────────────────────────────────────────────────────────────
-		# Penalty invoices always show "Penalty charges".
-		# Normal invoices use the lease from_date / to_date on the invoice.
-		period = "Penalty charges" if is_penalty else _build_period(inv)
+    # Merge — take the earliest payment date across both sources
+    payment_map = {}
+    for name in invoice_names:
+        pe_row = pe_map.get(name)
+        jv_row = jv_map.get(name)
+        if pe_row and jv_row:
+            payment_map[name] = pe_row if pe_row[0] <= jv_row[0] else jv_row
+        elif pe_row:
+            payment_map[name] = pe_row
+        elif jv_row:
+            payment_map[name] = jv_row
 
-		# Payment info ────────────────────────────────────────────────────────
-		payment_info   = payment_map.get(inv_name)
-		payment_date   = payment_info[0] if payment_info else None
-		payment_source = payment_info[1] if payment_info else ""
+    # ── 4. Build report rows ──────────────────────────────────────────────────
+    data = []
+    for inv in invoices:
+        inv_name     = inv["invoice_no"]
+        invoice_date = inv["invoice_date"]
+        due_date     = inv["due_date"]
+        amount       = flt(inv["amount"])
+        cost_center  = inv["cost_center"]
 
-		# Delay & Remarks ─────────────────────────────────────────────────────
-		days_delay_raw     = None
-		days_delay_display = ""
-		remarks            = ""
+        # Penalty check: based on item names, NOT invoice name suffix
+        inv_items    = items_map.get(inv_name, [])
+        is_penalty   = _is_penalty_invoice(inv_items)
 
-		if is_penalty:
-			# Penalty rows: no due date, no payment date, no delay shown
-			remarks        = "LATE PAYMENT CHARGES"
-			due_date       = None
-			payment_date   = None
-			payment_source = ""
+        # Period
+        period = "Penalty charges" if is_penalty else _build_period(inv)
 
-		elif payment_date and due_date:
-			days_delay_raw = date_diff(payment_date, due_date)
+        # Payment
+        payment_info   = payment_map.get(inv_name)
+        payment_date   = payment_info[0] if payment_info else None
+        payment_source = payment_info[1] if payment_info else ""
 
-			if days_delay_raw < 0:
-				days_delay_display = f"{days_delay_raw}  DAYS"
-				remarks = "PAID IN TIME"
-			elif days_delay_raw == 0:
-				days_delay_display = "0  DAYS"
-				remarks = "PAID IN TIME"
-			else:
-				days_delay_display = f"+{days_delay_raw}  DAYS"
-				remarks = "DELAYED"
+        # Delay & Remarks
+        days_delay_raw     = None
+        days_delay_display = ""
+        remarks            = ""
 
-		elif flt(inv["outstanding_amount"]) > 0:
-			# Invoice exists but no payment found yet
-			remarks = "OUTSTANDING"
+        if is_penalty:
+            remarks        = "LATE PAYMENT CHARGES"
+            due_date       = None
+            payment_date   = None
+            payment_source = ""
 
-		data.append({
-			"invoice_no":      inv_name,
-			"period":          period,
-			"amount":          amount,
-			"invoice_date":    invoice_date,
-			"due_date":        due_date,
-			"payment_date":    payment_date,
-			"payment_source":  payment_source,
-			"days_delay":      days_delay_display,
-			"_days_delay_raw": days_delay_raw,   # used by JS formatter only
-			"remarks":         remarks,
-			"cost_center":     cost_center,
-		})
+        elif payment_date and due_date:
+            days_delay_raw = date_diff(payment_date, due_date)
+            if days_delay_raw < 0:
+                days_delay_display = f"{days_delay_raw}  DAYS"
+                remarks = "PAID IN TIME"
+            elif days_delay_raw == 0:
+                days_delay_display = "0  DAYS"
+                remarks = "PAID IN TIME"
+            else:
+                days_delay_display = f"+{days_delay_raw}  DAYS"
+                remarks = "DELAYED"
 
-	return data
+        elif flt(inv["outstanding_amount"]) > 0:
+            remarks = "OUTSTANDING"
 
+        data.append({
+            "invoice_no":      inv_name,
+            "period":          period,
+            "amount":          amount,
+            "cost_center":     cost_center,
+            "invoice_date":    invoice_date,
+            "due_date":        due_date,
+            "payment_date":    payment_date,
+            "payment_source":  payment_source,
+            "days_delay":      days_delay_display,
+            "_days_delay_raw": days_delay_raw,
+            "remarks":         remarks,
+        })
 
+    return data
+
+ 
 # ── Payment Entry helper ──────────────────────────────────────────────────────
-
+ 
 def _payment_dates_from_pe(invoice_names):
-    """
-    Returns {invoice_name: (earliest_posting_date, "Payment Entry")}
-    Looks in tabPayment Entry Reference linked to submitted Payment Entries.
-    """
+    """Returns {invoice_name: (earliest_date, "Payment Entry")}"""
     if not invoice_names:
         return {}
-
     rows = frappe.db.sql(
         """
         SELECT
@@ -258,28 +287,21 @@ def _payment_dates_from_pe(invoice_names):
         as_dict=True,
     )
     return {r["invoice_no"]: (r["payment_date"], "Payment Entry") for r in rows}
-
-
+ 
+ 
 # ── Journal Entry helper ──────────────────────────────────────────────────────
-
+ 
 def _payment_dates_from_jv(invoice_names):
     """
-    Returns {invoice_name: (earliest_posting_date, "Journal Entry")}
-
-    In the real data, JV payments appear as a Journal Entry Account row that:
-      - has reference_type = 'Sales Invoice'
-      - has reference_name = '<invoice_name>'
-      - has credit > 0  (crediting the Debtors account = customer paying)
-
-    Example from actual JV data:
-      account: "11401 - Debtors - TZS - VPL"
-      credit_in_account_currency: 8663088
-      reference_type: "Sales Invoice"
-      reference_name: "ACC-SINV-2025-02348"
+    Returns {invoice_name: (earliest_date, "Journal Entry")}
+ 
+    Looks for JE Account rows where:
+      - reference_type = 'Sales Invoice'
+      - reference_name = invoice name
+      - credit > 0  (Debtors account credited = customer payment received)
     """
     if not invoice_names:
         return {}
-
     rows = frappe.db.sql(
         """
         SELECT
@@ -291,9 +313,9 @@ def _payment_dates_from_jv(invoice_names):
             ON  je.name      = jea.parent
             AND je.docstatus = 1
         WHERE
-            jea.reference_type  = 'Sales Invoice'
+            jea.reference_type     = 'Sales Invoice'
             AND jea.reference_name IN %(names)s
-            AND jea.credit > 0
+            AND jea.credit         > 0
         GROUP BY
             jea.reference_name
         """,
@@ -301,23 +323,22 @@ def _payment_dates_from_jv(invoice_names):
         as_dict=True,
     )
     return {r["invoice_no"]: (r["payment_date"], "Journal Entry") for r in rows}
-
-
+ 
+ 
 # ── Period builder ────────────────────────────────────────────────────────────
-
+ 
 def _build_period(inv):
     """
-    Format: DD.MM.YYYY - DD.MM.YYYY  (matches the sample report exactly)
-
-    Source: si.from_date and si.to_date — these are the lease service dates
-    stored on the Sales Invoice (visible in the real invoice JSON as
-    "from_date": "2025-06-20", "to_date": "2025-09-19").
-
-    Falls back to just the invoice posting date if lease dates are absent.
+    Reads si.from_date and si.to_date (lease service period dates) and
+    formats them as DD.MM.YYYY - DD.MM.YYYY.
+ 
+    Both invoices in the real data confirm these fields:
+      ACC-SINV-2025-02348 : from_date=2025-06-20, to_date=2025-09-19
+      ACC-SINV-2026-00012-1: from_date=2026-01-01, to_date=2026-06-30
     """
     lease_from = inv.get("lease_from")
     lease_to   = inv.get("lease_to")
-
+ 
     if lease_from and lease_to:
         f = getdate(lease_from)
         t = getdate(lease_to)
@@ -326,40 +347,44 @@ def _build_period(inv):
             " - "
             f"{t.day:02d}.{t.month:02d}.{t.year}"
         )
-
-    # Fallback: just the invoice posting date
+ 
     d = getdate(inv.get("invoice_date"))
     return f"{d.day:02d}.{d.month:02d}.{d.year}"
-
-
+ 
+ 
 # ── Penalty invoice detection ─────────────────────────────────────────────────
-
-def _is_penalty_invoice(inv):
+ 
+# Keywords that identify a penalty / late-charge item.
+# Add more here if your system uses other naming conventions.
+_PENALTY_ITEM_KEYWORDS = (
+    "penalty",
+    "late payment",
+    "late charge",
+    "surcharge",
+    "interest charge",
+    "penal",
+)
+ 
+def _is_penalty_invoice(inv_item_strings):
     """
-    Penalty invoices in this ERPNext setup are identified by an EXTRA
-    short numeric suffix appended to the standard invoice name:
-
-      Normal  → ACC-SINV-2025-02348       ends with a long seq number
-      Penalty → ACC-SINV-2025-03543-2     has -N after the long seq number
-
-    Regex: -\d{4,}-\d{1,3}$
-      \d{4,}    matches the standard 4-5 digit sequence number
-      -\d{1,3}$ matches the extra 1–3 digit penalty suffix
-
-    Also checks invoice remarks for known penalty keywords.
+    Determines whether an invoice is a penalty/late-charge invoice by
+    inspecting the actual item codes and item names on the invoice.
+ 
+    WHY NOT USE THE NAME SUFFIX?
+    ERPNext appends -1, -2, -3 … to both:
+      • Amended invoices  (ACC-SINV-2026-00012-1) — normal invoice
+      • Penalty invoices  (ACC-SINV-2025-03543-2) — late charge invoice
+    The suffix alone is therefore ambiguous and unreliable.
+ 
+    WHAT WE DO INSTEAD:
+    We check a list of lowercase item_code + item_name strings for that
+    invoice against known penalty keywords. If any match → penalty invoice.
+ 
+    inv_item_strings: list of lowercase item_code/item_name strings
+                      built in get_data from the batch items_map lookup.
     """
-    name    = inv.get("invoice_no") or ""
-    remarks = (inv.get("invoice_remarks") or "").lower()
-
-    penalty_keywords = (
-        "penalty",
-        "late payment",
-        "late charge",
-        "surcharge",
-        "interest charge",
+    return any(
+        kw in item_str
+        for item_str in inv_item_strings
+        for kw in _PENALTY_ITEM_KEYWORDS
     )
-
-    has_extra_suffix = bool(re.search(r"-\d{4,}-\d{1,3}$", name))
-    has_keyword      = any(kw in remarks for kw in penalty_keywords)
-
-    return has_extra_suffix or has_keyword
