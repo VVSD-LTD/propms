@@ -30,7 +30,7 @@ frappe.ui.form.on("Petty Cash Expense Request", {
 
 					frappe.new_doc('Journal Entry', null, function(new_doc) {
 						new_doc.accounts = [];
-						new_doc.posting_date = frappe.datetime.get_today();
+						new_doc.posting_date = frm.doc.posting_date;
 						new_doc.company = frappe.defaults.get_user_default("Company")
 						
 						let dr_row = frappe.model.add_child(new_doc, 'accounts');
