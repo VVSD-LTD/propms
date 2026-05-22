@@ -15,9 +15,10 @@
   "narration",
   "section_break_egdx",
   "dr_account",
-  "tax_account",
+  "cost_center",
   "column_break_qtpk",
   "cr_account",
+  "tax_account",
   "section_break_5qrl",
   "amended_from"
  ],
@@ -133,13 +134,24 @@
    "options": "Account",
    "permlevel": 1,
    "read_only_depends_on": "eval: doc.docstatus != 1"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "mandatory_depends_on": "eval: doc.dr_account || doc.cr_account",
+   "no_copy": 1,
+   "options": "Cost Center",
+   "permlevel": 1,
+   "read_only_depends_on": "eval: doc.docstatus != 1"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-14 12:53:36.617911",
+ "modified": "2026-05-22 14:52:56.765024",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Petty Cash Expense Request",
