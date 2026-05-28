@@ -27,6 +27,7 @@ frappe.ui.form.on("Petty Cash Expense Request", {
 						new_doc.user_remark = frm.doc.narration;
 						new_doc.cheque_no = frm.doc.name;
 						new_doc.cheque_date = frm.doc.posting_date;
+						new_doc.created_from_petty_cash_request = 1;
 
 						let dr_row = frappe.model.add_child(new_doc, 'accounts');
 						dr_row.account = frm.doc.dr_account;
