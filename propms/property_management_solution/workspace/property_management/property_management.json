@@ -244,10 +244,9 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports and Analytics",
-   "link_count": 6,
+   "link_count": 7,
    "link_type": "DocType",
    "onboard": 0,
-   "only_for": "Tanzania",
    "type": "Card Break"
   },
   {
@@ -300,6 +299,16 @@
   },
   {
    "hidden": 0,
+   "is_query_report": 1,
+   "label": "Debtors Report without Withholding",
+   "link_count": 0,
+   "link_to": "Debtors Report without Withholding",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
    "is_query_report": 0,
    "label": "Creditors Report",
    "link_count": 0,
@@ -323,7 +332,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-04-14 15:27:20.704973",
+ "modified": "2026-06-29 12:04:33.378520",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property Management",
