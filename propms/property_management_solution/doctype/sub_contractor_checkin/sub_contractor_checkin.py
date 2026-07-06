@@ -397,6 +397,6 @@ def validate_active_sub_contractor(sub_contractor, method=None):
 	if sub_contractor and frappe.db.get_value("Sub Contractor", sub_contractor, "status") == "Inactive":
 		frappe.throw(
 			_("Transactions cannot be created for an Inactive Sub Contractor {0}.").format(
-				get_link_to_form("Sub Contractor", sub_contractor)
+				frappe.utils.get_link_to_form("Sub Contractor", sub_contractor)
 			),
 		)
