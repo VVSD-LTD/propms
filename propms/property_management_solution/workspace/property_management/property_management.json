@@ -251,14 +251,13 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
+   "is_query_report": 1,
    "label": "Outsourcing Attendance",
    "link_count": 0,
    "link_to": "Outsourcing Attendance",
    "link_type": "Report",
    "onboard": 0,
    "only_for": "Tanzania",
-   "report_ref_doctype": "Outsourcing Attendance",
    "type": "Link"
   },
   {
@@ -332,7 +331,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-06-29 12:04:33.378520",
+ "modified": "2026-07-31 13:05:34.746244",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property Management",

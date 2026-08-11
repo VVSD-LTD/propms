@@ -35,6 +35,7 @@ frappe.ui.form.on("Petty Cash Expense Request", {
 							dr_row.debit_in_account_currency = frm.doc.amount_excl_vat;
 							dr_row.credit_in_account_currency = 0;
 							dr_row.cost_center = cost_center;
+							dr_row.project = frm.doc.project;
 
 							if (frm.doc.vat_amount > 0) {
 								let vat_row = frappe.model.add_child(new_doc, 'accounts');
@@ -42,6 +43,7 @@ frappe.ui.form.on("Petty Cash Expense Request", {
 								vat_row.debit_in_account_currency = frm.doc.vat_amount;
 								vat_row.credit_in_account_currency = 0;
 								vat_row.cost_center = cost_center;
+								vat_row.project = frm.doc.project;
 							}
 
 							let cr_row = frappe.model.add_child(new_doc, 'accounts');
@@ -49,6 +51,7 @@ frappe.ui.form.on("Petty Cash Expense Request", {
 							cr_row.debit_in_account_currency = 0;
 							cr_row.credit_in_account_currency = frm.doc.amount;
 							cr_row.cost_center = cost_center;
+							cr_row.project = frm.doc.project;
 
 							
 							// so the one-time JE refresh handler can pick it up

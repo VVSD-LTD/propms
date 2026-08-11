@@ -423,85 +423,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Sub Contractor",
-   "link_count": 7,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor",
-   "link_count": 0,
-   "link_to": "Sub Contractor",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Category",
-   "link_count": 0,
-   "link_to": "Sub Contractor Category",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Checkin",
-   "link_count": 0,
-   "link_to": "Sub Contractor Checkin",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Shift Assignment",
-   "link_count": 0,
-   "link_to": "Sub Contractor Shift Assignment",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Shift Request",
-   "link_count": 0,
-   "link_to": "Sub Contractor Shift Request",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Shift Schedule Assignment",
-   "link_count": 0,
-   "link_to": "Sub Contractor Shift Schedule Assignment",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Sub Contractor Shift Assignment Tool",
-   "link_count": 0,
-   "link_to": "Sub Contractor Shift Assignment Tool",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Gate Pass",
    "link_count": 4,
    "link_type": "DocType",
@@ -713,10 +634,109 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor",
+   "link_count": 9,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor",
+   "link_count": 0,
+   "link_to": "Sub Contractor",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Category",
+   "link_count": 0,
+   "link_to": "Sub Contractor Category",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Checkin",
+   "link_count": 0,
+   "link_to": "Sub Contractor Checkin",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Assignment",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Assignment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Request",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Schedule Assignment",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Schedule Assignment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Shift Assignment Tool",
+   "link_count": 0,
+   "link_to": "Sub Contractor Shift Assignment Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Attendance",
+   "link_count": 0,
+   "link_to": "Sub Contractor Attendance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor Attendance Request",
+   "link_count": 0,
+   "link_to": "Sub Contractor Attendance Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-04-27 11:35:36.117450",
- "modified_by": "Administrator",
+ "modified": "2026-07-27 18:10:17.011437",
+ "modified_by": "rebeca@vvsdtz.com",
  "module": "Property Management Solution",
  "name": "Real Estate Management",
  "number_cards": [],
