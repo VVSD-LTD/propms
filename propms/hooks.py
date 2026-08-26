@@ -153,6 +153,9 @@ scheduler_events = {
             "propms.custom.custom.create_maintenance_job_card",
             "propms.custom.custom.get_overdue_sales_invoices",
         ],
+        "50 23 * * *": [
+            "propms.custom.sales_invoice_penalty.process_daily_sales_invoice_penalties",
+        ],
         "00 00 * * *": ["propms.lease_invoice_schedule.make_lease_invoice_schedule"],
         "00 12 * * *": ["propms.lease_invoice.enqueue_lease_invoice_auto_create"],
         "*/5 * * * *": ["propms.property_management_solution.doctype.attendance_settings.attendance_settings.send_scheduled_reports"],

@@ -167,6 +167,8 @@ def get_overdue_sales_invoices():
                 payment_terms_template = %s
             AND
                 due_date = %s
+            AND
+               outstanding_withholding = 0 
             """,
             (setting.payment_term, target_due_date),
             as_dict=True,
