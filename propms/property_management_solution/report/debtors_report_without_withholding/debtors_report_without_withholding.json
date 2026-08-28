@@ -1,0 +1,38 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2026-06-29 11:33:07.471449",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": null,
+ "modified": "2026-06-29 11:33:07.471449",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Debtors Report without Withholding",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "SELECT  COALESCE(gsi.name, \"TOTAL\") AS \"Invoice No:Link/Sales Invoice:150\",\r\n        if(gsi.name is null, \"\", gsi.customer) AS \"Customer:Link/Customer:250\",\r\n        gsi.cost_center AS \"Cost Center:Data:250\",\r\n        gsi.item AS \"Items:Data:300\",\r\n\t\tgsi.from_date AS \"From Date:Date:110\", \r\n\t\tgsi.to_date AS \"To Date:Date:110\", \r\n\t\tgsi.due_date AS \"Due Date:Date:110\", \r\n        FORMAT(SUM(gsi.usd),2) AS \"USD:Float:20\",\r\n        FORMAT(SUM(gsi.tzs),2) AS \"TZS:Float:150\",\r\n        gsi._user_tags as \"Remarks:Data:200\" \r\n\t\tFROM\r\n\t\t(\r\n\t\t\tSELECT \tsi.name, \r\n\t\t\t\t\tsi.customer,\r\n\t\t\t\t\tsi.cost_center,\r\n\t\t\t\t\tGROUP_CONCAT(sid.item_name) AS \"item\",\r\n\t\t\t\t\tsi.from_date,\r\n\t\t\t\t\tsi.to_date, \r\n\t\t\t\t\tsi.due_date, \r\n\t\t\t\t\tsi.currency,\r\n\t\t\t\t\tMAX(IF(si.currency = \"USD\", IF( si.currency = si.party_account_currency, si.outstanding_amount, si.outstanding_amount/si.conversion_rate), 0)) AS \"usd\",\r\n\t\t\t\t\tMAX(IF(si.currency = \"TZS\", IF( si.currency = si.party_account_currency, si.outstanding_amount, si.outstanding_amount*si.conversion_rate), 0)) AS \"tzs\",\r\n\t\t\t\t\tsi._user_tags\r\n\t\t\tFROM `tabSales Invoice` si LEFT JOIN `tabSales Invoice Item` as sid ON si.name = sid.parent\r\n\t\t\tWHERE si.status IN (\"Partly Paid\", \"Unpaid\", \"Unpaid and Discounted\", \"Partly Paid and Discounted\", \"Overdue and Discounted\", \"Overdue\")\r\n\t\t\tAND si.outstanding_withholding = 0\r\n\t\t\tGROUP BY si.name\r\n\t\t) gsi\r\n\t\tGROUP BY gsi.customer, gsi.name WITH ROLLUP",
+ "ref_doctype": "Sales Invoice",
+ "report_name": "Debtors Report without Withholding",
+ "report_type": "Query Report",
+ "roles": [
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "POS User"
+  },
+  {
+   "role": "Employee Self Service"
+  }
+ ],
+ "timeout": 0
+}

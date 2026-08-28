@@ -1,0 +1,372 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"PfLfj_RplK\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Property Management</span>\",\"col\":12}},{\"id\":\"z6eydAo1jd\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"AmH8hNIrDg\",\"type\":\"card\",\"data\":{\"card_name\":\"Documents\",\"col\":4}},{\"id\":\"8PgILHYQkX\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"ivrlP8IHO5\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports and Analytics\",\"col\":4}}]",
+ "creation": "2023-05-12 10:26:01.600970",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "liabilities",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Property Management",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Masters",
+   "link_count": 8,
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Properties",
+   "link_count": 0,
+   "link_to": "Property",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Unit Type",
+   "link_count": 0,
+   "link_to": "Unit Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Checkup Area",
+   "link_count": 0,
+   "link_to": "Checklist Checkup Area",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Guard Shift",
+   "link_count": 0,
+   "link_to": "Guard Shift",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Key Set",
+   "link_count": 0,
+   "link_to": "Key Set",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Tool Item Set",
+   "link_count": 0,
+   "link_to": "Tool Item Set",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Outsource Category",
+   "link_count": 0,
+   "link_to": "Outsourcing Category",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Meter",
+   "link_count": 0,
+   "link_to": "Meter",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Documents",
+   "link_count": 9,
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Lease",
+   "link_count": 0,
+   "link_to": "Lease",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Key Sets",
+   "link_count": 0,
+   "link_to": "Key Set Detail",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Tool Item Record",
+   "link_count": 0,
+   "link_to": "Tool Item Record",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Daily Check List",
+   "link_count": 0,
+   "link_to": "Daily Checklist",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Exit",
+   "link_count": 0,
+   "link_to": "Exit",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Meter Reading",
+   "link_count": 0,
+   "link_to": "Meter Reading",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Insurance",
+   "link_count": 0,
+   "link_to": "Insurance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Outsourcing Attendance",
+   "link_count": 0,
+   "link_to": "Outsourcing Attendance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Security Attendance",
+   "link_count": 0,
+   "link_to": "Security Attendance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Property Management Settings",
+   "link_count": 0,
+   "link_to": "Property Management Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports and Analytics",
+   "link_count": 7,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Outsourcing Attendance",
+   "link_count": 0,
+   "link_to": "Outsourcing Attendance",
+   "link_type": "Report",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Security Attendance",
+   "link_count": 0,
+   "link_to": "Security Attendance Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "report_ref_doctype": "Security Attendance",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Security Deposit",
+   "link_count": 0,
+   "link_to": "Security Deposit",
+   "link_type": "Report",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "report_ref_doctype": "Journal Entry",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Debtors Report",
+   "link_count": 0,
+   "link_to": "Debtors Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "report_ref_doctype": "Sales Invoice",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Debtors Report without Withholding",
+   "link_count": 0,
+   "link_to": "Debtors Report without Withholding",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Creditors Report",
+   "link_count": 0,
+   "link_to": "Creditor Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "report_ref_doctype": "Purchase Invoice Item",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Property Status",
+   "link_count": 0,
+   "link_to": "Property Status",
+   "link_type": "Report",
+   "onboard": 0,
+   "only_for": "Tanzania",
+   "report_ref_doctype": "Lease",
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-07-31 13:05:34.746244",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Property Management",
+ "number_cards": [],
+ "owner": "vimalrathod@vvsdtz.com",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Property Manager"
+  },
+  {
+   "role": "Maintenance Manager"
+  },
+  {
+   "role": "Maintenance User"
+  },
+  {
+   "role": "Floor Maintenance Supervisor"
+  },
+  {
+   "role": "Maintenance Job in-charge"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Sales User"
+  }
+ ],
+ "sequence_id": 35.0,
+ "shortcuts": [],
+ "title": "Property Management"
+}

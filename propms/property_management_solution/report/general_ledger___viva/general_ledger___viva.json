@@ -1,0 +1,37 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2021-04-19 17:15:05.744852",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "javascript": "",
+ "json": "{\"columns\":[{\"label\":\"Posting Date\",\"fieldname\":\"posting_date\",\"fieldtype\":\"Date\",\"width\":90,\"id\":\"posting_date\",\"name\":\"Posting Date\",\"editable\":false},{\"label\":\"Voucher No\",\"fieldname\":\"voucher_no\",\"fieldtype\":\"Dynamic Link\",\"options\":\"voucher_type\",\"width\":180,\"id\":\"voucher_no\",\"name\":\"Voucher No\",\"editable\":false,\"compareValue\":null},{\"label\":\"Debit (TZS)\",\"fieldname\":\"debit\",\"fieldtype\":\"Float\",\"width\":100,\"id\":\"debit\",\"name\":\"Debit (TZS)\",\"editable\":false,\"compareValue\":null},{\"label\":\"Credit (TZS)\",\"fieldname\":\"credit\",\"fieldtype\":\"Float\",\"width\":100,\"id\":\"credit\",\"name\":\"Credit (TZS)\",\"editable\":false,\"compareValue\":null},{\"label\":\"Balance (TZS)\",\"fieldname\":\"balance\",\"fieldtype\":\"Float\",\"width\":130,\"id\":\"balance\",\"name\":\"Balance (TZS)\",\"editable\":false,\"compareValue\":null},{\"label\":\"Voucher Type\",\"fieldname\":\"voucher_type\",\"width\":120,\"id\":\"voucher_type\",\"name\":\"Voucher Type\",\"editable\":false,\"compareValue\":null},{\"label\":\"Against Account\",\"fieldname\":\"against\",\"width\":120,\"id\":\"against\",\"name\":\"Against Account\",\"editable\":false,\"compareValue\":null},{\"label\":\"Remarks\",\"fieldname\":\"remarks\",\"width\":400,\"id\":\"remarks\",\"name\":\"Remarks\",\"editable\":false,\"compareValue\":null},{\"label\":\"Party\",\"fieldname\":\"party\",\"width\":100,\"id\":\"party\",\"name\":\"Party\",\"editable\":false,\"compareValue\":null},{\"label\":\"Project\",\"options\":\"Project\",\"fieldname\":\"project\",\"width\":100,\"id\":\"project\",\"name\":\"Project\",\"editable\":false,\"compareValue\":null},{\"label\":\"Cost Center\",\"options\":\"Cost Center\",\"fieldname\":\"cost_center\",\"width\":100,\"id\":\"cost_center\",\"name\":\"Cost Center\",\"editable\":false,\"compareValue\":null},{\"label\":\"Against Voucher Type\",\"fieldname\":\"against_voucher_type\",\"width\":100,\"id\":\"against_voucher_type\",\"name\":\"Against Voucher Type\",\"editable\":false,\"compareValue\":null},{\"label\":\"Against Voucher\",\"fieldname\":\"against_voucher\",\"fieldtype\":\"Dynamic Link\",\"options\":\"against_voucher_type\",\"width\":100,\"id\":\"against_voucher\",\"name\":\"Against Voucher\",\"editable\":false,\"compareValue\":null},{\"label\":\"Supplier Invoice No\",\"fieldname\":\"bill_no\",\"fieldtype\":\"Data\",\"width\":100,\"id\":\"bill_no\",\"name\":\"Supplier Invoice No\",\"editable\":false,\"compareValue\":null},{\"label\":\"Party Type\",\"fieldname\":\"party_type\",\"width\":100,\"id\":\"party_type\",\"name\":\"Party Type\",\"editable\":false,\"compareValue\":null}]}",
+ "letter_head": null,
+ "modified": "2026-05-28 14:42:35.604278",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "GENERAL LEDGER - VIVA",
+ "owner": "accounts@vivatowers.com",
+ "prepared_report": 0,
+ "ref_doctype": "GL Entry",
+ "reference_report": "",
+ "report_name": "GENERAL LEDGER - VIVA",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "Auditor"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  }
+ ],
+ "timeout": 0
+}

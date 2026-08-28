@@ -32,6 +32,7 @@
   "carpet_area",
   "facing",
   "no_of_parking",
+  "floor_no",
   "column_break_18",
   "rent",
   "security_deposit",
@@ -303,13 +304,18 @@
    "fieldname": "remarks",
    "fieldtype": "Text",
    "label": "Remarks"
+  },
+  {
+   "fieldname": "floor_no",
+   "fieldtype": "Int",
+   "label": "Floor No"
   }
  ],
  "icon": "octicon octicon-home",
  "image_field": "photo",
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-29 14:58:18.340124",
+ "modified": "2026-06-12 11:08:57.135157",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property",

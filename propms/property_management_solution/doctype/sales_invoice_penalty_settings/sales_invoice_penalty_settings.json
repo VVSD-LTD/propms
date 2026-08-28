@@ -1,0 +1,112 @@
+{
+ "actions": [],
+ "creation": "2026-08-12 13:25:00",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_config",
+  "days_after_overdue",
+  "days_to_divide_percent",
+  "penalty_percent",
+  "column_break_formula",
+  "formula",
+  "section_break_excluded_days",
+  "excluded_days"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_config",
+   "fieldtype": "Section Break",
+   "label": "Penalty Configuration"
+  },
+  {
+   "default": "1",
+   "description": "Number of days after invoice due date before penalties start applying (e.g. 1 for T+1)",
+   "fieldname": "days_after_overdue",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Days After Overdue (T+X)",
+   "reqd": 1
+  },
+  {
+   "default": "365",
+   "description": "Number of days used as divisor for the percentage (e.g., 365 or 30)",
+   "fieldname": "days_to_divide_percent",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Days to Divide Percent",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "description": "Penalty rate percentage",
+   "fieldname": "penalty_percent",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Penalty Percent (%)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_formula",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "(outstanding_amount / days) * (percent / 100)",
+   "description": "Python formula string. Fieldnames from settings (e.g., days, percent, days_to_divide_percent, penalty_percent) and Sales Invoice (e.g., outstanding_amount, grand_total) are accessible.",
+   "fieldname": "formula",
+   "fieldtype": "Code",
+   "in_list_view": 1,
+   "label": "Formula",
+   "options": "Python",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_excluded_days",
+   "fieldtype": "Section Break",
+   "label": "Excluded Days & Holidays"
+  },
+  {
+   "fieldname": "excluded_days",
+   "fieldtype": "Table",
+   "label": "Excluded Days",
+   "options": "Sales Invoice Penalty Excluded Day"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-13 16:55:26.518858",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Sales Invoice Penalty Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Property Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

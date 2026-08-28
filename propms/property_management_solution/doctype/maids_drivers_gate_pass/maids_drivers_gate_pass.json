@@ -1,11 +1,13 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "VPL/MDGP./.####",
  "creation": "2026-03-23 10:20:08.934536",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "full_name",
+  "gate_pass_for",
+  "maids_driver_full_name",
   "column_break_zgoj",
   "date",
   "time",
@@ -14,7 +16,10 @@
   "column_break_oaqt",
   "designation",
   "section_break_aekx",
-  "management_approver",
+  "approved_by",
+  "approved_by_full_name",
+  "column_break_noyi",
+  "approved_on",
   "section_break_58ms",
   "amended_from"
  ],
@@ -34,11 +39,6 @@
    "search_index": 1
   },
   {
-   "fieldname": "full_name",
-   "fieldtype": "Data",
-   "label": "Full Name"
-  },
-  {
    "fieldname": "column_break_zgoj",
    "fieldtype": "Column Break"
   },
@@ -46,12 +46,15 @@
    "default": "Today",
    "fieldname": "date",
    "fieldtype": "Date",
-   "label": "Date"
+   "label": "Date",
+   "read_only": 1
   },
   {
+   "default": "now",
    "fieldname": "time",
    "fieldtype": "Time",
-   "label": "Time"
+   "label": "Time",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_uogy",
@@ -60,7 +63,9 @@
   {
    "fieldname": "apt",
    "fieldtype": "Data",
-   "label": "APT"
+   "in_list_view": 1,
+   "label": "APT",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_oaqt",
@@ -76,19 +81,60 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "management_approver",
+   "fieldname": "gate_pass_for",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Gate Pass For",
+   "options": "\nMAID\nDRIVER",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "no_copy": 1,
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_noyi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "approved_by.full_name",
+   "fieldname": "approved_by_full_name",
    "fieldtype": "Data",
-   "label": "Management Approver"
+   "label": "Approved By Full Name",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "maids_driver_full_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Full Name",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-23 10:23:34.256618",
+ "modified": "2026-03-25 11:28:03.073026",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Maids-Drivers Gate pass",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

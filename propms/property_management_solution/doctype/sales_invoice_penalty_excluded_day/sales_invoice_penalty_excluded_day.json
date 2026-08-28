@@ -1,0 +1,42 @@
+{
+ "actions": [],
+ "creation": "2026-08-12 13:25:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "day",
+  "exclude"
+ ],
+ "fields": [
+  {
+   "fieldname": "day",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Day",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "exclude",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Exclude Day"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-12 13:25:00.000000",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Sales Invoice Penalty Excluded Day",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

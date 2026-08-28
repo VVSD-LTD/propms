@@ -11,6 +11,7 @@
   "sub_contractor_name",
   "log_type",
   "shift",
+  "sub_contractor_category",
   "column_break_4",
   "time",
   "device_id",
@@ -129,20 +130,21 @@
   {
    "fieldname": "shift_start",
    "fieldtype": "Datetime",
-   "hidden": 1,
-   "label": "Shift Start"
+   "label": "Shift Start",
+   "read_only": 1
   },
   {
    "fieldname": "shift_end",
    "fieldtype": "Datetime",
-   "hidden": 1,
-   "label": "Shift End"
+   "label": "Shift End",
+   "read_only": 1
   },
   {
    "default": "0",
    "fieldname": "offshift",
    "fieldtype": "Check",
-   "hidden": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Off-shift",
    "read_only": 1
   },
@@ -153,14 +155,14 @@
   {
    "fieldname": "shift_actual_start",
    "fieldtype": "Datetime",
-   "hidden": 1,
-   "label": "Shift Actual Start"
+   "label": "Shift Actual Start",
+   "read_only": 1
   },
   {
    "fieldname": "shift_actual_end",
    "fieldtype": "Datetime",
-   "hidden": 1,
-   "label": "Shift Actual End"
+   "label": "Shift Actual End",
+   "read_only": 1
   },
   {
    "fieldname": "sub_contractor",
@@ -178,10 +180,18 @@
    "in_list_view": 1,
    "label": "Sub Contractor Name",
    "read_only": 1
+  },
+  {
+   "fetch_from": "sub_contractor.sub_contractor_category",
+   "fetch_if_empty": 1,
+   "fieldname": "sub_contractor_category",
+   "fieldtype": "Data",
+   "label": "Sub Contractor Category",
+   "read_only": 1
   }
  ],
  "links": [],
- "modified": "2026-03-02 13:30:36.927033",
+ "modified": "2026-04-09 09:54:32.782301",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Sub Contractor Checkin",

@@ -437,6 +437,7 @@ def makeInvoiceSchedule(
     tax=None,
     days_to_invoice_in_advance=None,
     invoice_item_group=None,
+    payment_terms=None,
     document_type="Sales Invoice",
 ):
     if not document_type:
@@ -460,6 +461,7 @@ def makeInvoiceSchedule(
                 currency=currency,
                 tax=tax,
                 invoice_item_group=invoice_item_group,
+                payment_terms=payment_terms,
                 document_type=document_type,
             )
         ).insert()

@@ -26,7 +26,11 @@ frappe.ui.form.on('Lease', {
 			make_lease_invoice_schedule(cur_frm);
 		});
 		cur_frm.add_custom_button(__("Generate Pending Invoice"), function() {
-			generate_pending_invoice();
+			generate_pending_invoice(cur_frm.doc.name);
+		});
+
+		cur_frm.add_custom_button(__("Generate Pending Invoice for all Lease"), function() {
+			generate_pending_invoice_all();
 		});
 		cur_frm.add_custom_button(__("Make Invoice Schedule for all Lease"), function() {
 			getAllLease(cur_frm);
@@ -452,6 +456,15 @@ var make_lease_invoice_schedule = function(frm){
 };
 
 var generate_pending_invoice = function(){
+	frappe.call({
+        method: "propms.lease_invoice.leaseInvoiceAutoCreateForLease",
+        args: { lease: cur_frm.doc.name },
+        callback: function() {
+            cur_frm.reload_doc();
+        }
+    });
+};
+var generate_pending_invoice_all = function(){
 	frappe.call({
 		method: "propms.lease_invoice.leaseInvoiceAutoCreate",
 		args: {},

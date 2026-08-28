@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from erpnext.accounts.party import get_due_date
-from frappe.utils import add_days, today, add_months, getdate
+from frappe.utils import add_days, today, add_months, getdate, get_last_day
 import frappe
 import frappe.permissions
 import frappe.share
@@ -33,6 +33,7 @@ def makeInvoice(
     lease_item=None,
     qty=None,
     schedule_start_date=None,
+    payment_terms=None,
     doctype="Sales Invoice",  # Allow to create Sales Invoice or Sales Order
 ):
     """Create sales invoice from lease invoice schedule."""
@@ -73,6 +74,37 @@ def makeInvoice(
         doc.insert()
         if doc.taxes_and_charges:
             getTax(doc)
+        if doc.doctype == "Sales Invoice" and payment_terms:
+            doc.payment_terms_template = None
+            doc.payment_terms_template = payment_terms
+            doc.payment_schedule = []
+            
+            # Calculate due date based on payment term definition
+            payment_term_doc = frappe.get_doc("Payment Term", payment_terms)
+            if payment_term_doc.due_date_based_on == "Day(s) after invoice date":
+                calculated_due_date = add_days(doc.posting_date, payment_term_doc.credit_days)
+            elif payment_term_doc.due_date_based_on == "Day(s) after the end of the invoice month":
+                calculated_due_date = add_days(
+                    frappe.utils.get_last_day(doc.posting_date), payment_term_doc.credit_days
+                )
+            elif payment_term_doc.due_date_based_on == "Month(s) after the end of the invoice month":
+                calculated_due_date = add_months(
+                    frappe.utils.get_last_day(doc.posting_date), payment_term_doc.credit_months
+                )
+            else:
+                # Fallback to existing getDueDate logic
+                calculated_due_date = doc.due_date
+
+            doc.due_date = calculated_due_date  # Also update the invoice-level due date
+            doc.append("payment_schedule", {
+                "payment_term": payment_terms,
+                "due_date": calculated_due_date,
+                "invoice_portion": 100,
+                "payment_amount": doc.grand_total,
+                "base_payment_amount": doc.base_grand_total,
+            })
+            doc.edit_payment_due_date = 1
+        
         doc.calculate_taxes_and_totals()
         doc.save()
         
@@ -137,6 +169,7 @@ def leaseInvoiceAutoCreate():
                 "lease_item",
                 "paid_by",
                 "currency",
+                "payment_terms"
             ],
             order_by="parent, paid_by, invoice_item_group, date_to_invoice, currency, lease_item",
         )
@@ -177,6 +210,7 @@ def leaseInvoiceAutoCreate():
                     invoice_item.lease_item,
                     invoice_item.qty,
                     invoice_item.schedule_start_date,
+                    invoice_item.payment_terms,
                     doctype=invoice_item.document_type,
                 )
                 # frappe.msgprint("Result: " + str(res))
@@ -242,6 +276,7 @@ def leaseInvoiceAutoCreate():
             invoice_item.lease_item,
             invoice_item.qty,
             invoice_item.schedule_start_date,
+            invoice_item.payment_terms,
             doctype=invoice_item.document_type,
         )
         if res:
@@ -271,3 +306,145 @@ def enqueue_lease_invoice_auto_create():
         now=False
     )
     return "Lease invoice auto creation has been queued. You will be notified once done."
+
+
+@frappe.whitelist()
+def leaseInvoiceAutoCreateForLease(lease):
+    """Generate pending invoices for a specific lease only."""
+    try:
+        invoice_start_date = frappe.db.get_single_value(
+            "Property Management Settings", "invoice_start_date"
+        )
+        lease_invoice = frappe.get_all(
+            "Lease Invoice Schedule",
+            filters={
+                "date_to_invoice": ["between", (invoice_start_date, today())],
+                "invoice_number": "",
+                "sales_order_number": "",
+                "parent": lease,                          # <-- filter to this lease only
+            },
+            fields=[
+                "name",
+                "date_to_invoice",
+                "invoice_number",
+                "sales_order_number",
+                "parent",
+                "invoice_item_group",
+                "lease_item",
+                "paid_by",
+                "currency",
+                "payment_terms",
+            ],
+            order_by="parent, paid_by, invoice_item_group, date_to_invoice, currency, lease_item",
+        )
+
+        if not lease_invoice:
+            frappe.msgprint(_("No pending invoices found for Lease {0}").format(lease))
+            return
+
+        row_num = 1
+        prev_parent = ""
+        prev_customer = ""
+        prev_invoice_item_group = ""
+        prev_date_to_invoice = ""
+        prev_currency = ""
+        lease_invoice_schedule_list = []
+        item_dict = []
+        item_json = {}
+
+        for row in lease_invoice:
+            if (
+                not (
+                    row.parent == prev_parent
+                    and row.paid_by == prev_customer
+                    and row.invoice_item_group == prev_invoice_item_group
+                    and row.date_to_invoice == prev_date_to_invoice
+                    and row.currency == prev_currency
+                )
+                and row_num != 1
+            ):
+                res = makeInvoice(
+                    invoice_item.date_to_invoice,
+                    invoice_item.paid_by,
+                    json.dumps(item_dict),
+                    invoice_item.currency,
+                    invoice_item.parent,
+                    invoice_item.lease_item,
+                    invoice_item.qty,
+                    invoice_item.schedule_start_date,
+                    invoice_item.payment_terms,
+                    doctype=invoice_item.document_type,
+                )
+                if res:
+                    for lease_invoice_schedule_name in lease_invoice_schedule_list:
+                        frappe.db.set_value(
+                            "Lease Invoice Schedule",
+                            lease_invoice_schedule_name,
+                            "invoice_number"
+                            if res.doctype == "Sales Invoice"
+                            else "sales_order_number",
+                            res.name,
+                        )
+                    frappe.db.commit()
+                    frappe.msgprint(_("Lease Invoice generated with number: {0}").format(res.name))
+                item_dict = []
+                lease_invoice_schedule_list = []
+                item_json = {}
+
+            invoice_item = frappe.get_doc("Lease Invoice Schedule", row.name)
+            if not invoice_item.schedule_start_date:
+                invoice_item.schedule_start_date = invoice_item.date_to_invoice
+            lease_end_date = frappe.get_value("Lease", invoice_item.parent, "end_date")
+
+            item_json["item_code"] = invoice_item.lease_item
+            item_json["qty"] = invoice_item.qty
+            item_json["rate"] = invoice_item.rate
+            item_json["cost_center"] = getCostCenter(invoice_item.parent)
+            item_json["withholding_tax_rate"] = invoice_item.tax
+            item_json["service_start_date"] = str(invoice_item.schedule_start_date)
+
+            if invoice_item.qty != int(invoice_item.qty):
+                subs_end_date = lease_end_date
+            else:
+                subs_end_date = add_days(
+                    add_months(invoice_item.schedule_start_date, invoice_item.qty), -1
+                )
+            item_json["service_end_date"] = str(subs_end_date)
+            item_dict.append(dict(item_json))
+            lease_invoice_schedule_list.append(invoice_item.name)
+
+            prev_parent = invoice_item.parent
+            prev_customer = invoice_item.paid_by
+            prev_invoice_item_group = invoice_item.invoice_item_group
+            prev_date_to_invoice = invoice_item.date_to_invoice
+            prev_currency = invoice_item.currency
+            row_num += 1
+
+        # Create the last invoice
+        res = makeInvoice(
+            invoice_item.date_to_invoice,
+            invoice_item.paid_by,
+            json.dumps(item_dict),
+            invoice_item.currency,
+            invoice_item.parent,
+            invoice_item.lease_item,
+            invoice_item.qty,
+            invoice_item.schedule_start_date,
+            invoice_item.payment_terms,
+            doctype=invoice_item.document_type,
+        )
+        if res:
+            for lease_invoice_schedule_name in lease_invoice_schedule_list:
+                frappe.db.set_value(
+                    "Lease Invoice Schedule",
+                    lease_invoice_schedule_name,
+                    "invoice_number"
+                    if res.doctype == "Sales Invoice"
+                    else "sales_order_number",
+                    res.name,
+                )
+            frappe.db.commit()
+            frappe.msgprint(_("Lease Invoice generated with number: {0}").format(res.name))
+
+    except Exception as e:
+        app_error_log(frappe.session.user, str(e))

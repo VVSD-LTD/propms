@@ -27,7 +27,9 @@
   "allow_end_of_the_month",
   "section_break_17",
   "self_consumption_customer",
-  "generate_invoice_schedule_next_month"
+  "generate_invoice_schedule_next_month",
+  "email_settings_tab",
+  "enable_due_invoice_email_sending"
  ],
  "fields": [
   {
@@ -148,12 +150,24 @@
    "fieldname": "make_invoice_schedule_up_to_tomorrow_only",
    "fieldtype": "Check",
    "label": "Make Invoice Schedule up to tomorrow only"
+  },
+  {
+   "fieldname": "email_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "Email Settings"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_due_invoice_email_sending",
+   "fieldtype": "Check",
+   "label": "Enable Due Invoice Email Sending"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-12 12:54:08.084993",
+ "make_attachments_public": 1,
+ "modified": "2026-04-15 11:54:11.016694",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property Management Settings",

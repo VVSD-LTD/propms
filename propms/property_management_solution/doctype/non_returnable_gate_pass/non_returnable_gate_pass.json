@@ -23,12 +23,20 @@
   "reason_specify",
   "authorization_section",
   "authorized_by",
+  "authorized_by_full_name",
   "column_break_hihq",
   "authorized_on",
   "approvals_section",
   "approved_by",
+  "approved_by_full_name",
   "column_break_tnyu",
   "approved_on",
+  "security_use_only_section",
+  "item_physically_verified_by",
+  "signature",
+  "column_break_nrdn",
+  "remark",
+  "verified_date",
   "tab_break_lbmt",
   "doc_remark_section",
   "note",
@@ -39,16 +47,6 @@
    "fieldname": "section_break_pscj",
    "fieldtype": "Section Break",
    "label": "Details"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Returnable Gate Pass",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
   },
   {
    "fieldname": "naming_series",
@@ -67,6 +65,7 @@
    "fieldname": "date",
    "fieldtype": "Date",
    "label": "Date",
+   "no_copy": 1,
    "read_only": 1
   },
   {
@@ -74,6 +73,7 @@
    "fieldname": "time",
    "fieldtype": "Time",
    "label": "Time",
+   "no_copy": 1,
    "read_only": 1
   },
   {
@@ -134,9 +134,13 @@
    "label": "Approvals"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "approved_by",
-   "fieldtype": "Data",
-   "label": "Approved By"
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "no_copy": 1,
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "tab_break_lbmt",
@@ -160,7 +164,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Returnable Gate Pass",
+   "options": "Non Returnable Gate Pass",
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
@@ -169,39 +173,96 @@
    "depends_on": "eval:doc.reason_for_the_gate_pass == 'Others';",
    "fieldname": "reason_specify",
    "fieldtype": "Small Text",
-   "label": "Reason Specify",
-   "reqd": 1
+   "label": "Reason Specify"
   },
   {
    "fieldname": "valid_till",
    "fieldtype": "Datetime",
-   "label": "Valid Till"
+   "label": "Valid Till",
+   "no_copy": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "authorized_by",
-   "fieldtype": "Data",
-   "label": "Authorized By"
+   "fieldtype": "Link",
+   "label": "Authorized By",
+   "no_copy": 1,
+   "options": "User",
+   "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "authorized_on",
    "fieldtype": "Datetime",
-   "label": "Authorized On"
+   "label": "Authorized On",
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "fieldname": "column_break_tnyu",
    "fieldtype": "Column Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "approved_on",
    "fieldtype": "Datetime",
-   "label": "Approved On"
+   "label": "Approved On",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "authorized_by.full_name",
+   "fieldname": "authorized_by_full_name",
+   "fieldtype": "Data",
+   "label": "Authorized By Full Name",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "approved_by.full_name",
+   "fieldname": "approved_by_full_name",
+   "fieldtype": "Data",
+   "label": "Approved By Full Name",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "security_use_only_section",
+   "fieldtype": "Section Break",
+   "label": "Security Use Only"
+  },
+  {
+   "fieldname": "item_physically_verified_by",
+   "fieldtype": "Data",
+   "label": "Item Physically verified by"
+  },
+  {
+   "fieldname": "signature",
+   "fieldtype": "Signature",
+   "label": "Signature"
+  },
+  {
+   "fieldname": "column_break_nrdn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "remark",
+   "fieldtype": "Data",
+   "label": "Remark"
+  },
+  {
+   "fieldname": "verified_date",
+   "fieldtype": "Date",
+   "label": "Verified Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-23 14:19:29.484208",
+ "modified": "2026-04-14 11:44:29.148170",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Non Returnable Gate Pass",

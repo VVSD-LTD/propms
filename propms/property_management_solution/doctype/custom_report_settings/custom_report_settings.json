@@ -1,0 +1,45 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-05-06 14:50:24.797925",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "account_groups_for_cash_bank_movement_report"
+ ],
+ "fields": [
+  {
+   "fieldname": "account_groups_for_cash_bank_movement_report",
+   "fieldtype": "Table",
+   "label": "Account Groups for Cash & Bank Movement Report",
+   "options": "Custom Report Setting Detail",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-05-06 14:51:00.087684",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Custom Report Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

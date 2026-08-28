@@ -18,7 +18,10 @@
   "section_break_eqst",
   "person_in_charge",
   "sub_contractor",
+  "equipment",
   "equipment_type",
+  "label",
+  "location",
   "column_break_stnp",
   "person_in_charge_name",
   "sub_contractor_name",
@@ -484,11 +487,27 @@
    "label": "Equipment Type",
    "options": "Property Equipment Type",
    "reqd": 1
+  },
+  {
+   "fieldname": "equipment",
+   "fieldtype": "Link",
+   "label": "Equipment",
+   "options": "Property Equipment"
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location"
   }
  ],
  "icon": "fa fa-ticket",
  "links": [],
- "modified": "2026-03-19 12:33:07.685135",
+ "modified": "2026-03-30 14:14:48.058188",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Equipment Maintenance Job Card",

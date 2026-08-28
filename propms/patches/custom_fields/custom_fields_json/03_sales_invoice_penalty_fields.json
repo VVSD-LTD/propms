@@ -1,0 +1,38 @@
+[
+    {
+        "name": "Sales Invoice-custom_outstanding_penalty_amount",
+        "dt": "Sales Invoice",
+        "label": "Outstanding Penalty Amount",
+        "fieldname": "outstanding_penalty_amount",
+        "insert_after": "outstanding_amount",
+        "fieldtype": "Currency",
+        "read_only": 1,
+        "allow_on_submit": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "name": "Sales Invoice-custom_total_penalty_amount",
+        "dt": "Sales Invoice",
+        "label": "Total Penalty Amount",
+        "fieldname": "total_penalty_amount",
+        "insert_after": "outstanding_penalty_amount",
+        "fieldtype": "Currency",
+        "read_only": 1,
+        "allow_on_submit": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "name": "Sales Invoice-custom_sales_invoice_penalty_details",
+        "dt": "Sales Invoice",
+        "label": "Penalty Details",
+        "fieldname": "sales_invoice_penalty_details",
+        "insert_after": "total_penalty_amount",
+        "fieldtype": "Table",
+        "options": "Sales Invoice Penalty Detail",
+        "allow_on_submit": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
+    }
+]

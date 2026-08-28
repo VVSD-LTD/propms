@@ -22,10 +22,14 @@
   "sub_contractor_name",
   "column_break_9",
   "gender",
+  "date_of_birth",
   "salutation",
+  "tin_number",
   "column_break1",
+  "date_of_joining",
   "image",
   "status",
+  "nida_number",
   "erpnext_user",
   "user_id",
   "create_user",
@@ -59,6 +63,16 @@
   "emergency_phone_number",
   "column_break_19",
   "relation",
+  "salary_information",
+  "salary_currency",
+  "salary_mode",
+  "bank_details_section",
+  "bank_name",
+  "bank_code",
+  "bank_country_code",
+  "column_break_heye",
+  "bank_ac_no",
+  "bank_country",
   "attendance_and_leave_details",
   "attendance_device_id",
   "enable_biometric_attendance",
@@ -477,13 +491,105 @@
    "label": "Sub Contractor Category",
    "options": "Sub Contractor Category",
    "reqd": 1
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth",
+   "reqd": 1
+  },
+  {
+   "fieldname": "date_of_joining",
+   "fieldtype": "Date",
+   "label": "Date of Joining",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tin_number",
+   "fieldtype": "Data",
+   "label": "TIN Number"
+  },
+  {
+   "fieldname": "nida_number",
+   "fieldtype": "Data",
+   "label": "NIDA Number"
+  },
+  {
+   "fieldname": "salary_information",
+   "fieldtype": "Tab Break",
+   "label": "Salary"
+  },
+  {
+   "fieldname": "salary_information",
+   "fieldtype": "Tab Break",
+   "label": "Salary"
+  },
+  {
+   "fieldname": "salary_mode",
+   "fieldtype": "Select",
+   "label": "Salary Mode",
+   "oldfieldname": "salary_mode",
+   "oldfieldtype": "Select",
+   "options": "\nBank\nCash\nCheque"
+  },
+  {
+   "depends_on": "eval:doc.salary_mode == 'Bank'",
+   "fieldname": "bank_name",
+   "fieldtype": "Data",
+   "label": "Bank Name",
+   "oldfieldname": "bank_name",
+   "oldfieldtype": "Link"
+  },
+  {
+   "depends_on": "eval:doc.salary_mode == 'Bank'",
+   "fieldname": "bank_ac_no",
+   "fieldtype": "Data",
+   "label": "Bank A/C No.",
+   "oldfieldname": "bank_ac_no",
+   "oldfieldtype": "Data"
+  },
+  {
+   "fieldname": "salary_currency",
+   "fieldtype": "Link",
+   "label": "Salary Currency",
+   "options": "Currency"
+  },
+  {
+   "depends_on": "eval:doc.salary_mode == 'Bank'",
+   "fieldname": "bank_details_section",
+   "fieldtype": "Section Break",
+   "label": "Bank Details"
+  },
+  {
+   "fieldname": "column_break_heye",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bank_code",
+   "fieldtype": "Data",
+   "label": "Bank Code"
+  },
+  {
+   "depends_on": "eval:doc.salary_mode == 'Bank'",
+   "fetch_from": "bank_country.code",
+   "fieldname": "bank_country_code",
+   "fieldtype": "Data",
+   "label": "Bank Country Code",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.salary_mode == 'Bank'",
+   "fieldname": "bank_country",
+   "fieldtype": "Link",
+   "label": "Bank Country",
+   "options": "Country"
   }
  ],
  "icon": "fa fa-user",
  "image_field": "image",
  "is_tree": 1,
  "links": [],
- "modified": "2026-03-16 15:16:45.818121",
+ "modified": "2026-06-12 11:04:49.019299",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Sub Contractor",

@@ -18,7 +18,8 @@
   "rate",
   "currency",
   "tax",
-  "invoice_item_group"
+  "invoice_item_group",
+  "payment_terms"
  ],
  "fields": [
   {
@@ -27,7 +28,8 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Date to invoice",
-   "options": "Lease"
+   "options": "Lease",
+   "read_only": 1
   },
   {
    "columns": 3,
@@ -114,17 +116,27 @@
    "fieldtype": "Select",
    "label": "Document Type",
    "options": "\nSales Invoice\nSales Order"
+  },
+  {
+   "fieldname": "payment_terms",
+   "fieldtype": "Link",
+   "label": "Payment Terms",
+   "options": "Payment Term"
   }
  ],
+ "grid_page_length": 50,
  "istable": 1,
  "links": [],
- "modified": "2022-05-28 15:13:40.233162",
+ "modified": "2026-05-08 11:07:45.559991",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Lease Invoice Schedule",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
