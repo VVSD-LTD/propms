@@ -56,6 +56,7 @@ def before_save(doc, method):
 
 @frappe.whitelist()
 def create_maintenance_job_card():
+    today = frappe.utils.today()
     installed_equipments = frappe.db.sql("""
         SELECT 
             name, equipment_type, next_service_date, parent, label, location
@@ -64,12 +65,12 @@ def create_maintenance_job_card():
         WHERE 
             enabled = 1
         AND 
-            next_service_date = CURDATE()  -- filter in SQL, avoids type mismatch
+            next_service_date = %s  -- filter in SQL, avoids type mismatch
         AND
             parentfield = 'table_5'  -- ensure we only get enabled equipments
         -- AND
             -- last_service_date != CURDATE()  -- avoid creating multiple job cards for same equipment in a day
-    """, as_dict=True)
+    """, today, as_dict=True)
 
     for equipment in installed_equipments:
         try:

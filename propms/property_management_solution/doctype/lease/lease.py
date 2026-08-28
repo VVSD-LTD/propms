@@ -4,6 +4,13 @@ from frappe.model.document import Document
 from frappe.utils import add_days, today, getdate, add_months, get_datetime, now
 from propms.auto_custom import app_error_log, makeInvoiceSchedule, getDateMonthDiff
 from frappe import _
+from propms.custom.lease import (
+    get_tenant_context_for_user,
+    lease_after_insert,
+    lease_before_insert,
+    lease_on_update,
+    lease_validate,
+)
 
 
 class Lease(Document):

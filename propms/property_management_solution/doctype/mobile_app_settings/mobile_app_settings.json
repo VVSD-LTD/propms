@@ -1,0 +1,186 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-12 12:48:28.410683",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_nghh",
+  "fcm_settings_tab",
+  "fcm_server_key",
+  "upload_settings_tab",
+  "upload_max_total_size_mb",
+  "upload_max_chunk_size_mb",
+  "upload_default_chunk_size_mb",
+  "upload_session_expiry_hours",
+  "version_control_tab",
+  "maintenance_mode",
+  "section_break_fhxb",
+  "min_android_version",
+  "latest_android_version",
+  "android_store_url",
+  "column_break_zbnk",
+  "min_ios_version",
+  "latest_ios_version",
+  "ios_store_url",
+  "section_break_tefh",
+  "update_message",
+  "column_break_hznu",
+  "maintenance_message"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_nghh",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "fcm_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "FCM Settings"
+  },
+  {
+   "fieldname": "fcm_server_key",
+   "fieldtype": "JSON",
+   "label": "FCM Server Key"
+  },
+  {
+   "fieldname": "upload_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "Upload Settings"
+  },
+  {
+   "default": "200",
+   "description": "Maximum total file size allowed for uploads in MB (default: 200MB)",
+   "fieldname": "upload_max_total_size_mb",
+   "fieldtype": "Int",
+   "label": "Max Total Upload Size (MB)"
+  },
+  {
+   "default": "4",
+   "description": "Maximum chunk size in MB (default: 4MB). Each chunk cannot exceed this size.",
+   "fieldname": "upload_max_chunk_size_mb",
+   "fieldtype": "Int",
+   "label": "Max Chunk Size (MB)"
+  },
+  {
+   "default": "2",
+   "description": "Recommended chunk size in MB for clients (default: 2MB). Clients should use this for optimal performance.",
+   "fieldname": "upload_default_chunk_size_mb",
+   "fieldtype": "Int",
+   "label": "Default Chunk Size (MB)"
+  },
+  {
+   "default": "24",
+   "description": "Upload session expiry time in hours (default: 24 hours). Sessions expire after this time if not completed.",
+   "fieldname": "upload_session_expiry_hours",
+   "fieldtype": "Int",
+   "label": "Session Expiry (Hours)"
+  },
+  {
+   "fieldname": "version_control_tab",
+   "fieldtype": "Tab Break",
+   "label": "Version Control"
+  },
+  {
+   "default": "0",
+   "description": "When enabled, the app is blocked for everyone. Maintenance Message is shown. Use only during planned maintenance or major incidents. Remember to disable when done.",
+   "fieldname": "maintenance_mode",
+   "fieldtype": "Check",
+   "label": "Maintenance Mode"
+  },
+  {
+   "fieldname": "section_break_fhxb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "description": "Lowest Android version allowed. Users below this will be forced to update (non-dismissible). Use semver format e.g. 1.2.3. Leave empty to allow all versions.",
+   "fieldname": "min_android_version",
+   "fieldtype": "Data",
+   "label": "Min Android Version"
+  },
+  {
+   "description": "Current latest Android version in stores. Users below this see an optional update prompt (can skip). Use semver format e.g. 1.2.3. Leave empty to skip optional prompts.",
+   "fieldname": "latest_android_version",
+   "fieldtype": "Data",
+   "label": "Latest Android Version"
+  },
+  {
+   "description": "Play Store URL for update button. e.g. https://play.google.com/store/apps/details?id=com.example.app",
+   "fieldname": "android_store_url",
+   "fieldtype": "Data",
+   "label": "Android Store URL"
+  },
+  {
+   "description": "Lowest iOS version allowed. Users below this will be forced to update (non-dismissible). Use semver format e.g. 1.2.3. Leave empty to allow all versions.",
+   "fieldname": "min_ios_version",
+   "fieldtype": "Data",
+   "label": "Min iOS Version"
+  },
+  {
+   "fieldname": "column_break_zbnk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Current latest iOS version in stores. Users below this see an optional update prompt (can skip). Use semver format e.g. 1.2.3. Leave empty to skip optional prompts.",
+   "fieldname": "latest_ios_version",
+   "fieldtype": "Data",
+   "label": "Latest iOS Version"
+  },
+  {
+   "description": "App Store URL for update button. e.g. https://apps.apple.com/app/id123456789",
+   "fieldname": "ios_store_url",
+   "fieldtype": "Data",
+   "label": "iOS Store URL"
+  },
+  {
+   "fieldname": "section_break_tefh",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "A new version is available. Please update to continue.",
+   "description": "Message shown when user is below Min Version. Customize or leave default.",
+   "fieldname": "update_message",
+   "fieldtype": "Small Text",
+   "label": "Update Message"
+  },
+  {
+   "fieldname": "column_break_hznu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "The app is temporarily unavailable. Please try again later.",
+   "description": "Message shown when Maintenance Mode is enabled. Customize or leave default.",
+   "fieldname": "maintenance_message",
+   "fieldtype": "Small Text",
+   "label": "Maintenance Message"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-03-12 12:55:00.000000",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Mobile App Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -83,6 +83,7 @@ frappe.ui.form.on('Lease', {
 	validate: function(frm) {
 		// Validate lease items before saving
 		validate_lease_items(frm);
+		validate_tenant_details(frm);
 		
 		if (frm.doc.skip_end_date) {
 			frappe.call({
@@ -110,6 +111,12 @@ frappe.ui.form.on('Lease', {
 			});
 		}
     }
+});
+
+frappe.ui.form.on('Tenant Details', {
+	user_email: function(frm) {
+		validate_tenant_details(frm);
+	}
 });
 
 frappe.ui.form.on('Lease Item', {
@@ -411,6 +418,25 @@ function validate_lease_items(frm) {
 				}
 			}
 		}
+	}
+}
+
+function validate_tenant_details(frm) {
+	let seen = {};
+	let rows = frm.doc.custom_tenant_details || [];
+	for (let i = 0; i < rows.length; i++) {
+		let email = (rows[i].user_email || "").trim().toLowerCase();
+		if (!email) continue;
+		if (seen[email]) {
+			frappe.msgprint({
+				title: __('Duplicate Tenant Email'),
+				indicator: 'red',
+				message: __('Tenant Details has duplicate email: {0}', [rows[i].user_email])
+			});
+			frappe.validated = false;
+			return false;
+		}
+		seen[email] = true;
 	}
 }
 

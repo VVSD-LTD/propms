@@ -1,0 +1,19 @@
+[
+    {
+        "default_value": null,
+        "doc_type": "Issue",
+        "docstatus": 0,
+        "doctype": "Property Setter",
+        "doctype_or_field": "DocField",
+        "field_name": "description",
+        "modified": "2026-03-11 00:00:00",
+        "name": "Issue-description-fieldtype",
+        "parent": null,
+        "parentfield": null,
+        "parenttype": null,
+        "property": "fieldtype",
+        "property_type": "Data",
+        "row_name": null,
+        "value": "Text"
+    }
+]

@@ -1,0 +1,86 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-16 08:24:59.476308",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "full_name",
+  "user_email",
+  "user_password",
+  "app_use_terms_and_conditions",
+  "is_first_login",
+  "user"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "full_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Full Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user_email",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "User Email",
+   "options": "Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user_password",
+   "fieldtype": "Password",
+   "in_list_view": 1,
+   "label": "User Password",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "App User",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "app_use_terms_and_conditions",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "App Use Terms and Conditions"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "is_first_login",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is First Login"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-03-16 09:17:42.671864",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Tenant Details",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

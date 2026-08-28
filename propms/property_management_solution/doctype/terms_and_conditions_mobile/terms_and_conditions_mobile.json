@@ -1,0 +1,46 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-11 08:51:28.551939",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "terms_and_conditions"
+ ],
+ "fields": [
+  {
+   "fieldname": "terms_and_conditions",
+   "fieldtype": "Text",
+   "in_list_view": 1,
+   "label": "Terms and Conditions",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-11 08:52:50.083372",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Terms and Conditions Mobile",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,155 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-03-12 12:32:52.436145",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "filename",
+  "mime_type",
+  "is_private",
+  "folder",
+  "section_break_1",
+  "total_size",
+  "chunk_size",
+  "total_chunks",
+  "received_chunks",
+  "received_bytes",
+  "sha256",
+  "status",
+  "expires_on",
+  "error_message",
+  "section_break_2",
+  "target_doctype",
+  "target_docname",
+  "target_fieldname"
+ ],
+ "fields": [
+  {
+   "fieldname": "filename",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Filename",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mime_type",
+   "fieldtype": "Data",
+   "label": "MIME Type"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_private",
+   "fieldtype": "Check",
+   "label": "Private File"
+  },
+  {
+   "fieldname": "folder",
+   "fieldtype": "Data",
+   "label": "Folder"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "Transfer"
+  },
+  {
+   "fieldname": "total_size",
+   "fieldtype": "Int",
+   "label": "Total Size (bytes)"
+  },
+  {
+   "fieldname": "chunk_size",
+   "fieldtype": "Int",
+   "label": "Chunk Size (bytes)"
+  },
+  {
+   "fieldname": "total_chunks",
+   "fieldtype": "Int",
+   "label": "Total Chunks"
+  },
+  {
+   "fieldname": "received_chunks",
+   "fieldtype": "Int",
+   "label": "Received Chunks"
+  },
+  {
+   "fieldname": "received_bytes",
+   "fieldtype": "Int",
+   "label": "Received Bytes"
+  },
+  {
+   "fieldname": "sha256",
+   "fieldtype": "Data",
+   "label": "SHA256 (optional)"
+  },
+  {
+   "default": "in_progress",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "in_progress\ncompleted\naborted\nerror"
+  },
+  {
+   "fieldname": "expires_on",
+   "fieldtype": "Datetime",
+   "label": "Expires On"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Small Text",
+   "label": "Error Message"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Attachment Target"
+  },
+  {
+   "fieldname": "target_doctype",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Target DocType",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "target_docname",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Target DocName"
+  },
+  {
+   "fieldname": "target_fieldname",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Target Fieldname"
+  }
+ ],
+ "hide_toolbar": 1,
+ "links": [],
+ "modified": "2026-03-12 12:32:52.436145",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Upload Session",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "read_only": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

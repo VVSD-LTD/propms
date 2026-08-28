@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Request data deletion for Viva Towers mobile application. Learn how to delete your account and personal data.">
+    <title>Request Data Deletion - Viva Towers</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.7;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        
+        h1 {
+            color: #2196F3;
+            border-bottom: 3px solid #2196F3;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+        
+        h2 {
+            color: #555;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            border-left: 4px solid #2196F3;
+            padding-left: 15px;
+        }
+        
+        p {
+            margin: 15px 0;
+            color: #666;
+        }
+        
+        .important {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        
+        .important strong {
+            color: #856404;
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .steps {
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 6px;
+            margin: 25px 0;
+            border: 1px solid #dee2e6;
+        }
+        
+        .step {
+            margin: 20px 0;
+            padding-left: 35px;
+            position: relative;
+        }
+        
+        .step::before {
+            content: counter(step-counter);
+            counter-increment: step-counter;
+            position: absolute;
+            left: 0;
+            top: 0;
+            background-color: #2196F3;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .steps {
+            counter-reset: step-counter;
+        }
+        
+        ul {
+            margin: 15px 0;
+            padding-left: 25px;
+        }
+        
+        li {
+            margin: 10px 0;
+            color: #666;
+        }
+        
+        .contact-box {
+            background: linear-gradient(135deg, #e7f3ff 0%, #cfe8ff 100%);
+            border: 2px solid #2196F3;
+            padding: 25px;
+            border-radius: 6px;
+            margin: 30px 0;
+        }
+        
+        .contact-box h2 {
+            color: #2196F3;
+            border: none;
+            padding: 0;
+            margin: 0 0 15px 0;
+        }
+        
+        .email-link {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2196F3;
+            text-decoration: none;
+            display: inline-block;
+            padding: 8px 15px;
+            background-color: white;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        
+        .email-link:hover {
+            background-color: #2196F3;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .data-list {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        
+        .data-list ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .data-list li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .data-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .retention-info {
+            background-color: #e7f3ff;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            h2 {
+                font-size: 1.3em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Request Data Deletion - Viva Towers</h1>
+        
+        <p><strong>Viva Towers</strong> respects your privacy and provides you with the right to request deletion of your personal data. This page explains how to request deletion of your data from the Viva Towers mobile application.</p>
+        
+        <div class="important">
+            <strong>📋 Important Information</strong>
+            <p>When you request data deletion, your account will be permanently deleted along with all associated data. This action cannot be undone. Please ensure you have exported any important information before proceeding.</p>
+        </div>
+
+        <h2>How to Request Data Deletion</h2>
+        
+        <div class="steps">
+            <div class="step">
+                <strong>Send an Email Request</strong><br>
+                Email us at <a href="mailto:info@vvsdtz.com?subject=Data%20Deletion%20Request%20-%20Viva%20Towers" class="email-link">info@vvsdtz.com</a> with the subject line: <strong>"Data Deletion Request - Viva Towers"</strong>
+            </div>
+            
+            <div class="step">
+                <strong>Include Required Information</strong><br>
+                In your email, please provide:
+                <ul>
+                    <li>Your registered email address or username</li>
+                    <li>Your full name (as registered in the app)</li>
+                    <li>Clear statement: "I request deletion of my account and all associated data"</li>
+                    <li>Any additional information that may help us verify your identity</li>
+                </ul>
+            </div>
+            
+            <div class="step">
+                <strong>Identity Verification</strong><br>
+                We will verify your identity to ensure the security of your account. This may require additional information or confirmation steps.
+            </div>
+            
+            <div class="step">
+                <strong>Processing & Confirmation</strong><br>
+                Once verified, we will process your request within 30 days. You will receive a confirmation email once your data has been permanently deleted.
+            </div>
+        </div>
+
+        <div class="contact-box">
+            <h2>📧 Contact Information</h2>
+            <p><strong>Email:</strong> <a href="mailto:info@vvsdtz.com" class="email-link">info@vvsdtz.com</a></p>
+            <p><strong>Website:</strong> <a href="https://vvsdtz.com" target="_blank" rel="noopener">vvsdtz.com</a></p>
+            <p><strong>App Name:</strong> Viva Towers</p>
+        </div>
+
+        <h2>What Data Will Be Deleted</h2>
+        
+        <p>When you request data deletion, the following data will be permanently deleted from our systems:</p>
+        
+        <div class="data-list">
+            <ul>
+                <li><strong>Personal Information:</strong> Name, email address, phone number, and profile details</li>
+                <li><strong>Account Data:</strong> User profile, account settings, preferences, and authentication credentials</li>
+                <li><strong>Support Tickets:</strong> All support tickets and their associated data</li>
+                <li><strong>Messages:</strong> All in-app messages, emails, and communications</li>
+                <li><strong>Attachments:</strong> Photos, videos, audio files, and documents you uploaded</li>
+                <li><strong>App Activity:</strong> App interactions, usage history, and activity logs</li>
+                <li><strong>Local Data:</strong> Cached data stored on your device (you may need to uninstall the app to clear this)</li>
+                <li><strong>Session Data:</strong> Login sessions and authentication tokens</li>
+            </ul>
+        </div>
+
+        <h2>What Data May Be Retained</h2>
+        
+        <p>Some data may be retained for legal, business, or technical reasons:</p>
+        
+        <div class="data-list">
+            <ul>
+                <li><strong>Legal Compliance:</strong> Data required by law, legal obligations, or court orders may be retained</li>
+                <li><strong>Business Records:</strong> Anonymized or aggregated data for business analytics (no personal identifiers)</li>
+                <li><strong>Crash Logs:</strong> Anonymized crash reports and error logs (no personal information included)</li>
+                <li><strong>Backup Systems:</strong> Data in backup systems may be retained for up to 90 days before permanent deletion</li>
+                <li><strong>Financial Records:</strong> Transaction records if applicable (as required by financial regulations)</li>
+            </ul>
+        </div>
+
+        <h2>Data Retention Period</h2>
+        
+        <div class="retention-info">
+            <p><strong>Immediate Actions:</strong></p>
+            <ul>
+                <li>Your account will be deactivated immediately upon verification</li>
+                <li>You will no longer be able to access the app or your account</li>
+            </ul>
+            
+            <p style="margin-top: 20px;"><strong>Deletion Timeline:</strong></p>
+            <ul>
+                <li><strong>0-30 days:</strong> Personal data will be deleted from active systems within 30 days of verification</li>
+                <li><strong>30-90 days:</strong> Backup data will be permanently deleted within 90 days</li>
+                <li><strong>Ongoing:</strong> Anonymized data (if any) may be retained indefinitely for business purposes, but contains no personal identifiers</li>
+            </ul>
+        </div>
+
+        <h2>Alternative Methods</h2>
+        
+        <p>You can also request data deletion through:</p>
+        <ul>
+            <li><strong>Organization Administrator:</strong> If you have an enterprise account, contact your organization's administrator</li>
+            <li><strong>In-App Support:</strong> Use the support feature within the app to submit a deletion request</li>
+            <li><strong>Website Contact Form:</strong> Visit <a href="https://vvsdtz.com" target="_blank" rel="noopener">vvsdtz.com</a> and use the contact form</li>
+        </ul>
+
+        <h2>Additional Information</h2>
+        
+        <div class="important">
+            <strong>⚠️ Before Requesting Deletion:</strong>
+            <ul>
+                <li>Export or save any important information from your account</li>
+                <li>Download any attachments or files you want to keep</li>
+                <li>Note that deletion is permanent and cannot be reversed</li>
+                <li>If you have active support tickets, consider resolving them first</li>
+            </ul>
+        </div>
+
+        <h2>Questions or Concerns?</h2>
+        
+        <p>If you have questions about:</p>
+        <ul>
+            <li>Data deletion process</li>
+            <li>What data is collected and how it's used</li>
+            <li>Your privacy rights</li>
+            <li>Our data handling practices</li>
+        </ul>
+        
+        <p>Please refer to our <a href="https://dev15-viva2.vvsdtz.com/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> or contact us at <a href="mailto:info@vvsdtz.com" class="email-link">info@vvsdtz.com</a>.</p>
+        
+        <div class="footer">
+            <p><strong>Viva Towers</strong> - Data Deletion Request Page</p>
+            <p>Last Updated: October 15, 2025</p>
+            <p style="margin-top: 10px;">
+                <a href="https://dev15-viva2.vvsdtz.com/privacy-policy" style="color: #2196F3; text-decoration: none;">Privacy Policy</a> | 
+                <a href="https://vvsdtz.com" style="color: #2196F3; text-decoration: none;">Website</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

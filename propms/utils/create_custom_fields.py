@@ -29,9 +29,21 @@ def create_fields_from_json(custom_fields_obj):
         "__last_sync_on",
     ]
     doctype_custom_fields_dict = {}
+    # Cache meta lookups per doctype for speed and consistency
+    meta_cache = {}
 
     for custom_field in custom_fields_obj:
         doctype = custom_field["dt"]
+        fieldname = custom_field.get("fieldname")
+
+        # If the fieldname already exists as a standard DocField (or previously created),
+        # do NOT try to create a Custom Field with the same fieldname.
+        # This avoids migrate failures like: "A field with the name X already exists in Y".
+        if fieldname:
+            if doctype not in meta_cache:
+                meta_cache[doctype] = frappe.get_meta(doctype)
+            if meta_cache[doctype].has_field(fieldname):
+                continue
         all_fields = frappe.get_meta("Custom Field").get_valid_columns()
         field_list = set(all_fields).difference(disallowed_fields)
         custom_field_dict = {}
@@ -44,7 +56,8 @@ def create_fields_from_json(custom_fields_obj):
 
         doctype_custom_fields_dict[doctype].append(custom_field_dict)
 
-    create_custom_fields(doctype_custom_fields_dict, update=False)
+    # Use update=True so reruns don't fail when fields already exist
+    create_custom_fields(doctype_custom_fields_dict, update=True)
 
 
 def execute():

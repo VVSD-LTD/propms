@@ -1,0 +1,244 @@
+{
+ "actions": [],
+ "autoname": "VPL-NRGP.-.####",
+ "creation": "2026-03-20 17:04:50.917233",
+ "default_view": "List",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_pscj",
+  "date",
+  "valid_till",
+  "column_break_kyos",
+  "time",
+  "naming_series",
+  "section_break_nfvx",
+  "residenttenantcompany_name",
+  "department_if_applicable",
+  "column_break_vdkq",
+  "officeshopapartment_no",
+  "material_description_section",
+  "items",
+  "reason_for_the_gate_pass",
+  "reason_specify",
+  "authorization_section",
+  "authorized_by",
+  "column_break_hihq",
+  "authorized_on",
+  "approvals_section",
+  "approved_by",
+  "column_break_tnyu",
+  "approved_on",
+  "tab_break_lbmt",
+  "doc_remark_section",
+  "note",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_pscj",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Returnable Gate Pass",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Series",
+   "options": "VPL/NRGP/.MM./.YYYY./"
+  },
+  {
+   "fieldname": "column_break_kyos",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "read_only": 1
+  },
+  {
+   "default": "now",
+   "fieldname": "time",
+   "fieldtype": "Time",
+   "label": "Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_nfvx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "residenttenantcompany_name",
+   "fieldtype": "Data",
+   "label": "Resident/Tenant/Company Name"
+  },
+  {
+   "fieldname": "department_if_applicable",
+   "fieldtype": "Data",
+   "label": "Department (if applicable)"
+  },
+  {
+   "fieldname": "column_break_vdkq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "officeshopapartment_no",
+   "fieldtype": "Data",
+   "label": "Office/Shop/Apartment No"
+  },
+  {
+   "fieldname": "material_description_section",
+   "fieldtype": "Section Break",
+   "label": "Material description"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Gate Pass Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reason_for_the_gate_pass",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Reason For the Gate Pass",
+   "options": "\nSold items\nScrap/Disposal\nDelivery to client\nOthers",
+   "reqd": 1
+  },
+  {
+   "fieldname": "authorization_section",
+   "fieldtype": "Section Break",
+   "label": "Authorization"
+  },
+  {
+   "fieldname": "column_break_hihq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "approvals_section",
+   "fieldtype": "Section Break",
+   "label": "Approvals"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Data",
+   "label": "Approved By"
+  },
+  {
+   "fieldname": "tab_break_lbmt",
+   "fieldtype": "Tab Break",
+   "hidden": 1,
+   "label": "Doc Remark"
+  },
+  {
+   "fieldname": "doc_remark_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "This gate pass is valid for the movement mentioned above. Any misuse or unauthorized items will result in immediate action.",
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Returnable Gate Pass",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval:doc.reason_for_the_gate_pass == 'Others';",
+   "fieldname": "reason_specify",
+   "fieldtype": "Small Text",
+   "label": "Reason Specify",
+   "reqd": 1
+  },
+  {
+   "fieldname": "valid_till",
+   "fieldtype": "Datetime",
+   "label": "Valid Till"
+  },
+  {
+   "fieldname": "authorized_by",
+   "fieldtype": "Data",
+   "label": "Authorized By"
+  },
+  {
+   "fieldname": "authorized_on",
+   "fieldtype": "Datetime",
+   "label": "Authorized On"
+  },
+  {
+   "fieldname": "column_break_tnyu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-03-23 14:19:29.484208",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Non Returnable Gate Pass",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "VIVA Gate Pass",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,174 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:employee",
+ "creation": "2026-03-16 14:15:32.523189",
+ "default_view": "List",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "section_break_pxav",
+  "employee",
+  "employee_name",
+  "role",
+  "column_break_yswv",
+  "company",
+  "department",
+  "section_break_settings",
+  "full_name",
+  "user_email",
+  "column_break_qlha",
+  "user",
+  "user_password",
+  "section_break_mnub",
+  "app_use_terms_and_conditions",
+  "column_break_ngkw",
+  "is_first_login"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee Name",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fetch_from": "employee.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Department",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.user_id",
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_settings",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "full_name",
+   "fieldtype": "Data",
+   "label": "Full Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user_email",
+   "fieldtype": "Data",
+   "label": "User Email",
+   "options": "Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user_password",
+   "fieldtype": "Password",
+   "label": "User Password",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "app_use_terms_and_conditions",
+   "fieldtype": "Check",
+   "label": "App Use Terms and Conditions"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "is_first_login",
+   "fieldtype": "Check",
+   "label": "Is First Login"
+  },
+  {
+   "fieldname": "column_break_yswv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_pxav",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_mnub",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_ngkw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_qlha",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Select",
+   "label": "Role",
+   "options": "\nMobile Maintenance Officer\nMobile Maintenance Manager\nMobile Technician",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-23 12:55:56.639703",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Maintenance Users",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
