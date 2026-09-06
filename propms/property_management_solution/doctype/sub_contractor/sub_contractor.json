@@ -81,6 +81,7 @@
   "column_break_44",
   "holiday_list",
   "default_shift",
+  "sf",
   "connections_tab",
   "lft",
   "rgt",
@@ -471,6 +472,11 @@
    "fieldtype": "Link",
    "label": "Default Shift",
    "options": "Shift Type"
+  },
+  {
+   "fieldname": "sf",
+   "fieldtype": "Check",
+   "label": "SF"
   },
   {
    "fieldname": "sub_contractor_company",

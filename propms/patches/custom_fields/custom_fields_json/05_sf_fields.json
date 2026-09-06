@@ -1,0 +1,11 @@
+[
+    {
+        "name": "Employee-custom_sf",
+        "dt": "Employee",
+        "label": "SF",
+        "fieldname": "sf",
+        "insert_after": "default_shift",
+        "fieldtype": "Check",
+        "doctype": "Custom Field"
+    }
+]
