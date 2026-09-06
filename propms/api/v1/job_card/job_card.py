@@ -2986,47 +2986,124 @@ def check_subcontractor(ticket_id=None):
 # Ticket Status Lifecycle Management (Open, On Hold, Resolved, Closed)
 ##############################################################
 
-VALID_TICKET_STATUSES = ["Open", "Replied", "On Hold", "Resolved", "Closed"]
+VALID_TICKET_STATUSES = ["Open", "In Progress", "Replied", "On Hold", "Resolved", "Closed", "Cancelled"]
 
 
 def _broadcast_ticket_status_change(issue, old_status, new_status, reason=None):
     """Notify all participants via WebSocket and FCM when a ticket status changes."""
     try:
         from frappe.utils import now
-        rooms = {
-            f"ticket:{issue.name}",
-            f"ticket:{issue.name}:tenant_support",
-            f"ticket:{issue.name}:technician_support",
-        }
+        issue_name = issue.name
+
         event_data = {
-            "ticket_id": issue.name,
+            "ticket_id": issue_name,
+            "issue_id": issue_name,
             "old_status": old_status,
             "new_status": new_status,
             "status": new_status,
             "reason": reason or "",
+            "defect_found": getattr(issue, "defect_found", None) or "",
+            "resolution_details": getattr(issue, "resolution_details", None) or "",
             "modified": str(issue.modified or now()),
+            "updated_by": frappe.session.user,
             "update_type": "status_change",
         }
-        for room in rooms:
-            frappe.publish_realtime("ticket_update", event_data, room=room)
 
-        # FCM Push Notification to parties
-        recipients = _get_issue_all_room_recipients(issue)
-        recipients.discard(frappe.session.user)  # do not notify self
-        title = f"Ticket #{issue.name} Status: {new_status}"
-        body = f"Ticket '{issue.subject or issue.name}' is now {new_status}."
-        if reason:
-            body += f" Note: {reason}"
-        for recipient in recipients:
-            _send_push_notification_to_user(
-                user=recipient,
-                title=title,
-                body=body,
-                ticket_id=issue.name,
-                notification_type="ticket_status_update",
+        # Resolve all recipients
+        recipients = set()
+        if getattr(issue, "raised_by", None):
+            recipients.add(issue.raised_by)
+
+        tech_emp = _issue_assigned_technician_employee(issue)
+        if tech_emp:
+            recipients |= _get_technician_user_recipients_for_employee(tech_emp)
+
+        if getattr(issue, "customer", None):
+            lease_names = frappe.get_all(
+                "Lease", filters={"lease_customer": issue.customer}, pluck="name"
             )
+            if lease_names:
+                tenant_users = frappe.get_all(
+                    "Tenant Details",
+                    filters={"parent": ["in", lease_names], "parenttype": "Lease"},
+                    pluck="user_email",
+                )
+                for email in tenant_users or []:
+                    if email:
+                        recipients.add(email)
+
+        supplier = _get_issue_subcontractor_supplier(issue)
+        if supplier:
+            recipients |= _get_subcontractor_recipients_for_supplier(supplier)
+
+        recipients |= _get_officer_manager_recipients()
+        recipients.discard(frappe.session.user)
+
+        # Rooms
+        rooms = {
+            "support_team",
+            f"doc:Issue/{issue_name}",
+            f"doc:Ticket/{issue_name}",
+            issue_name,
+            f"ticket:{issue_name}",
+            f"ticket_{issue_name}",
+            f"ticket:{issue_name}:tenant_support",
+            f"ticket:{issue_name}:technician_support",
+            f"user:{frappe.session.user}",
+        }
+        for u in recipients:
+            rooms.add(f"user:{u}")
+
+        # 1. Publish realtime events to all rooms
+        for room in rooms:
+            for ev in ("ticket_update", "ticket_updated", "ticket_status_changed"):
+                try:
+                    frappe.publish_realtime(
+                        event=ev,
+                        message=event_data,
+                        room=room,
+                        after_commit=True,
+                    )
+                except Exception:
+                    pass
+
+        # 2. Publish directly to each user for reliable mobile delivery
+        for u in recipients:
+            for ev in ("ticket_update", "ticket_updated", "ticket_status_changed"):
+                try:
+                    frappe.publish_realtime(
+                        event=ev,
+                        message=event_data,
+                        user=u,
+                        after_commit=True,
+                    )
+                except Exception:
+                    pass
+
+        # 3. Enqueue background FCM Push Notification
+        try:
+            from propms.api.v1.notifications.notifications import enqueue_ticket_status_push
+            title = f"Job Card #{issue_name}: {new_status}"
+            body = f"Job Card '{issue.subject or issue_name}' status updated to {new_status}."
+            if reason:
+                body += f" ({reason})"
+
+            for recipient in _normalize_recipient_emails(recipients):
+                frappe.enqueue(
+                    enqueue_ticket_status_push,
+                    user=recipient,
+                    ticket_id=issue_name,
+                    new_status=new_status,
+                    title=title,
+                    body=body,
+                    ticket_title=issue.subject or issue_name,
+                    queue="short",
+                )
+        except Exception:
+            pass
+
     except Exception as e:
-        frappe.log_error(f"Error broadcasting ticket status change: {str(e)}", "broadcast_ticket_status_change")
+        frappe.log_error(frappe.get_traceback(), "_broadcast_ticket_status_change")
 
 
 @frappe.whitelist(methods=["POST"])
@@ -3292,15 +3369,30 @@ def change_ticket_status(ticket_id=None, status=None, reason=None, defect_found=
                 issue.flags.ignore_mandatory = True
                 issue.save(ignore_permissions=True)
                 frappe.db.commit()
-                _broadcast_ticket_status_change(issue, old_status, "Open")
+                _broadcast_ticket_status_change(issue, old_status, "Open", payload.get("reason"))
                 return {
                     "status": "success",
                     "message": "Ticket status updated to Open",
                     "ticket_id": ticket_id,
                     "ticket_status": "Open",
                 }
-
-        return {"status": "error", "message": "Unhandled status transition"}
+        else:
+            # Generic valid status update (e.g. In Progress, Cancelled, Replied)
+            issue = frappe.get_doc("Issue", ticket_id)
+            old_status = issue.status
+            issue.status = new_status
+            if payload.get("reason") and hasattr(issue, "resolution_details"):
+                issue.resolution_details = payload.get("reason")
+            issue.flags.ignore_mandatory = True
+            issue.save(ignore_permissions=True)
+            frappe.db.commit()
+            _broadcast_ticket_status_change(issue, old_status, new_status, payload.get("reason"))
+            return {
+                "status": "success",
+                "message": f"Ticket status updated to {new_status}",
+                "ticket_id": ticket_id,
+                "ticket_status": new_status,
+            }
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "change_ticket_status")
         return {"status": "error", "message": str(e)}
