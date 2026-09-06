@@ -1,0 +1,428 @@
+import base64
+import json
+import re
+import frappe
+from frappe import _
+from frappe.utils import flt, now, today
+from propms.custom.lease import get_tenant_context_for_user
+from propms.api.v1.payments.selcom_client import SelcomClient, get_selcom_settings
+
+
+def _normalize_phone_number(phone):
+    """Normalize phone number to 255XXXXXXXXX format."""
+    if not phone:
+        return ""
+    # Remove whitespace, dashes, plus signs
+    cleaned = re.sub(r"[^\d]", "", str(phone).strip())
+    if cleaned.startswith("0") and len(cleaned) == 10:
+        cleaned = "255" + cleaned[1:]
+    elif cleaned.startswith("255") and len(cleaned) == 12:
+        pass
+    elif len(cleaned) == 9:
+        cleaned = "255" + cleaned
+    return cleaned
+
+
+def _check_invoice_access(invoice_name):
+    """Ensure current session user is authorized to pay for the invoice."""
+    if not invoice_name or not frappe.db.exists("Sales Invoice", invoice_name):
+        frappe.throw(_("Sales Invoice {0} not found.").format(invoice_name))
+
+    inv = frappe.get_doc("Sales Invoice", invoice_name)
+    if inv.docstatus != 1:
+        frappe.throw(_("Invoice {0} is not submitted.").format(invoice_name))
+
+    roles = frappe.get_roles(frappe.session.user)
+    if "System Manager" in roles or "Mobile Maintenance Manager" in roles or "Accounts Manager" in roles:
+        return inv
+
+    # Tenant verification
+    ctx = get_tenant_context_for_user()
+    tenant_customer = ctx.get("customer") if ctx else None
+    if tenant_customer and inv.customer == tenant_customer:
+        return inv
+
+    # Check if user email matches customer portal user or contact
+    if inv.contact_email == frappe.session.user:
+        return inv
+
+    portal_user_customer = frappe.db.get_value("Portal User", {"user": frappe.session.user}, "parent")
+    if portal_user_customer and portal_user_customer == inv.customer:
+        return inv
+
+    frappe.throw(_("You are not permitted to access this invoice."), frappe.PermissionError)
+
+
+@frappe.whitelist(methods=["POST"])
+def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONEY", phone_number=None):
+    """Initiate a Selcom payment for a Sales Invoice.
+
+    Args:
+        invoice_name: Name of the Sales Invoice (e.g. ACC-SINV-2026-00001)
+        amount: Optional custom amount to pay (defaults to outstanding balance)
+        payment_method: "MOBILE_MONEY", "CARD", "QR_CODE", or "HOSTED"
+        phone_number: Required if payment_method is MOBILE_MONEY (e.g. 0714000111 or 255714000111)
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+
+    req = getattr(frappe, "form_dict", None) or {}
+    invoice_name = (invoice_name or req.get("invoice_name") or req.get("invoice_id") or req.get("sales_invoice") or "").strip()
+    amount_val = amount if amount is not None else req.get("amount")
+    payment_method = (payment_method or req.get("payment_method") or req.get("channel") or "MOBILE_MONEY").upper()
+    phone_number = (phone_number or req.get("phone_number") or req.get("phone") or req.get("msisdn") or "").strip()
+
+    if not invoice_name:
+        return {"status": "error", "message": "invoice_name is required"}
+
+    inv = _check_invoice_access(invoice_name)
+    outstanding = flt(inv.outstanding_amount)
+
+    if outstanding <= 0:
+        return {"status": "error", "message": f"Invoice {inv.name} is already fully paid."}
+
+    pay_amount = flt(amount_val) if (amount_val and flt(amount_val) > 0) else outstanding
+    if pay_amount <= 0 or pay_amount > outstanding:
+        return {"status": "error", "message": f"Payment amount must be between 1 and {outstanding:,.2f}"}
+
+    # Normalize phone
+    clean_phone = _normalize_phone_number(phone_number)
+    if not clean_phone and inv.contact_mobile:
+        clean_phone = _normalize_phone_number(inv.contact_mobile)
+    if not clean_phone:
+        user_phone = frappe.db.get_value("User", frappe.session.user, "mobile_no") or frappe.db.get_value("User", frappe.session.user, "phone")
+        clean_phone = _normalize_phone_number(user_phone)
+
+    if payment_method == "MOBILE_MONEY" and not clean_phone:
+        return {"status": "error", "message": "A valid phone number is required for Mobile Money payment."}
+
+    # Initialize Client & Settings
+    client = SelcomClient()
+    if not client.enabled:
+        return {"status": "error", "message": "Selcom payments are currently disabled."}
+    if not client.vendor_id or not client.api_key or not client.api_secret:
+        return {"status": "error", "message": "Selcom gateway credentials are not configured in Viva Selcom Settings."}
+
+    # Generate unique order reference
+    rand_suffix = frappe.generate_hash(length=6).upper()
+    clean_inv_id = re.sub(r"[^A-Za-z0-9]", "", inv.name)
+    order_id = f"ORD-{clean_inv_id[:12]}-{rand_suffix}"
+
+    user_info = frappe.db.get_value("User", frappe.session.user, ["full_name", "email"], as_dict=True) or {}
+    buyer_email = user_info.get("email") or frappe.session.user
+    buyer_name = user_info.get("full_name") or inv.customer_name or "Viva Tenant"
+    buyer_phone = clean_phone or "255700000000"
+
+    # Create transaction audit record
+    txn = frappe.get_doc({
+        "doctype": "Viva Payment Transaction",
+        "order_id": order_id,
+        "sales_invoice": inv.name,
+        "customer": inv.customer,
+        "amount": pay_amount,
+        "currency": inv.currency or "TZS",
+        "payment_channel": payment_method,
+        "phone_number": clean_phone,
+        "status": "Pending",
+        "raw_request": json.dumps({
+            "order_id": order_id,
+            "invoice": inv.name,
+            "amount": pay_amount,
+            "method": payment_method,
+            "phone": clean_phone,
+        }),
+    })
+    txn.insert(ignore_permissions=True)
+    frappe.db.commit()
+
+    # 1. Step 1: Create Order Minimal with Selcom
+    order_payload = {
+        "vendor": client.vendor_id,
+        "order_id": order_id,
+        "buyer_email": buyer_email,
+        "buyer_name": buyer_name,
+        "buyer_phone": buyer_phone,
+        "amount": int(round(pay_amount)),
+        "currency": inv.currency or "TZS",
+        "no_of_items": 1,
+        "buyer_remarks": f"Invoice {inv.name}",
+        "merchant_remarks": "Viva Towers Rent/Utility",
+    }
+
+    order_res = client.post("/v1/checkout/create-order-minimal", order_payload)
+    txn.raw_response = json.dumps(order_res)
+
+    result_code = (order_res.get("resultcode") or order_res.get("result_code") or "").strip()
+    result_status = (order_res.get("result") or order_res.get("status") or "").upper()
+
+    if result_status not in ("SUCCESS", "COMPLETED", "200") and result_code not in ("000", "200"):
+        error_msg = order_res.get("message") or order_res.get("error") or "Failed to initialize order with Selcom"
+        txn.status = "Failed"
+        txn.error_message = str(error_msg)
+        txn.save(ignore_permissions=True)
+        frappe.db.commit()
+        return {"status": "error", "message": error_msg, "order_id": order_id, "selcom_response": order_res}
+
+    # Extract gateway url if available
+    gateway_url = None
+    data_field = order_res.get("data")
+    if isinstance(data_field, list) and len(data_field) > 0:
+        first_data = data_field[0]
+        if isinstance(first_data, dict):
+            gateway_url = first_data.get("payment_gateway_url") or first_data.get("gateway_url")
+    elif isinstance(data_field, dict):
+        gateway_url = data_field.get("payment_gateway_url") or data_field.get("gateway_url")
+
+    # If gateway_url is base64 encoded, decode it
+    if gateway_url and not str(gateway_url).startswith("http"):
+        try:
+            decoded = base64.b64decode(gateway_url).decode("utf-8")
+            if decoded.startswith("http"):
+                gateway_url = decoded
+        except Exception:
+            pass
+
+    txn.gateway_url = gateway_url or ""
+
+    # 2. Step 2: Handle specific payment rail
+    if payment_method == "MOBILE_MONEY":
+        wallet_payload = {
+            "order_id": order_id,
+            "transid": f"TXN-{order_id}",
+            "msisdn": clean_phone,
+        }
+        wallet_res = client.post("/v1/checkout/wallet-payment", wallet_payload)
+        txn.raw_response = json.dumps({"order_minimal": order_res, "wallet_payment": wallet_res})
+        
+        wallet_result = (wallet_res.get("result") or "").upper()
+        wallet_code = (wallet_res.get("resultcode") or "").strip()
+        
+        if wallet_result in ("SUCCESS", "PENDING", "000") or wallet_code in ("000", "200"):
+            txn.save(ignore_permissions=True)
+            frappe.db.commit()
+            return {
+                "status": "success",
+                "message": f"USSD PIN prompt sent to {clean_phone}. Please enter your PIN on your phone to complete payment.",
+                "order_id": order_id,
+                "transaction_id": txn.name,
+                "invoice_name": inv.name,
+                "amount": pay_amount,
+                "currency": inv.currency or "TZS",
+                "payment_method": "MOBILE_MONEY",
+                "phone_number": clean_phone,
+                "action": "WAIT_FOR_USSD_PIN",
+            }
+        else:
+            err = wallet_res.get("message") or "Failed to trigger USSD push on mobile wallet"
+            txn.error_message = err
+            txn.save(ignore_permissions=True)
+            frappe.db.commit()
+            return {
+                "status": "error",
+                "message": err,
+                "order_id": order_id,
+                "wallet_response": wallet_res,
+            }
+
+    elif payment_method in ("CARD", "HOSTED"):
+        txn.save(ignore_permissions=True)
+        frappe.db.commit()
+        return {
+            "status": "success",
+            "message": "Payment session initialized. Please complete payment on the secure gateway.",
+            "order_id": order_id,
+            "transaction_id": txn.name,
+            "invoice_name": inv.name,
+            "amount": pay_amount,
+            "currency": inv.currency or "TZS",
+            "payment_method": payment_method,
+            "gateway_url": gateway_url,
+            "action": "OPEN_WEBVIEW",
+        }
+
+    elif payment_method == "QR_CODE":
+        # QR Code is available via hosted page or direct QR data
+        qr_string = gateway_url or f"SELCOM:ORDER:{order_id}:AMOUNT:{pay_amount}"
+        txn.qr_data = qr_string
+        txn.save(ignore_permissions=True)
+        frappe.db.commit()
+        return {
+            "status": "success",
+            "message": "Dynamic QR code generated. Scan with your banking app or M-Pesa.",
+            "order_id": order_id,
+            "transaction_id": txn.name,
+            "invoice_name": inv.name,
+            "amount": pay_amount,
+            "currency": inv.currency or "TZS",
+            "payment_method": "QR_CODE",
+            "qr_data": qr_string,
+            "gateway_url": gateway_url,
+            "action": "DISPLAY_QR",
+        }
+
+    txn.save(ignore_permissions=True)
+    frappe.db.commit()
+
+    return {
+        "status": "success",
+        "order_id": order_id,
+        "transaction_id": txn.name,
+        "invoice_name": inv.name,
+        "amount": pay_amount,
+        "currency": inv.currency or "TZS",
+        "gateway_url": gateway_url,
+    }
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_payment_status(order_id=None, transaction_id=None):
+    """Query current payment status from local DB and Selcom Gateway."""
+    req = getattr(frappe, "form_dict", None) or {}
+    order_id = (order_id or transaction_id or req.get("order_id") or req.get("transaction_id") or req.get("order") or "").strip()
+
+    if not order_id:
+        return {"status": "error", "message": "order_id is required"}
+
+    # Look up by order_id or transaction name
+    if frappe.db.exists("Viva Payment Transaction", order_id):
+        txn = frappe.get_doc("Viva Payment Transaction", order_id)
+    elif frappe.db.exists("Viva Payment Transaction", {"order_id": order_id}):
+        txn = frappe.get_doc("Viva Payment Transaction", {"order_id": order_id})
+    else:
+        return {"status": "error", "message": "Payment transaction not found"}
+
+    # If transaction is already resolved, return status directly
+    if txn.status in ("Success", "Failed", "Cancelled"):
+        return {
+            "status": "success",
+            "order_id": txn.order_id,
+            "transaction_status": txn.status,
+            "invoice_name": txn.sales_invoice,
+            "amount": txn.amount,
+            "currency": txn.currency,
+            "payment_entry": txn.payment_entry,
+            "selcom_reference": txn.selcom_reference,
+        }
+
+    # Query gateway for live status
+    client = SelcomClient()
+    if client.enabled and client.vendor_id:
+        status_res = client.get("/v1/checkout/order-status", {"order_id": txn.order_id})
+        data = status_res.get("data")
+        payment_status = None
+        if isinstance(data, list) and len(data) > 0:
+            payment_status = data[0].get("payment_status") or data[0].get("order_status")
+        elif isinstance(data, dict):
+            payment_status = data.get("payment_status") or data.get("order_status")
+
+        if payment_status in ("COMPLETED", "SUCCESS", "PAID"):
+            # Trigger reconciliation if not yet reconciled
+            from propms.api.v1.payments.webhook import process_successful_payment
+            process_successful_payment(
+                order_id=txn.order_id,
+                selcom_ref=status_res.get("transid") or txn.order_id,
+                amount=txn.amount,
+                raw_payload=status_res,
+            )
+            txn.reload()
+
+    return {
+        "status": "success",
+        "order_id": txn.order_id,
+        "transaction_status": txn.status,
+        "invoice_name": txn.sales_invoice,
+        "amount": txn.amount,
+        "currency": txn.currency,
+        "payment_entry": txn.payment_entry,
+        "selcom_reference": txn.selcom_reference,
+    }
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_payment(order_id=None):
+    """Cancel an active pending payment order."""
+    req = getattr(frappe, "form_dict", None) or {}
+    order_id = (order_id or req.get("order_id") or "").strip()
+
+    if not order_id:
+        return {"status": "error", "message": "order_id is required"}
+
+    if not frappe.db.exists("Viva Payment Transaction", {"order_id": order_id}):
+        return {"status": "error", "message": "Payment transaction not found"}
+
+    txn = frappe.get_doc("Viva Payment Transaction", {"order_id": order_id})
+    if txn.status == "Success":
+        return {"status": "error", "message": "Cannot cancel an already completed transaction"}
+
+    client = SelcomClient()
+    if client.enabled:
+        client.delete("/v1/checkout/cancel-order", {"order_id": order_id})
+
+    txn.status = "Cancelled"
+    txn.save(ignore_permissions=True)
+    frappe.db.commit()
+
+    return {
+        "status": "success",
+        "message": "Payment order cancelled successfully",
+        "order_id": order_id,
+    }
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+def get_payment_methods():
+    """Return list of enabled payment methods and configurations for the mobile app."""
+    settings = get_selcom_settings()
+    enabled = bool(settings.get("enabled", 1))
+
+    methods = [
+        {
+            "id": "MOBILE_MONEY",
+            "title": "Mobile Money",
+            "subtitle": "Instant USSD Push (M-Pesa, Tigo, Airtel, HaloPesa)",
+            "icon": "phone_android",
+            "enabled": enabled,
+            "providers": [
+                {"name": "Vodacom M-Pesa", "code": "MPESA", "prefix": ["074", "075", "076"]},
+                {"name": "Mixx by Yas (Tigo)", "code": "TIGO", "prefix": ["071", "065", "067"]},
+                {"name": "Airtel Money", "code": "AIRTEL", "prefix": ["068", "069", "078"]},
+                {"name": "HaloPesa", "code": "HALOPESA", "prefix": ["062"]},
+            ],
+        },
+        {
+            "id": "CARD",
+            "title": "Credit / Debit Card",
+            "subtitle": "Visa, Mastercard, UnionPay (3D-Secure)",
+            "icon": "credit_card",
+            "enabled": enabled,
+            "providers": [
+                {"name": "Visa", "code": "VISA"},
+                {"name": "Mastercard", "code": "MASTERCARD"},
+            ],
+        },
+        {
+            "id": "QR_CODE",
+            "title": "QR Code (TanQR / Masterpass)",
+            "subtitle": "Scan & Pay with any Tanzanian Banking App",
+            "icon": "qr_code_scanner",
+            "enabled": enabled,
+            "providers": [
+                {"name": "TanQR (National Standard)", "code": "TANQR"},
+                {"name": "Masterpass QR", "code": "MASTERPASS"},
+            ],
+        },
+        {
+            "id": "HOSTED",
+            "title": "All Payment Options",
+            "subtitle": "Selcom Secure Web Checkout",
+            "icon": "language",
+            "enabled": enabled,
+        },
+    ]
+
+    return {
+        "status": "success",
+        "gateway_enabled": enabled,
+        "currency": "TZS",
+        "methods": methods,
+    }

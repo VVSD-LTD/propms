@@ -172,7 +172,9 @@ def get_user_notifications(limit=20, offset=0):
 		notifications = frappe.db.sql(
 			"""
 			SELECT DISTINCT n.name, n.subject, n.message, n.company, n.property,
-				n.customer, n.creation, n.sender
+				n.customer, n.creation, n.sender,
+				COALESCE(n.category, 'Notice') AS category,
+				COALESCE(n.target_audience, 'Everyone') AS target_audience
 			FROM `tabMobile Notifications` n
 			INNER JOIN `tabNotified Users` nu
 				ON nu.parent = n.name AND nu.parenttype = %s

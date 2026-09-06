@@ -1,0 +1,201 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "VCL-.YYYY.-.#####",
+ "creation": "2026-09-01 15:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "call_overview_section",
+  "call_type",
+  "status",
+  "room_name",
+  "column_break_ov1",
+  "started_at",
+  "connected_at",
+  "ended_at",
+  "duration_seconds",
+  "caller_section",
+  "caller",
+  "caller_name",
+  "column_break_cal1",
+  "caller_unit",
+  "caller_role",
+  "receiver_section",
+  "receiver",
+  "receiver_name",
+  "column_break_rec1",
+  "receiver_unit",
+  "receiver_role"
+ ],
+ "fields": [
+  {
+   "fieldname": "call_overview_section",
+   "fieldtype": "Section Break",
+   "label": "Call Overview"
+  },
+  {
+   "default": "Voice",
+   "fieldname": "call_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Call Type",
+   "options": "Voice\nVideo",
+   "reqd": 1
+  },
+  {
+   "default": "Initiated",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Initiated\nRinging\nAnswered\nMissed\nDeclined\nEnded",
+   "reqd": 1
+  },
+  {
+   "fieldname": "room_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "LiveKit Room Name"
+  },
+  {
+   "fieldname": "column_break_ov1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "started_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Started At"
+  },
+  {
+   "fieldname": "connected_at",
+   "fieldtype": "Datetime",
+   "label": "Connected At"
+  },
+  {
+   "fieldname": "ended_at",
+   "fieldtype": "Datetime",
+   "label": "Ended At"
+  },
+  {
+   "default": "0",
+   "fieldname": "duration_seconds",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Duration (Seconds)"
+  },
+  {
+   "fieldname": "caller_section",
+   "fieldtype": "Section Break",
+   "label": "Caller Information"
+  },
+  {
+   "fieldname": "caller",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Caller User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "caller_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Caller Name"
+  },
+  {
+   "fieldname": "column_break_cal1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "caller_unit",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Caller Unit"
+  },
+  {
+   "fieldname": "caller_role",
+   "fieldtype": "Data",
+   "label": "Caller Role"
+  },
+  {
+   "fieldname": "receiver_section",
+   "fieldtype": "Section Break",
+   "label": "Receiver Information"
+  },
+  {
+   "fieldname": "receiver",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Receiver User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "receiver_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Receiver Name"
+  },
+  {
+   "fieldname": "column_break_rec1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "receiver_unit",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Receiver Unit"
+  },
+  {
+   "fieldname": "receiver_role",
+   "fieldtype": "Data",
+   "label": "Receiver Role"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-01 15:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Viva Call Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "started_at",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

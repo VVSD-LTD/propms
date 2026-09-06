@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"PfLfj_RplK\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Property Management</span>\",\"col\":12}},{\"id\":\"z6eydAo1jd\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"AmH8hNIrDg\",\"type\":\"card\",\"data\":{\"card_name\":\"Documents\",\"col\":4}},{\"id\":\"8PgILHYQkX\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"ivrlP8IHO5\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports and Analytics\",\"col\":4}}]",
+ "content": "[{\"id\":\"PfLfj_RplK\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Property Management</span>\",\"col\":12}},{\"id\":\"z6eydAo1jd\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"AmH8hNIrDg\",\"type\":\"card\",\"data\":{\"card_name\":\"Documents\",\"col\":4}},{\"id\":\"8PgILHYQkX\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"ivrlP8IHO5\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports and Analytics\",\"col\":4}},{\"id\":\"yLRZ0sNK8g\",\"type\":\"card\",\"data\":{\"card_name\":\"Mobile App\",\"col\":3}}]",
  "creation": "2023-05-12 10:26:01.600970",
  "custom_blocks": [],
  "docstatus": 0,
@@ -329,9 +329,148 @@
    "only_for": "Tanzania",
    "report_ref_doctype": "Lease",
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mobile App",
+   "link_count": 13,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Mobile Notifications",
+   "link_count": 0,
+   "link_to": "Mobile Notifications",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Maintenance Users",
+   "link_count": 0,
+   "link_to": "Maintenance Users",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Sub Contractor User",
+   "link_count": 0,
+   "link_to": "Sub Contractor User",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Mobile App Settings",
+   "link_count": 0,
+   "link_to": "Mobile App Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Terms and Conditions",
+   "link_count": 0,
+   "link_to": "Terms and Conditions",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Visitor Gate Pass",
+   "link_count": 0,
+   "link_to": "Visitor Gate Pass",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Viva Amenity",
+   "link_count": 0,
+   "link_to": "Viva Amenity",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Viva Amenity Booking",
+   "link_count": 0,
+   "link_to": "Viva Amenity Booking",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Viva Emergency Incident",
+   "link_count": 0,
+   "link_to": "Viva Emergency Incident",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Viva Building Contact",
+   "link_count": 0,
+   "link_to": "Viva Building Contact",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Viva Call Log",
+   "link_count": 0,
+   "link_to": "Viva Call Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Viva Selcom Settings",
+   "link_count": 0,
+   "link_to": "Viva Selcom Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Viva Payment Transaction",
+   "link_count": 0,
+   "link_to": "Viva Payment Transaction",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-07-31 13:05:34.746244",
+ "modified": "2026-09-05 09:21:58.882444",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property Management",

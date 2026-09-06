@@ -26,7 +26,12 @@
   "section_break_tefh",
   "update_message",
   "column_break_hznu",
-  "maintenance_message"
+  "maintenance_message",
+  "livekit_settings_tab",
+  "livekit_enabled",
+  "livekit_url",
+  "livekit_api_key",
+  "livekit_api_secret"
  ],
  "fields": [
   {
@@ -153,6 +158,33 @@
    "fieldname": "maintenance_message",
    "fieldtype": "Small Text",
    "label": "Maintenance Message"
+  },
+  {
+   "fieldname": "livekit_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "LiveKit Calling"
+  },
+  {
+   "default": "1",
+   "fieldname": "livekit_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Voice/Video Calling"
+  },
+  {
+   "description": "LiveKit WebSocket URL (e.g. wss://livekit.vvsdtz.com or wss://viva-towers.livekit.cloud)",
+   "fieldname": "livekit_url",
+   "fieldtype": "Data",
+   "label": "LiveKit Server URL"
+  },
+  {
+   "fieldname": "livekit_api_key",
+   "fieldtype": "Data",
+   "label": "LiveKit API Key"
+  },
+  {
+   "fieldname": "livekit_api_secret",
+   "fieldtype": "Password",
+   "label": "LiveKit API Secret"
   }
  ],
  "grid_page_length": 50,

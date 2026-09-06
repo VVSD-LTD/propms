@@ -1,0 +1,189 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:amenity_name",
+ "creation": "2026-09-01 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "basic_info_section",
+  "amenity_name",
+  "category",
+  "is_active",
+  "column_break_info",
+  "capacity",
+  "requires_booking",
+  "max_advance_days",
+  "operating_hours_section",
+  "open_time",
+  "close_time",
+  "column_break_hours",
+  "slot_duration_mins",
+  "media_section",
+  "cover_image",
+  "gallery_images",
+  "description",
+  "guidelines_section",
+  "guidelines"
+ ],
+ "fields": [
+  {
+   "fieldname": "basic_info_section",
+   "fieldtype": "Section Break",
+   "label": "Basic Information"
+  },
+  {
+   "fieldname": "amenity_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Amenity Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "Leisure",
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Category",
+   "options": "\nSports\nLeisure\nEvent Space\nWellness\nBusiness",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "column_break_info",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "10",
+   "fieldname": "capacity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Capacity (Persons / Slots)"
+  },
+  {
+   "default": "1",
+   "fieldname": "requires_booking",
+   "fieldtype": "Check",
+   "label": "Requires Booking"
+  },
+  {
+   "default": "7",
+   "fieldname": "max_advance_days",
+   "fieldtype": "Int",
+   "label": "Max Advance Booking Days"
+  },
+  {
+   "fieldname": "operating_hours_section",
+   "fieldtype": "Section Break",
+   "label": "Operating Hours & Slots"
+  },
+  {
+   "default": "06:00:00",
+   "fieldname": "open_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Open Time",
+   "reqd": 1
+  },
+  {
+   "default": "22:00:00",
+   "fieldname": "close_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Close Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_hours",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "60",
+   "fieldname": "slot_duration_mins",
+   "fieldtype": "Int",
+   "label": "Slot Duration (Minutes)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "media_section",
+   "fieldtype": "Section Break",
+   "label": "Media & Details"
+  },
+  {
+   "fieldname": "cover_image",
+   "fieldtype": "Attach Image",
+   "label": "Cover Image"
+  },
+  {
+   "fieldname": "gallery_images",
+   "fieldtype": "Table",
+   "label": "Gallery Images (Carousel)",
+   "options": "Amenity Image"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "guidelines_section",
+   "fieldtype": "Section Break",
+   "label": "Rules & Guidelines"
+  },
+  {
+   "fieldname": "guidelines",
+   "fieldtype": "Text Editor",
+   "label": "Guidelines"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-01 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Viva Amenity",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "amenity_name",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

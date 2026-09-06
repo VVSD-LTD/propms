@@ -66,7 +66,7 @@ def make_transaction(doc, for_self_consumption=False):
             if pos:
                 frappe.throw(_("POS Stock Entry cannot be created for Self Consumption items"))
             frappe.msgprint(_(se_msgprint))
-            for item_row in doc.materials_billed:
+            for item_row in (doc.get("materials_billed") or []):
                 if (
                     item_row.item
                     and item_row.quantity
@@ -153,7 +153,7 @@ def make_transaction(doc, for_self_consumption=False):
                 make_sales_pos_payment(invoice_doc, user_pos_profile.name)
                 si_msgprint = "POS " + si_msgprint
             frappe.msgprint(_(si_msgprint))
-            for item_row in doc.materials_billed:
+            for item_row in (doc.get("materials_billed") or []):
                 if (
                     item_row.item
                     and item_row.quantity
@@ -193,7 +193,7 @@ def make_transaction(doc, for_self_consumption=False):
     if is_grouped == 1:
         # Make grouped Sales Invoice for POS items
         items = []
-        for item_row in doc.materials_billed:
+        for item_row in (doc.get("materials_billed") or []):
             if (
                 item_row.item
                 and item_row.quantity
@@ -214,7 +214,7 @@ def make_transaction(doc, for_self_consumption=False):
 
         # Make grouped items Sales Invoice for non-POS items
         items = []
-        for item_row in doc.materials_billed:
+        for item_row in (doc.get("materials_billed") or []):
             if (
                 item_row.item
                 and item_row.quantity
@@ -235,7 +235,7 @@ def make_transaction(doc, for_self_consumption=False):
 
     else: # Not grouped
         # Make Sales Invoice for non-grouped items
-        for item_row in doc.materials_billed:
+        for item_row in (doc.get("materials_billed") or []):
             items = []
             if (
                 item_row.item
@@ -261,7 +261,7 @@ def make_transaction(doc, for_self_consumption=False):
     # Make Stock Entry for Self Consumption items
     if for_self_consumption and doc.status == "Closed":
         items = []
-        for item_row in doc.materials_billed:
+        for item_row in (doc.get("materials_billed") or []):
             if (
                 item_row.item
                 and item_row.quantity
@@ -301,13 +301,13 @@ def get_items_group():
 
 def validate_materials_required(doc):
     have_items = 0
-    for item in doc.materials_required:
+    for item in (doc.get("materials_required") or []):
         if item.material_status != "Self Consumption":
             have_items += 1
     if have_items > 0 and doc.status == "Closed":
         frappe.throw(
             _(
-                "The materials required has items and so the job card cannot be closed. Please confirm billing status fo the materials required."
+                "The materials required has items and so the job card cannot be closed. Please confirm billing status for the materials required."
             )
         )
 

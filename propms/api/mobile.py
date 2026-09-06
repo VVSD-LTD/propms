@@ -725,3 +725,433 @@ def cleanup_expired_otps():
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "cleanup_expired_otps")
         return {"status": "error", "message": str(e)}
+
+
+# -------------------------------------------------------------------------
+# Invoice API Wrappers (v1)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def get_tenant_invoices(status="all", lease=None, page=1, page_length=20):
+    from propms.api.v1.invoices import invoices as v1_invoices
+    return v1_invoices.get_tenant_invoices(status=status, lease=lease, page=page, page_length=page_length)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_invoice_details(invoice_name=None):
+    from propms.api.v1.invoices import invoices as v1_invoices
+    return v1_invoices.get_invoice_details(invoice_name=invoice_name)
+
+
+@frappe.whitelist(methods=["GET"])
+def download_invoice_pdf(invoice_name=None):
+    from propms.api.v1.invoices import invoices as v1_invoices
+    return v1_invoices.download_invoice_pdf(invoice_name=invoice_name)
+
+
+@frappe.whitelist(methods=["POST"])
+def initiate_invoice_payment(invoice_name=None, amount=None, phone_number=None, payment_channel="SELCOM_PUSH"):
+    from propms.api.v1.invoices import invoices as v1_invoices
+    return v1_invoices.initiate_invoice_payment(
+        invoice_name=invoice_name,
+        amount=amount,
+        phone_number=phone_number,
+        payment_channel=payment_channel,
+    )
+
+
+# -------------------------------------------------------------------------
+# Visitor Gate Pass API Wrappers (v1)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["POST"])
+def create_visitor_pass(
+    visitor_name=None,
+    phone_number=None,
+    visitor_type="Guest",
+    expected_arrival_date=None,
+    expected_arrival_time=None,
+    vehicle_plate=None,
+    validity_type="One-Time Entry",
+    lease=None,
+    property_unit=None,
+    notes=None,
+):
+    from propms.api.v1.gate_pass import gate_pass as v1_gate_pass
+    return v1_gate_pass.create_visitor_pass(
+        visitor_name=visitor_name,
+        phone_number=phone_number,
+        visitor_type=visitor_type,
+        expected_arrival_date=expected_arrival_date,
+        expected_arrival_time=expected_arrival_time,
+        vehicle_plate=vehicle_plate,
+        validity_type=validity_type,
+        lease=lease,
+        property_unit=property_unit,
+        notes=notes,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_tenant_visitor_passes(status="all", lease=None, page=1, page_length=20):
+    from propms.api.v1.gate_pass import gate_pass as v1_gate_pass
+    return v1_gate_pass.get_tenant_visitor_passes(
+        status=status,
+        lease=lease,
+        page=page,
+        page_length=page_length,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_visitor_pass_details(pass_id=None):
+    from propms.api.v1.gate_pass import gate_pass as v1_gate_pass
+    return v1_gate_pass.get_visitor_pass_details(pass_id=pass_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_visitor_pass(pass_id=None):
+    from propms.api.v1.gate_pass import gate_pass as v1_gate_pass
+    return v1_gate_pass.cancel_visitor_pass(pass_id=pass_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def validate_and_checkin_visitor(pass_id=None, notes=None):
+    from propms.api.v1.gate_pass import gate_pass as v1_gate_pass
+    return v1_gate_pass.validate_and_checkin_visitor(pass_id=pass_id, notes=notes)
+
+
+@frappe.whitelist(methods=["POST"])
+def checkout_visitor(pass_id=None):
+    from propms.api.v1.gate_pass import gate_pass as v1_gate_pass
+    return v1_gate_pass.checkout_visitor(pass_id=pass_id)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_security_gate_passes(date=None, status=None, search=None, page=1, page_length=50):
+    from propms.api.v1.gate_pass import gate_pass as v1_gate_pass
+    return v1_gate_pass.get_security_gate_passes(
+        date=date,
+        status=status,
+        search=search,
+        page=page,
+        page_length=page_length,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_tenant_apartments():
+    from propms.api.v1.gate_pass import gate_pass as v1_gate_pass
+    return v1_gate_pass.get_tenant_apartments()
+
+
+# -------------------------------------------------------------------------
+# Viva Amenities & Booking API Wrappers (v1)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def get_amenities(category=None):
+    from propms.api.v1.amenities import get_amenities as v1_get_amenities
+    return v1_get_amenities(category=category)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_amenity_detail(amenity=None):
+    from propms.api.v1.amenities import get_amenity_detail as v1_get_amenity_detail
+    return v1_get_amenity_detail(amenity=amenity)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_available_slots(amenity=None, booking_date=None):
+    from propms.api.v1.amenities import get_available_slots as v1_get_available_slots
+    return v1_get_available_slots(amenity=amenity, booking_date=booking_date)
+
+
+@frappe.whitelist(methods=["POST"])
+def create_amenity_booking(
+    amenity=None,
+    booking_date=None,
+    start_time=None,
+    end_time=None,
+    guests_count=1,
+    notes=None,
+    lease=None,
+    property_unit=None,
+):
+    from propms.api.v1.amenities import create_booking as v1_create_booking
+    return v1_create_booking(
+        amenity=amenity,
+        booking_date=booking_date,
+        start_time=start_time,
+        end_time=end_time,
+        guests_count=guests_count,
+        notes=notes,
+        lease=lease,
+        property_unit=property_unit,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_my_amenity_bookings(status="all", page=1, page_length=20):
+    from propms.api.v1.amenities import get_my_bookings as v1_get_my_bookings
+    return v1_get_my_bookings(status=status, page=page, page_length=page_length)
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_amenity_booking(booking_id=None, cancellation_reason=None):
+    from propms.api.v1.amenities import cancel_booking as v1_cancel_booking
+    return v1_cancel_booking(booking_id=booking_id, cancellation_reason=cancellation_reason)
+
+
+# -------------------------------------------------------------------------
+# Viva Emergency Incidents API Wrappers (v1)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["POST"])
+def report_emergency(incident_type=None, property_unit=None, location_details=None, details=None):
+    from propms.api.v1.emergency import report_emergency as v1_report_emergency
+    return v1_report_emergency(
+        incident_type=incident_type,
+        property_unit=property_unit,
+        location_details=location_details,
+        details=details,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def update_emergency_status(incident_id=None, status=None, resolution_notes=None):
+    from propms.api.v1.emergency import update_incident_status as v1_update_incident_status
+    return v1_update_incident_status(
+        incident_id=incident_id,
+        status=status,
+        resolution_notes=resolution_notes,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_emergency_incidents(status="all", page=1, page_length=20):
+    from propms.api.v1.emergency import get_emergency_incidents as v1_get_emergency_incidents
+    return v1_get_emergency_incidents(status=status, page=page, page_length=page_length)
+
+
+# -------------------------------------------------------------------------
+# Viva Building Directory API Wrappers (v1)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def get_directory_contacts(department=None):
+    from propms.api.v1.directory import get_directory_contacts as v1_get_directory_contacts
+    return v1_get_directory_contacts(department=department)
+
+
+# -------------------------------------------------------------------------
+# Viva Voice & Video Calling API Wrappers (v1)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def get_call_config():
+    from propms.api.v1.calls import get_livekit_config as v1_get_livekit_config
+    cfg = v1_get_livekit_config()
+    return {
+        "status": "success",
+        "enabled": cfg.get("enabled", True),
+        "server_url": cfg.get("url", ""),
+    }
+
+
+@frappe.whitelist(methods=["POST"])
+def initiate_call(receiver=None, call_type="Voice"):
+    from propms.api.v1.calls import initiate_call as v1_initiate_call
+    return v1_initiate_call(receiver=receiver, call_type=call_type)
+
+
+@frappe.whitelist(methods=["POST"])
+def answer_call(call_id=None):
+    from propms.api.v1.calls import answer_call as v1_answer_call
+    return v1_answer_call(call_id=call_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def end_call(call_id=None, reason="ended"):
+    from propms.api.v1.calls import end_call as v1_end_call
+    return v1_end_call(call_id=call_id, reason=reason)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_call_history(status="all", page=1, page_length=20):
+    from propms.api.v1.calls import get_call_history as v1_get_call_history
+    return v1_get_call_history(status=status, page=page, page_length=page_length)
+
+
+# Chunked File Upload Endpoints
+@frappe.whitelist()
+def start_upload_session(filename=None, total_chunks=1, total_size=0, file_type=None, doctype=None, docname=None, fieldname=None, is_private=0):
+    from propms.api.v1.files.chunked_upload import start_upload_session as v1_start_upload_session
+    return v1_start_upload_session(
+        filename=filename,
+        total_chunks=total_chunks,
+        total_size=total_size,
+        file_type=file_type,
+        doctype=doctype,
+        docname=docname,
+        fieldname=fieldname,
+        is_private=is_private,
+    )
+
+
+@frappe.whitelist()
+def upload_chunk(session_id=None, chunk_index=None):
+    from propms.api.v1.files.chunked_upload import upload_chunk as v1_upload_chunk
+    return v1_upload_chunk(session_id=session_id, chunk_index=chunk_index)
+
+
+@frappe.whitelist()
+def finalize_upload(session_id=None, doctype=None, docname=None, fieldname=None, is_private=None):
+    from propms.api.v1.files.chunked_upload import finalize_upload as v1_finalize_upload
+    return v1_finalize_upload(
+        session_id=session_id,
+        doctype=doctype,
+        docname=docname,
+        fieldname=fieldname,
+        is_private=is_private,
+    )
+
+
+@frappe.whitelist()
+def get_upload_session_status(session_id=None):
+    from propms.api.v1.files.chunked_upload import get_upload_session_status as v1_get_upload_session_status
+    return v1_get_upload_session_status(session_id=session_id)
+
+
+@frappe.whitelist()
+def abort_upload_session(session_id=None):
+    from propms.api.v1.files.chunked_upload import abort_upload_session as v1_abort_upload_session
+    return v1_abort_upload_session(session_id=session_id)
+
+
+@frappe.whitelist()
+def upload_attachment(file_data=None, filename=None, ticket_id=None):
+    """Upload a single file (base64) matching vsd_helpdesk mobile API."""
+    try:
+        import base64
+        req = getattr(frappe, "form_dict", None) or {}
+        file_data = file_data or req.get("file_data")
+        filename = filename or req.get("filename") or "upload.bin"
+        ticket_id = ticket_id or req.get("ticket_id")
+
+        if not file_data:
+            return {"status": "error", "message": "file_data is required"}
+
+        file_content = base64.b64decode(file_data)
+        file_doc = frappe.get_doc({
+            "doctype": "File",
+            "file_name": filename,
+            "content": file_content,
+            "is_private": 0,
+        })
+        if ticket_id:
+            file_doc.attached_to_doctype = "Viva Job Card" if frappe.db.exists("DocType", "Viva Job Card") else "Job Card"
+            file_doc.attached_to_name = ticket_id
+        file_doc.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        return {
+            "status": "success",
+            "file_url": file_doc.file_url,
+            "file_name": file_doc.name,
+            "name": file_doc.name,
+        }
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "upload_attachment")
+        return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def upload_mobile_image(file_data=None, filename=None, ticket_id=None):
+    return upload_attachment(file_data=file_data, filename=filename, ticket_id=ticket_id)
+
+
+# Ticket Status Lifecycle Endpoints
+@frappe.whitelist(methods=["GET", "POST"])
+def put_ticket_on_hold(ticket_id=None, hold_reason=None):
+    from propms.api.v1.job_card.job_card import put_ticket_on_hold as v1_put_ticket_on_hold
+    return v1_put_ticket_on_hold(ticket_id=ticket_id, hold_reason=hold_reason)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def resume_ticket_from_hold(ticket_id=None):
+    from propms.api.v1.job_card.job_card import resume_ticket_from_hold as v1_resume_ticket_from_hold
+    return v1_resume_ticket_from_hold(ticket_id=ticket_id)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def resolve_ticket(ticket_id=None, defect_found=None, resolution_details=None):
+    from propms.api.v1.job_card.job_card import resolve_ticket as v1_resolve_ticket
+    return v1_resolve_ticket(
+        ticket_id=ticket_id,
+        defect_found=defect_found,
+        resolution_details=resolution_details,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def close_ticket_with_feedback(ticket_id=None, rating=None, customer_feedback=None):
+    from propms.api.v1.job_card.job_card import close_ticket_with_feedback as v1_close_ticket_with_feedback
+    return v1_close_ticket_with_feedback(
+        ticket_id=ticket_id,
+        rating=rating,
+        customer_feedback=customer_feedback,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def change_ticket_status(ticket_id=None, status=None, reason=None, defect_found=None, resolution_details=None):
+    from propms.api.v1.job_card.job_card import change_ticket_status as v1_change_ticket_status
+    return v1_change_ticket_status(
+        ticket_id=ticket_id,
+        status=status,
+        reason=reason,
+        defect_found=defect_found,
+        resolution_details=resolution_details,
+    )
+
+
+# Selcom Payment Endpoints
+@frappe.whitelist(methods=["POST"])
+def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONEY", phone_number=None):
+    from propms.api.v1.payments.services import initiate_payment as v1_initiate_payment
+    return v1_initiate_payment(
+        invoice_name=invoice_name,
+        amount=amount,
+        payment_method=payment_method,
+        phone_number=phone_number,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_payment_status(order_id=None, transaction_id=None):
+    from propms.api.v1.payments.services import get_payment_status as v1_get_payment_status
+    return v1_get_payment_status(order_id=order_id, transaction_id=transaction_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_payment(order_id=None):
+    from propms.api.v1.payments.services import cancel_payment as v1_cancel_payment
+    return v1_cancel_payment(order_id=order_id)
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+def get_payment_methods():
+    from propms.api.v1.payments.services import get_payment_methods as v1_get_payment_methods
+    return v1_get_payment_methods()
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+def selcom_ipn_webhook(*args, **kwargs):
+    from propms.api.v1.payments.webhook import selcom_ipn_webhook as v1_selcom_ipn_webhook
+    return v1_selcom_ipn_webhook(*args, **kwargs)
+
+
+
+
+
+
+
+
+
+
+

@@ -83,6 +83,7 @@ def _get_subcontractor_recipients_for_supplier(supplier):
     if not supplier:
         return recipients
     try:
+        # 1. Sub Contractor User table
         rows = frappe.get_all(
             "Sub Contractor User",
             filters={"sub_contractor": supplier, "enabled": 1},
@@ -93,6 +94,21 @@ def _get_subcontractor_recipients_for_supplier(supplier):
                 recipients.add(r["user_email"])
             if r.get("user"):
                 recipients.add(r["user"])
+
+        # 2. Sub Contractor DocType linked to company/supplier
+        if frappe.db.table_exists("tabSub Contractor"):
+            sub_docs = frappe.get_all(
+                "Sub Contractor",
+                filters={"company": supplier},
+                fields=["user_id", "company_email", "personal_email"],
+            )
+            for s in sub_docs or []:
+                if s.get("user_id"):
+                    recipients.add(s["user_id"])
+                if s.get("company_email"):
+                    recipients.add(s["company_email"])
+                if s.get("personal_email"):
+                    recipients.add(s["personal_email"])
     except Exception:
         pass
     return recipients
@@ -155,6 +171,7 @@ def _get_technician_user_recipients_for_employee(employee_id):
     if not employee_id:
         return recipients
     try:
+        # 1. Maintenance Users
         rows = frappe.get_all(
             "Maintenance Users",
             filters={"employee": employee_id, "enabled": 1},
@@ -165,6 +182,12 @@ def _get_technician_user_recipients_for_employee(employee_id):
                 recipients.add(r["user_email"])
             if r.get("user"):
                 recipients.add(r["user"])
+
+        # 2. Employee.user_id fallback
+        if frappe.db.exists("Employee", employee_id):
+            emp_user = frappe.db.get_value("Employee", employee_id, "user_id")
+            if emp_user:
+                recipients.add(emp_user)
     except Exception:
         pass
     return recipients
@@ -806,10 +829,11 @@ def create_ticket(subject=None, description=None, property_name=None, issue_type
             except Exception:
                 pass
 
-        subject = payload.get("subject") if isinstance(payload, dict) else subject
-        description = payload.get("description") if isinstance(payload, dict) else description
-        property_name = payload.get("property_name") if isinstance(payload, dict) else property_name
-        issue_type = payload.get("issue_type") if isinstance(payload, dict) else issue_type
+        if isinstance(payload, dict):
+            subject = payload.get("subject") or subject
+            description = payload.get("description") or description
+            property_name = payload.get("property_name") or property_name
+            issue_type = payload.get("issue_type") or issue_type
 
         if frappe.session.user == "Guest":
             frappe.throw(_("Authentication required"), frappe.AuthenticationError)
@@ -899,26 +923,31 @@ def create_ticket(subject=None, description=None, property_name=None, issue_type
         # person_in_charge may be mandatory on Issue; allow creation without it
         issue.insert(ignore_permissions=True, ignore_mandatory=True)
 
-        # Seed chat thread: ticket description is the first communication message.
+        # Seed chat thread: ticket description / media is the first communication message.
         first_message = str(description).strip() if description else ""
-        if first_message:
+        ticket_att = None
+        if isinstance(payload, dict):
+            ticket_att = payload.get("attachment") or payload.get("file_url") or payload.get("image_attachment") or payload.get("video_attachment") or payload.get("video")
+
+        if first_message or ticket_att:
             try:
                 meta = frappe.get_meta("Issue")
                 if meta.has_field("custom_support_communication"):
-                    issue.append(
-                        "custom_support_communication",
-                        {
-                            "message_content": first_message,
-                            "sender": frappe.session.user,
-                            # Ticket creators are Tenant or Officer/Manager.
-                            # Initial ticket narration belongs in tenant_support.
-                            "channel": "tenant_support",
-                            "sender_type": _support_comm_sender_type_for_role(user_type),
-                            "status": "Sent",
-                            "delivery": "Delivered",
-                            "time_stamp": now(),
-                        },
-                    )
+                    comm_row = {
+                        "message_content": first_message or "Ticket opened",
+                        "sender": frappe.session.user,
+                        "channel": "tenant_support",
+                        "sender_type": _support_comm_sender_type_for_role(user_type),
+                        "status": "Sent",
+                        "delivery": "Delivered",
+                        "time_stamp": now(),
+                    }
+                    if ticket_att:
+                        comm_row["attachment"] = ticket_att
+                        lower_t = str(ticket_att).lower()
+                        if lower_t.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".heic")):
+                            comm_row["image"] = ticket_att
+                    issue.append("custom_support_communication", comm_row)
                     issue.flags.ignore_mandatory = True
                     issue.save(ignore_permissions=True)
             except Exception:
@@ -927,6 +956,97 @@ def create_ticket(subject=None, description=None, property_name=None, issue_type
                     frappe.get_traceback(),
                     f"create_ticket first message append failed: {issue.name}",
                 )
+
+        # Broadcast real-time notifications to staff and creator
+        try:
+            creator_fullname = frappe.utils.get_fullname(frappe.session.user) or frappe.session.user
+            customer_display = issue.customer or creator_fullname
+            staff_recipients = _get_officer_manager_recipients()
+            now_iso = frappe.utils.now_datetime().isoformat()
+
+            # 1. Real-time ticket_created payload
+            created_payload = {
+                "ticket_id": issue.name,
+                "issue_id": issue.name,
+                "subject": issue.subject,
+                "customer": customer_display,
+                "property_name": issue.property_name,
+                "issue_type": issue.issue_type,
+                "description": first_message or issue.subject,
+                "priority": issue.priority or "Medium",
+                "status": issue.status or "Open",
+                "raised_by": frappe.session.user,
+                "creator_name": creator_fullname,
+                "creation": str(issue.creation),
+                "timestamp": now_iso,
+            }
+
+            # Staff broadcast rooms for Flutter app
+            staff_broadcast_rooms = {
+                "maintenance",
+                "management",
+                "staff",
+                "all_staff",
+                "support_team",
+                "role:Property Staff",
+            }
+
+            for room in staff_broadcast_rooms:
+                try:
+                    frappe.publish_realtime(
+                        event="ticket_created",
+                        message=created_payload,
+                        room=room,
+                        after_commit=True,
+                    )
+                except Exception:
+                    pass
+
+            for u in staff_recipients:
+                for r in [f"user:{u}", f"user_{u}"]:
+                    try:
+                        frappe.publish_realtime(
+                            event="ticket_created",
+                            message=created_payload,
+                            room=r,
+                            after_commit=True,
+                        )
+                    except Exception:
+                        pass
+                try:
+                    frappe.publish_realtime(
+                        event="ticket_created",
+                        message=created_payload,
+                        user=u,
+                        after_commit=True,
+                    )
+                except Exception:
+                    pass
+
+            # 2. Background FCM push notifications to Maintenance Officers & Managers (Single clean alert)
+            from propms.api.v1.notifications.notifications import enqueue_ticket_created_push
+
+            title = f"New Job Card: #{issue.name}"
+            body = f"{customer_display} reported: {issue.subject}"
+
+            for staff_user in staff_recipients:
+                try:
+                    frappe.enqueue(
+                        enqueue_ticket_created_push,
+                        user=staff_user,
+                        ticket_id=issue.name,
+                        title=title,
+                        body=body,
+                        ticket_title=issue.subject,
+                        property_name=issue.property_name,
+                        creator_name=creator_fullname,
+                        queue="short",
+                    )
+                except Exception:
+                    pass
+
+        except Exception as notify_err:
+            frappe.log_error(frappe.get_traceback(), f"create_ticket notification dispatch error: {notify_err}")
 
         return {
             "status": "success",
@@ -960,8 +1080,12 @@ def send_ticket_communication(
     image_attachment=None,
     attachment=None,
     file_attachments=None,
+    video_attachment=None,
+    video=None,
     reply_to_idx=None,
     mentioned_emails=None,
+    channel=None,
+    communication_channel=None,
 ):
     """Send a message to an Issue using the Support Communication child table.
 
@@ -1012,7 +1136,7 @@ def send_ticket_communication(
             except Exception:
                 payload = payload
 
-        channel = None
+        passed_channel = channel or communication_channel
         if isinstance(payload, dict):
             if issue_id is None:
                 issue_id = payload.get("issue_id") or payload.get("ticket_id")
@@ -1020,16 +1144,23 @@ def send_ticket_communication(
                 ticket_id = payload.get("ticket_id") or payload.get("issue_id")
             if message_content is None:
                 message_content = payload.get("message_content")
-            if channel is None:
-                channel = payload.get("channel")
+            if passed_channel is None:
+                channel = payload.get("channel") or payload.get("communication_channel")
+            else:
+                channel = passed_channel
             if file_attachments is None:
                 file_attachments = payload.get("file_attachments")
             if mentioned_emails is None:
                 mentioned_emails = payload.get("mentioned_emails")
             if image_attachment is None:
-                image_attachment = payload.get("image_attachment")
+                image_attachment = payload.get("image_attachment") or payload.get("image")
+            if video_attachment is None:
+                video_attachment = payload.get("video_attachment") or payload.get("video") or payload.get("video_url")
             if attachment is None:
-                attachment = payload.get("attachment")
+                attachment = payload.get("attachment") or payload.get("file_url") or image_attachment or video_attachment
+        else:
+            channel = passed_channel
+            attachment = attachment or image_attachment or video_attachment or video
 
         if frappe.session.user == "Guest":
             frappe.throw(_("Authentication required"), frappe.AuthenticationError)
@@ -1037,8 +1168,13 @@ def send_ticket_communication(
         issue_name = (issue_id or ticket_id or "").strip()
         if not issue_name:
             return {"status": "error", "message": "issue_id (or ticket_id) is required"}
-        if not message_content or not str(message_content).strip():
-            return {"status": "error", "message": "message_content is required"}
+
+        message_text = str(message_content or "").strip()
+        has_media = bool(attachment or image_attachment or video_attachment or file_attachments)
+        if not message_text and not has_media:
+            return {"status": "error", "message": "message_content or attachment is required"}
+
+        message_content = message_text
 
         if not frappe.db.exists("Issue", issue_name):
             return {"status": "error", "message": "Issue not found"}
@@ -1254,6 +1390,11 @@ def send_ticket_communication(
             "User", frappe.session.user, ["full_name", "user_image", "email"], as_dict=True
         ) or {}
 
+        lower = str(communication_data.get("attachment") or "").lower()
+        is_video = lower.endswith((".mp4", ".mov", ".avi", ".mkv", ".webm", ".3gp", ".m4v"))
+        is_image = lower.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".heic"))
+        file_url = communication_data.get("attachment")
+
         payload = {
             "ticket_id": issue_name,
             "issue_id": issue_name,
@@ -1267,7 +1408,12 @@ def send_ticket_communication(
                 "status": getattr(saved, "status", None),
                 "delivery": getattr(saved, "delivery", None),
                 "time_stamp": getattr(saved, "time_stamp", None),
-                "attachment": getattr(saved, "attachment", None),
+                "attachment": file_url,
+                "image_attachment": file_url if is_image else getattr(saved, "image", None),
+                "image": file_url if is_image else getattr(saved, "image", None),
+                "video_attachment": file_url if is_video else None,
+                "video": file_url if is_video else None,
+                "file_type": "video" if is_video else ("image" if is_image else ("file" if file_url else "text")),
                 "sender_full_name": sender_info.get("full_name") or saved.sender,
                 "sender_profile_image": sender_info.get("user_image"),
             },
@@ -1292,29 +1438,38 @@ def send_ticket_communication(
         is_customer_message = row_sender_type == "tenant"
         is_support_message = row_sender_type != "tenant"
 
+        is_internal = (channel == "technician_support")
+        payload["is_internal"] = is_internal
+        payload["is_staff_only"] = is_internal
+        payload["communication_channel"] = channel
+        if "communication" in payload and isinstance(payload["communication"], dict):
+            payload["communication"]["is_internal"] = is_internal
+            payload["communication"]["is_staff_only"] = is_internal
+            payload["communication"]["communication_channel"] = channel
+
         # recipients for realtime + push
         recipients = set()
-        if issue.raised_by:
-            recipients.add(issue.raised_by)
-        # Keep assigned technician in the recipient set so they receive websocket/FCM
-        # updates the same way tenant users do (even if client is listening by user room).
-        if tech_emp:
-            recipients |= _get_technician_user_recipients_for_employee(tech_emp)
-        if channel == "tenant_support" and issue.customer:
-            lease_names = frappe.get_all(
-                "Lease", filters={"lease_customer": issue.customer}, pluck="name"
-            )
-            if lease_names:
-                tenant_users = frappe.get_all(
-                    "Tenant Details",
-                    filters={"parent": ["in", lease_names], "parenttype": "Lease"},
-                    pluck="user_email",
+        if channel == "tenant_support":
+            if issue.raised_by:
+                recipients.add(issue.raised_by)
+            if tech_emp:
+                recipients |= _get_technician_user_recipients_for_employee(tech_emp)
+            if issue.customer:
+                lease_names = frappe.get_all(
+                    "Lease", filters={"lease_customer": issue.customer}, pluck="name"
                 )
-                for email in tenant_users or []:
-                    if email:
-                        recipients.add(email)
+                if lease_names:
+                    tenant_users = frappe.get_all(
+                        "Tenant Details",
+                        filters={"parent": ["in", lease_names], "parenttype": "Lease"},
+                        pluck="user_email",
+                    )
+                    for email in tenant_users or []:
+                        if email:
+                            recipients.add(email)
             recipients |= _get_officer_manager_recipients()
         elif channel == "technician_support":
+            # Internal technician / staff chat: DO NOT add tenant users!
             recipients |= _get_officer_manager_recipients()
             if tech_emp:
                 recipients |= _get_technician_user_recipients_for_employee(tech_emp)
@@ -1326,25 +1481,36 @@ def send_ticket_communication(
 
         # Rooms to emit to
         rooms = set()
-        # Global support room (maintenance staff subscribe here)
         rooms.add("support_team")
-        # Emit to ticket rooms for all channels so assigned technicians (and other participants)
-        # subscribed on ticket rooms receive realtime events as reliably as tenants.
-        rooms |= {
-            f"doc:Issue/{issue_name}",
-            f"doc:Ticket/{issue_name}",
-            issue_name,
-            f"ticket:{issue_name}",
-        }
-        # Echo to sender room as well so mobile can confirm send immediately
+        if is_internal:
+            # Internal chat: broadcast ONLY to staff rooms, NEVER to tenant-facing ticket rooms!
+            rooms |= {
+                f"staff_ticket:{issue_name}",
+                f"staff_ticket_{issue_name}",
+                f"technician_ticket:{issue_name}",
+                f"technician_ticket_{issue_name}",
+            }
+        else:
+            # Tenant-facing chat: emit to ticket rooms
+            rooms |= {
+                f"doc:Issue/{issue_name}",
+                f"doc:Ticket/{issue_name}",
+                issue_name,
+                f"ticket:{issue_name}",
+                f"ticket_{issue_name}",
+            }
+
+        # Echo to sender room
         rooms.add(f"user:{frappe.session.user}")
+        rooms.add(f"user_{frappe.session.user}")
         for u in recipients:
             rooms.add(f"user:{u}")
+            rooms.add(f"user_{u}")
 
         # Log for debugging
         try:
             frappe.logger().info(
-                f"🎯 TICKET MESSAGE EMIT: ticket_id={issue_name}, rooms={list(rooms)}, sender={frappe.session.user}"
+                f"🎯 TICKET MESSAGE EMIT: ticket_id={issue_name}, channel={channel}, internal={is_internal}, rooms={list(rooms)}, sender={frappe.session.user}"
             )
         except Exception:
             pass
@@ -1364,6 +1530,18 @@ def send_ticket_communication(
                     )
                 except Exception:
                     pass
+
+        # Native user routing for maximum mobile client compatibility
+        for u in recipients:
+            try:
+                frappe.publish_realtime(
+                    event="ticket_message",
+                    message=payload,
+                    user=u,
+                    after_commit=True,
+                )
+            except Exception:
+                pass
 
         # Mention event (websocket)
         if mentioned_set:
@@ -1547,6 +1725,11 @@ def get_ticket_communications(ticket_id, limit=20, offset=0, channel=None):
                 except Exception:
                     pass
 
+            att = getattr(comm, "attachment", None) or getattr(comm, "image", None)
+            lower_att = str(att or "").lower()
+            is_vid = lower_att.endswith((".mp4", ".mov", ".avi", ".mkv", ".webm", ".3gp", ".m4v"))
+            is_img = lower_att.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".heic"))
+
             out = {
                 "message_content": comm.message_content,
                 "sender": comm.sender,
@@ -1557,9 +1740,12 @@ def get_ticket_communications(ticket_id, limit=20, offset=0, channel=None):
                 "time_stamp": getattr(comm, "time_stamp", None),
                 "status": getattr(comm, "status", None),
                 "delivery": getattr(comm, "delivery", None),
-                "image_attachment": getattr(comm, "image", None),
-                "attachment": getattr(comm, "attachment", None),
-                "image": getattr(comm, "image", None),
+                "attachment": att,
+                "image_attachment": att if is_img else getattr(comm, "image", None),
+                "image": att if is_img else getattr(comm, "image", None),
+                "video_attachment": att if is_vid else None,
+                "video": att if is_vid else None,
+                "file_type": "video" if is_vid else ("image" if is_img else ("file" if att else "text")),
                 "idx": comm.idx,
                 "is_edited": getattr(comm, "is_edited", None),
                 "edited_at": getattr(comm, "edited_at", None),
@@ -2231,6 +2417,116 @@ def get_mentionable_support_staff(ticket_id=None):
         return {"status": "error", "message": str(e), "support_staff": []}
 
 
+def notify_ticket_assignment(ticket_id, assigned_to_employee=None, assigned_to_supplier=None, assigned_by=None):
+    """Emit websocket ticket_update and send FCM push when a ticket is assigned."""
+    try:
+        if not ticket_id or not frappe.db.exists("Issue", ticket_id):
+            return
+
+        issue = frappe.get_doc("Issue", ticket_id)
+        assigned_by = assigned_by or frappe.session.user
+        tech_emp = assigned_to_employee or _issue_assigned_technician_employee(issue)
+        supplier = assigned_to_supplier or _get_issue_subcontractor_supplier(issue)
+
+        recipient_emails = set()
+        role_type = "technician"
+
+        if tech_emp:
+            tech_users = _get_technician_user_recipients_for_employee(tech_emp)
+            recipient_emails |= tech_users
+            role_type = "technician"
+
+        if supplier:
+            sub_users = _get_subcontractor_recipients_for_supplier(supplier)
+            recipient_emails |= sub_users
+            role_type = "subcontractor"
+
+        if not recipient_emails:
+            return
+
+        title = "New Job Card Assigned"
+        body = f"You have been assigned to Job Card #{issue.name}: {issue.subject or ''}"
+
+        # Real-time websocket payload
+        payload = {
+            "ticket_id": issue.name,
+            "issue_id": issue.name,
+            "ticket_title": issue.subject or issue.name,
+            "update_type": "ticket_assigned",
+            "assigned_by": assigned_by,
+            "person_in_charge": issue.person_in_charge,
+            "sub_contractor": issue.sub_contractor,
+            "new_status": issue.status,
+            "priority": issue.priority,
+            "property_name": getattr(issue, "property_name", None),
+            "timestamp": frappe.utils.now_datetime().isoformat(),
+        }
+
+        from propms.api.v1.notifications.notifications import enqueue_ticket_assigned_push
+
+        for u in recipient_emails:
+            user_email = str(u).strip()
+            if not user_email:
+                continue
+
+            user_payload = dict(payload)
+            user_payload["assigned_to"] = user_email
+
+            # 1. Publish to user rooms
+            for r in [f"user:{user_email}", f"user_{user_email}"]:
+                try:
+                    frappe.publish_realtime(
+                        event="ticket_update",
+                        message=user_payload,
+                        room=r,
+                        after_commit=True,
+                    )
+                except Exception:
+                    pass
+
+            # 2. Publish to user directly
+            try:
+                frappe.publish_realtime(
+                    event="ticket_update",
+                    message=user_payload,
+                    user=user_email,
+                    after_commit=True,
+                )
+            except Exception:
+                pass
+
+            # 3. Enqueue background FCM push notification
+            try:
+                frappe.enqueue(
+                    enqueue_ticket_assigned_push,
+                    user=user_email,
+                    ticket_id=issue.name,
+                    title=title,
+                    body=body,
+                    ticket_title=issue.subject,
+                    assigned_by=assigned_by,
+                    role_type=role_type,
+                    queue="short",
+                )
+            except Exception:
+                pass
+
+        # Also emit to staff ticket room & support_team
+        for r in [f"staff_ticket:{issue.name}", f"staff_ticket_{issue.name}", "support_team"]:
+            try:
+                frappe.publish_realtime(
+                    event="ticket_update",
+                    message=payload,
+                    room=r,
+                    after_commit=True,
+                )
+            except Exception:
+                pass
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "notify_ticket_assignment")
+
+
 @frappe.whitelist(methods=["POST"])
 def assign_ticket_to_staff(ticket_id=None, assigned_to=None):
     """Assign an Issue to a maintenance staff by setting Issue.person_in_charge (Employee).
@@ -2266,6 +2562,9 @@ def assign_ticket_to_staff(ticket_id=None, assigned_to=None):
         issue.flags.ignore_mandatory = True
         issue.save(ignore_permissions=True)
         frappe.db.commit()
+
+        # Trigger real-time websocket and FCM assignment notification
+        notify_ticket_assignment(ticket_id, assigned_to_employee=employee, assigned_by=frappe.session.user)
 
         return {
             "status": "success",
@@ -2506,6 +2805,9 @@ def assign_subcontractor(ticket_id=None, assigned_to=None):
         issue.save(ignore_permissions=True)
         frappe.db.commit()
 
+        # Trigger real-time websocket and FCM subcontractor assignment notification
+        notify_ticket_assignment(ticket_id, assigned_to_supplier=supplier, assigned_by=frappe.session.user)
+
         return {
             "status": "success",
             "message": "Subcontractor assigned",
@@ -2554,3 +2856,324 @@ def check_subcontractor(ticket_id=None):
 
 
 ##############################################################
+# Ticket Status Lifecycle Management (Open, On Hold, Resolved, Closed)
+##############################################################
+
+VALID_TICKET_STATUSES = ["Open", "Replied", "On Hold", "Resolved", "Closed"]
+
+
+def _broadcast_ticket_status_change(issue, old_status, new_status, reason=None):
+    """Notify all participants via WebSocket and FCM when a ticket status changes."""
+    try:
+        from frappe.utils import now
+        rooms = {
+            f"ticket:{issue.name}",
+            f"ticket:{issue.name}:tenant_support",
+            f"ticket:{issue.name}:technician_support",
+        }
+        event_data = {
+            "ticket_id": issue.name,
+            "old_status": old_status,
+            "new_status": new_status,
+            "status": new_status,
+            "reason": reason or "",
+            "modified": str(issue.modified or now()),
+            "update_type": "status_change",
+        }
+        for room in rooms:
+            frappe.publish_realtime("ticket_update", event_data, room=room)
+
+        # FCM Push Notification to parties
+        recipients = _get_issue_all_room_recipients(issue)
+        recipients.discard(frappe.session.user)  # do not notify self
+        title = f"Ticket #{issue.name} Status: {new_status}"
+        body = f"Ticket '{issue.subject or issue.name}' is now {new_status}."
+        if reason:
+            body += f" Note: {reason}"
+        for recipient in recipients:
+            _send_push_notification_to_user(
+                user=recipient,
+                title=title,
+                body=body,
+                ticket_id=issue.name,
+                notification_type="ticket_status_update",
+            )
+    except Exception as e:
+        frappe.log_error(f"Error broadcasting ticket status change: {str(e)}", "broadcast_ticket_status_change")
+
+
+@frappe.whitelist(methods=["POST"])
+def put_ticket_on_hold(ticket_id=None, hold_reason=None):
+    """Put a ticket on hold. Maintenance staff or Admin only."""
+    try:
+        _require_officer_or_manager()
+        payload = _parse_request_payload({"ticket_id": ticket_id, "hold_reason": hold_reason})
+        ticket_id = (payload.get("ticket_id") or payload.get("issue_id") or "").strip()
+        reason = (payload.get("hold_reason") or payload.get("reason") or "").strip()
+
+        if not ticket_id:
+            return {"status": "error", "message": "ticket_id is required"}
+        if not frappe.db.exists("Issue", ticket_id):
+            return {"status": "error", "message": "Issue not found"}
+
+        issue = frappe.get_doc("Issue", ticket_id)
+        if issue.status == "On Hold":
+            return {"status": "error", "message": "Ticket is already On Hold"}
+        if issue.status in ("Resolved", "Closed"):
+            return {"status": "error", "message": f"Cannot put ticket on hold when it is {issue.status}"}
+
+        old_status = issue.status
+        issue.status = "On Hold"
+        if hasattr(issue, "on_hold_since"):
+            issue.on_hold_since = frappe.utils.now()
+
+        # Add hold reason note to communications if reason provided
+        if reason:
+            try:
+                row_name = frappe.generate_hash("Support Communication", 10)
+                frappe.db.sql(
+                    """INSERT INTO `tabSupport Communication`
+                       (name, parent, parenttype, parentfield, idx,
+                        owner, creation, modified, modified_by,
+                        message_content, channel, sender, sender_type,
+                        status, delivery, time_stamp)
+                       VALUES (%s, %s, 'Issue', 'custom_support_communication', 1,
+                               %s, %s, %s, %s,
+                               %s, 'tenant_support', %s, 'Maintenance Officer',
+                               'Sent', 'Delivered', %s)""",
+                    (
+                        row_name,
+                        ticket_id,
+                        frappe.session.user,
+                        frappe.utils.now(),
+                        frappe.utils.now(),
+                        frappe.session.user,
+                        f"⏸️ Ticket put ON HOLD: {reason}",
+                        frappe.session.user,
+                        frappe.utils.now(),
+                    ),
+                )
+            except Exception:
+                pass
+
+        issue.flags.ignore_mandatory = True
+        issue.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        _broadcast_ticket_status_change(issue, old_status, "On Hold", reason)
+
+        return {
+            "status": "success",
+            "message": "Ticket put on hold successfully",
+            "ticket_id": ticket_id,
+            "ticket_status": "On Hold",
+            "hold_reason": reason,
+        }
+    except frappe.PermissionError:
+        return {"status": "error", "message": "Not permitted"}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "put_ticket_on_hold")
+        return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist(methods=["POST"])
+def resume_ticket_from_hold(ticket_id=None):
+    """Resume a ticket from On Hold back to Open. Maintenance staff or Admin only."""
+    try:
+        _require_officer_or_manager()
+        payload = _parse_request_payload({"ticket_id": ticket_id})
+        ticket_id = (payload.get("ticket_id") or payload.get("issue_id") or "").strip()
+
+        if not ticket_id:
+            return {"status": "error", "message": "ticket_id is required"}
+        if not frappe.db.exists("Issue", ticket_id):
+            return {"status": "error", "message": "Issue not found"}
+
+        issue = frappe.get_doc("Issue", ticket_id)
+        if issue.status != "On Hold":
+            return {"status": "error", "message": f"Ticket is not on hold (Current status: {issue.status})"}
+
+        old_status = issue.status
+        issue.status = "Open"
+        if hasattr(issue, "on_hold_since"):
+            issue.on_hold_since = None
+
+        issue.flags.ignore_mandatory = True
+        issue.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        _broadcast_ticket_status_change(issue, old_status, "Open", "Ticket resumed from hold")
+
+        return {
+            "status": "success",
+            "message": "Ticket resumed from hold successfully",
+            "ticket_id": ticket_id,
+            "ticket_status": "Open",
+        }
+    except frappe.PermissionError:
+        return {"status": "error", "message": "Not permitted"}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "resume_ticket_from_hold")
+        return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist(methods=["POST"])
+def resolve_ticket(ticket_id=None, defect_found=None, resolution_details=None):
+    """Mark a ticket as Resolved. Maintenance staff, technician, or Admin."""
+    try:
+        roles = frappe.get_roles(frappe.session.user)
+        user_type = _get_user_type(roles)
+        if user_type not in MOBILE_OFFICER_MANAGER_ROLES and user_type != "Mobile Technician" and "System Manager" not in roles:
+            return {"status": "error", "message": "Not permitted"}
+
+        payload = _parse_request_payload({
+            "ticket_id": ticket_id,
+            "defect_found": defect_found,
+            "resolution_details": resolution_details,
+        })
+        ticket_id = (payload.get("ticket_id") or payload.get("issue_id") or "").strip()
+        defect = (payload.get("defect_found") or "").strip()
+        resolution = (payload.get("resolution_details") or payload.get("resolution") or "").strip()
+
+        if not ticket_id:
+            return {"status": "error", "message": "ticket_id is required"}
+        if not frappe.db.exists("Issue", ticket_id):
+            return {"status": "error", "message": "Issue not found"}
+
+        issue = frappe.get_doc("Issue", ticket_id)
+        if issue.status in ("Resolved", "Closed"):
+            return {"status": "error", "message": f"Ticket is already {issue.status}"}
+
+        old_status = issue.status
+        issue.status = "Resolved"
+        if defect and hasattr(issue, "defect_found"):
+            issue.defect_found = defect
+        if resolution and hasattr(issue, "resolution_details"):
+            issue.resolution_details = resolution
+        if hasattr(issue, "resolution_date"):
+            issue.resolution_date = frappe.utils.now()
+
+        issue.flags.ignore_mandatory = True
+        issue.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        _broadcast_ticket_status_change(issue, old_status, "Resolved", resolution or defect)
+
+        return {
+            "status": "success",
+            "message": "Ticket resolved successfully",
+            "ticket_id": ticket_id,
+            "ticket_status": "Resolved",
+            "resolution_details": resolution,
+            "defect_found": defect,
+        }
+    except frappe.PermissionError:
+        return {"status": "error", "message": "Not permitted"}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "resolve_ticket")
+        return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist(methods=["POST"])
+def close_ticket_with_feedback(ticket_id=None, rating=None, customer_feedback=None):
+    """Close a ticket and optionally submit customer feedback."""
+    try:
+        if frappe.session.user == "Guest":
+            frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+
+        payload = _parse_request_payload({
+            "ticket_id": ticket_id,
+            "rating": rating,
+            "customer_feedback": customer_feedback,
+        })
+        ticket_id = (payload.get("ticket_id") or payload.get("issue_id") or "").strip()
+        feedback = (payload.get("customer_feedback") or payload.get("feedback") or "").strip()
+        rating_val = payload.get("rating")
+
+        if not ticket_id:
+            return {"status": "error", "message": "ticket_id is required"}
+        if not frappe.db.exists("Issue", ticket_id):
+            return {"status": "error", "message": "Issue not found"}
+
+        issue = frappe.get_doc("Issue", ticket_id)
+        old_status = issue.status
+        issue.status = "Closed"
+        if feedback and hasattr(issue, "customer_feedback"):
+            issue.customer_feedback = feedback
+
+        issue.flags.ignore_mandatory = True
+        issue.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        _broadcast_ticket_status_change(issue, old_status, "Closed", feedback)
+
+        return {
+            "status": "success",
+            "message": "Ticket closed successfully",
+            "ticket_id": ticket_id,
+            "ticket_status": "Closed",
+            "customer_feedback": feedback,
+            "rating": rating_val,
+        }
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "close_ticket_with_feedback")
+        return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist(methods=["POST"])
+def change_ticket_status(ticket_id=None, status=None, reason=None, defect_found=None, resolution_details=None):
+    """Universal status transition endpoint supporting Open, On Hold, Resolved, Closed."""
+    try:
+        payload = _parse_request_payload({
+            "ticket_id": ticket_id,
+            "status": status,
+            "reason": reason,
+            "defect_found": defect_found,
+            "resolution_details": resolution_details,
+        })
+        ticket_id = (payload.get("ticket_id") or payload.get("issue_id") or "").strip()
+        new_status = (payload.get("status") or "").strip()
+
+        if not ticket_id:
+            return {"status": "error", "message": "ticket_id is required"}
+        if not new_status or new_status not in VALID_TICKET_STATUSES:
+            return {
+                "status": "error",
+                "message": f"Invalid status: '{new_status}'. Allowed statuses: {', '.join(VALID_TICKET_STATUSES)}",
+            }
+
+        if new_status == "On Hold":
+            return put_ticket_on_hold(ticket_id=ticket_id, hold_reason=payload.get("reason"))
+        elif new_status == "Resolved":
+            return resolve_ticket(
+                ticket_id=ticket_id,
+                defect_found=payload.get("defect_found"),
+                resolution_details=payload.get("resolution_details") or payload.get("reason"),
+            )
+        elif new_status == "Closed":
+            return close_ticket_with_feedback(
+                ticket_id=ticket_id,
+                customer_feedback=payload.get("reason"),
+            )
+        elif new_status == "Open":
+            if frappe.db.get_value("Issue", ticket_id, "status") == "On Hold":
+                return resume_ticket_from_hold(ticket_id=ticket_id)
+            else:
+                issue = frappe.get_doc("Issue", ticket_id)
+                old_status = issue.status
+                issue.status = "Open"
+                issue.flags.ignore_mandatory = True
+                issue.save(ignore_permissions=True)
+                frappe.db.commit()
+                _broadcast_ticket_status_change(issue, old_status, "Open")
+                return {
+                    "status": "success",
+                    "message": "Ticket status updated to Open",
+                    "ticket_id": ticket_id,
+                    "ticket_status": "Open",
+                }
+
+        return {"status": "error", "message": "Unhandled status transition"}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "change_ticket_status")
+        return {"status": "error", "message": str(e)}

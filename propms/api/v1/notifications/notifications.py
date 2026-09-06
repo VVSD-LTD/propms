@@ -179,3 +179,179 @@ def enqueue_app_notification_push(user, notification_id, title, body):
             "message": str(e)
         }
 
+
+@frappe.whitelist()
+def enqueue_ticket_assigned_push(
+    user,
+    ticket_id,
+    title=None,
+    body=None,
+    ticket_title=None,
+    assigned_by=None,
+    role_type=None,
+):
+    """Send FCM push notification and Notification Log when a ticket is assigned to a technician/subcontractor."""
+    try:
+        frappe.logger().info(f"📲 FCM TICKET ASSIGNED: user={user}, ticket={ticket_id}")
+
+        tokens = frappe.get_all(
+            "User Device",
+            filters={"user": user},
+            order_by="creation desc",
+            pluck="token",
+            limit_page_length=2,
+        )
+
+        title = title or "New Job Card Assigned"
+        body = body or f"You have been assigned to Job Card #{ticket_id}: {ticket_title or ''}"
+
+        data = {
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "type": "ticket_assigned",
+            "update_type": "ticket_assigned",
+            "ticket_id": str(ticket_id),
+            "ticket_title": str(ticket_title or ""),
+            "user": str(user),
+            "route": "/ticket_detail",
+            "role_type": str(role_type or "technician"),
+        }
+
+        if tokens:
+            from propms.api.v1.utils.fcm import send_to_tokens
+
+            send_to_tokens(tokens=tokens, data=data, title=title, body=body)
+
+        # Insert standard Frappe Notification Log
+        try:
+            if frappe.db.exists("DocType", "Notification Log"):
+                nlog = frappe.get_doc({
+                    "doctype": "Notification Log",
+                    "subject": title,
+                    "for_user": user,
+                    "email_content": body,
+                    "document_type": "Issue",
+                    "document_name": ticket_id,
+                    "type": "Alert",
+                })
+                nlog.insert(ignore_permissions=True)
+                frappe.db.commit()
+        except Exception:
+            pass
+
+        return {"status": "success", "user": user, "ticket_id": ticket_id}
+    except Exception as e:
+        frappe.logger().error(f"❌ FCM TICKET ASSIGNED ERROR: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def enqueue_ticket_status_push(
+    user,
+    ticket_id,
+    new_status,
+    title=None,
+    body=None,
+    ticket_title=None,
+):
+    """Send FCM push notification and Notification Log when a ticket status changes."""
+    try:
+        frappe.logger().info(f"📲 FCM TICKET STATUS: user={user}, ticket={ticket_id}, status={new_status}")
+
+        tokens = frappe.get_all(
+            "User Device",
+            filters={"user": user},
+            order_by="creation desc",
+            pluck="token",
+            limit_page_length=2,
+        )
+
+        title = title or f"Job Card Status: {new_status}"
+        body = body or f"Job Card #{ticket_id} status has been updated to {new_status}."
+
+        data = {
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "type": "ticket_status_changed",
+            "update_type": "ticket_status_changed",
+            "ticket_id": str(ticket_id),
+            "ticket_title": str(ticket_title or ""),
+            "new_status": str(new_status),
+            "user": str(user),
+            "route": "/ticket_detail",
+        }
+
+        if tokens:
+            from propms.api.v1.utils.fcm import send_to_tokens
+
+            send_to_tokens(tokens=tokens, data=data, title=title, body=body)
+
+        return {"status": "success", "user": user, "ticket_id": ticket_id}
+    except Exception as e:
+        frappe.logger().error(f"❌ FCM TICKET STATUS ERROR: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def enqueue_ticket_created_push(
+    user,
+    ticket_id,
+    title=None,
+    body=None,
+    ticket_title=None,
+    property_name=None,
+    creator_name=None,
+):
+    """Send FCM push notification and Notification Log to staff when a new ticket is created by a tenant."""
+    try:
+        frappe.logger().info(f"📲 FCM TICKET CREATED: user={user}, ticket={ticket_id}")
+
+        tokens = frappe.get_all(
+            "User Device",
+            filters={"user": user},
+            order_by="creation desc",
+            pluck="token",
+            limit_page_length=2,
+        )
+
+        title = title or f"New Job Card: #{ticket_id}"
+        body = body or f"{creator_name or 'Tenant'} reported: {ticket_title or ''}"
+
+        data = {
+            "click_action": "FLUTTER_NOTIFICATION_CLICK",
+            "type": "ticket_created",
+            "update_type": "ticket_created",
+            "ticket_id": str(ticket_id),
+            "ticket_title": str(ticket_title or ""),
+            "property_name": str(property_name or ""),
+            "user": str(user),
+            "route": "/ticket_detail",
+        }
+
+        if tokens:
+            from propms.api.v1.utils.fcm import send_to_tokens
+
+            send_to_tokens(tokens=tokens, data=data, title=title, body=body)
+
+        # Insert standard Frappe Notification Log
+        try:
+            if frappe.db.exists("DocType", "Notification Log"):
+                nlog = frappe.get_doc({
+                    "doctype": "Notification Log",
+                    "subject": title,
+                    "for_user": user,
+                    "email_content": body,
+                    "document_type": "Issue",
+                    "document_name": ticket_id,
+                    "type": "Alert",
+                })
+                nlog.insert(ignore_permissions=True)
+                frappe.db.commit()
+        except Exception:
+            pass
+
+        return {"status": "success", "user": user, "ticket_id": ticket_id}
+    except Exception as e:
+        frappe.logger().error(f"❌ FCM TICKET CREATED ERROR: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+

@@ -1,0 +1,219 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "VEI-.YYYY.-.#####",
+ "creation": "2026-09-01 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "incident_details_section",
+  "incident_type",
+  "status",
+  "reported_at",
+  "column_break_inc1",
+  "property_unit",
+  "location_details",
+  "reporter_section",
+  "reporter",
+  "reporter_name",
+  "column_break_rep1",
+  "reporter_phone",
+  "description_section",
+  "details",
+  "resolution_section",
+  "resolved_by",
+  "resolved_at",
+  "column_break_res1",
+  "resolution_notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "incident_details_section",
+   "fieldtype": "Section Break",
+   "label": "Incident Information"
+  },
+  {
+   "fieldname": "incident_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Incident Type",
+   "options": "\nSecurity Alert\nFire Emergency\nMedical Emergency\nStuck in Lift\nMajor Water Leak",
+   "reqd": 1
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nOpen\nDispatched\nResponding\nResolved",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reported_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Reported At",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_inc1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "property_unit",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Apartment / Unit"
+  },
+  {
+   "fieldname": "location_details",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Location Details"
+  },
+  {
+   "fieldname": "reporter_section",
+   "fieldtype": "Section Break",
+   "label": "Reporter Information"
+  },
+  {
+   "fieldname": "reporter",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Reporter User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reporter_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Reporter Name"
+  },
+  {
+   "fieldname": "column_break_rep1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reporter_phone",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Reporter Phone"
+  },
+  {
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description & Context"
+  },
+  {
+   "fieldname": "details",
+   "fieldtype": "Small Text",
+   "label": "Incident Details / Notes"
+  },
+  {
+   "fieldname": "resolution_section",
+   "fieldtype": "Section Break",
+   "label": "Resolution Details"
+  },
+  {
+   "fieldname": "resolved_by",
+   "fieldtype": "Link",
+   "label": "Resolved By",
+   "options": "User"
+  },
+  {
+   "fieldname": "resolved_at",
+   "fieldtype": "Datetime",
+   "label": "Resolved At"
+  },
+  {
+   "fieldname": "column_break_res1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "resolution_notes",
+   "fieldtype": "Small Text",
+   "label": "Resolution Notes"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-01 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Viva Emergency Incident",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Mobile VIVA Tenant",
+   "share": 0,
+   "write": 0
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Mobile Maintenance Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Mobile Maintenance Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "reported_at",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

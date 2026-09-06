@@ -72,11 +72,13 @@ doctype_js = {
 after_install = [
     "propms.utils.create_custom_fields.execute",
     "propms.utils.create_property_setter.execute",
+    "propms.api.v1.payments.setup.setup_selcom_defaults",
 ]
 
 after_migrate = [
     "propms.utils.create_custom_fields.execute",
     "propms.utils.create_property_setter.execute",
+    "propms.api.v1.payments.setup.setup_selcom_defaults",
 ]
 
 # Desk Notifications
@@ -145,7 +147,13 @@ doc_events = {
     },
     "Key Set Detail": {"on_change": "propms.auto_custom.changeStatusKeyset"},
     "Meter Reading": {"on_submit": "propms.auto_custom.make_invoice_meter_reading"},
-    "Sales Invoice": {"before_save": "propms.custom.custom.before_save"},
+    "Sales Invoice": {
+        "before_save": "propms.custom.custom.before_save",
+        "on_submit": "propms.api.v1.invoices.invoices.on_sales_invoice_submit",
+    },
+    "Payment Entry": {
+        "on_submit": "propms.api.v1.invoices.invoices.on_payment_entry_submit",
+    },
 }
 
 
@@ -153,6 +161,7 @@ scheduler_events = {
     "daily": [
         "propms.auto_custom.statusChangeBeforeLeaseExpire",
         "propms.auto_custom.statusChangeAfterLeaseExpire",
+        "propms.api.v1.gate_pass.gate_pass.auto_expire_overdue_passes",
     ],
     "cron": {
         # "00 12 * * *": ["propms.lease_invoice.leaseInvoiceAutoCreate"],

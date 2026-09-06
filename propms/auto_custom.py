@@ -77,9 +77,9 @@ def makeSalesInvoice(self, method):
             changeStatusIssue(self.name, self.status)
         else:
             if self.customer:
-                if not len(self.materials_required) == 0:
+                if self.get("materials_required"):
                     items = []
-                    for row in self.materials_required:
+                    for row in self.get("materials_required"):
                         material_request_details = frappe.get_doc(
                             "Material Request", row.material_request
                         )

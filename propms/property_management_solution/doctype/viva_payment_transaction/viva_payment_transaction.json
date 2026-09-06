@@ -1,0 +1,220 @@
+{
+ "actions": [],
+ "autoname": "format:TXN-{YYYY}-{#####}",
+ "creation": "2026-09-05 09:10:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "transaction_section",
+  "order_id",
+  "sales_invoice",
+  "customer",
+  "column_break_1",
+  "status",
+  "payment_channel",
+  "selcom_reference",
+  "amount_section",
+  "amount",
+  "currency",
+  "column_break_2",
+  "phone_number",
+  "payment_entry",
+  "gateway_section",
+  "gateway_url",
+  "qr_data",
+  "error_message",
+  "audit_section",
+  "raw_request",
+  "column_break_3",
+  "raw_response",
+  "section_break_ipn",
+  "ipn_payload",
+  "connections_tab"
+ ],
+ "fields": [
+  {
+   "fieldname": "transaction_section",
+   "fieldtype": "Section Break",
+   "label": "Transaction Details"
+  },
+  {
+   "description": "Unique Selcom Order Reference",
+   "fieldname": "order_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Order ID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer / Tenant",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nSuccess\nFailed\nCancelled\nExpired",
+   "reqd": 1
+  },
+  {
+   "default": "MOBILE_MONEY",
+   "fieldname": "payment_channel",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payment Channel",
+   "options": "MOBILE_MONEY\nCARD\nQR_CODE\nHOSTED"
+  },
+  {
+   "description": "Transaction reference ID returned by Selcom (transid)",
+   "fieldname": "selcom_reference",
+   "fieldtype": "Data",
+   "label": "Selcom Reference"
+  },
+  {
+   "fieldname": "amount_section",
+   "fieldtype": "Section Break",
+   "label": "Amount & Reconciliation"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "options": "currency",
+   "reqd": 1
+  },
+  {
+   "default": "TZS",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Phone number used for Mobile Money USSD push",
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number"
+  },
+  {
+   "description": "Created ERPNext Payment Entry once reconciled",
+   "fieldname": "payment_entry",
+   "fieldtype": "Link",
+   "label": "Payment Entry",
+   "options": "Payment Entry"
+  },
+  {
+   "fieldname": "gateway_section",
+   "fieldtype": "Section Break",
+   "label": "Gateway Redirects & QR Data"
+  },
+  {
+   "fieldname": "gateway_url",
+   "fieldtype": "Small Text",
+   "label": "Gateway / 3DS URL"
+  },
+  {
+   "fieldname": "qr_data",
+   "fieldtype": "Small Text",
+   "label": "QR Code Data"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Small Text",
+   "label": "Error Message"
+  },
+  {
+   "fieldname": "audit_section",
+   "fieldtype": "Section Break",
+   "label": "Audit Trail (Raw API Logs)"
+  },
+  {
+   "fieldname": "raw_request",
+   "fieldtype": "Code",
+   "label": "Raw Request JSON",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "raw_response",
+   "fieldtype": "Code",
+   "label": "Raw Response JSON",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "section_break_ipn",
+   "fieldtype": "Section Break",
+   "label": "IPN Webhook Payload"
+  },
+  {
+   "fieldname": "ipn_payload",
+   "fieldtype": "Code",
+   "label": "IPN Payload JSON",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-05 09:36:45.612258",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Viva Payment Transaction",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

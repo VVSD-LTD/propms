@@ -4,5 +4,7 @@
 *.swp
 tags
 propms/docs/current
-
 docs/
+bin/
+scratch/
+*.log

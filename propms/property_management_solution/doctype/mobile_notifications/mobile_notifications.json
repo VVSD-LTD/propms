@@ -7,9 +7,13 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "category",
+  "target_audience",
+  "target_floor",
+  "target_unit",
+  "column_break_scope",
   "company",
   "customer",
-  "column_break_scope",
   "property",
   "delivery",
   "section_break_body",
@@ -23,8 +27,50 @@
  ],
  "fields": [
   {
+   "default": "Notice",
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Category",
+   "options": "\nNotice\nMaintenance\nSafety\nEvent\nGeneral\nEmergency"
+  },
+  {
+   "default": "Everyone",
+   "fieldname": "target_audience",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Target Audience",
+   "options": "\nEveryone\nResidential Only\nCommercial Only\nSpecific Floor\nSpecific Unit"
+  },
+  {
+   "depends_on": "eval:doc.target_audience=='Specific Floor'",
+   "fieldname": "target_floor",
+   "fieldtype": "Int",
+   "label": "Target Floor"
+  },
+  {
+   "depends_on": "eval:doc.target_audience=='Specific Unit'",
+   "fieldname": "target_unit",
+   "fieldtype": "Data",
+   "label": "Target Unit"
+  },
+  {
    "fieldname": "column_break_scope",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
   },
   {
    "fieldname": "property",
@@ -32,12 +78,6 @@
    "in_list_view": 1,
    "label": "Property",
    "options": "Property"
-  },
-  {
-   "fieldname": "customer",
-   "fieldtype": "Link",
-   "label": "Customer",
-   "options": "Customer"
   },
   {
    "allow_on_submit": 1,
@@ -95,12 +135,6 @@
    "options": "Notified Users"
   },
   {
-   "fieldname": "company",
-   "fieldtype": "Link",
-   "label": "Company",
-   "options": "Company"
-  },
-  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -115,7 +149,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-28 10:44:00.711334",
+ "modified": "2026-09-01 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Mobile Notifications",
