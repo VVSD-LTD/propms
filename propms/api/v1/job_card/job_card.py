@@ -1523,6 +1523,12 @@ def send_ticket_communication(
                     room=room,
                     after_commit=True,
                 )
+                frappe.publish_realtime(
+                    event="new_message",
+                    message=payload,
+                    room=room,
+                    after_commit=True,
+                )
             except Exception as emit_err:
                 try:
                     frappe.logger().error(
@@ -1536,6 +1542,12 @@ def send_ticket_communication(
             try:
                 frappe.publish_realtime(
                     event="ticket_message",
+                    message=payload,
+                    user=u,
+                    after_commit=True,
+                )
+                frappe.publish_realtime(
+                    event="new_message",
                     message=payload,
                     user=u,
                     after_commit=True,
@@ -1964,6 +1976,12 @@ def edit_ticket_communication(ticket_id, communication_idx, new_message_content,
                     room=room,
                     after_commit=False,
                 )
+                frappe.publish_realtime(
+                    event="ticket_communication_edited",
+                    message=edit_payload,
+                    room=room,
+                    after_commit=False,
+                )
             except Exception as emit_err:
                 try:
                     frappe.logger().error(
@@ -1982,6 +2000,12 @@ def edit_ticket_communication(ticket_id, communication_idx, new_message_content,
             try:
                 frappe.publish_realtime(
                     event="ticket_message_edited",
+                    message=edit_payload,
+                    user=user_email,
+                    after_commit=False,
+                )
+                frappe.publish_realtime(
+                    event="ticket_communication_edited",
                     message=edit_payload,
                     user=user_email,
                     after_commit=False,
@@ -2121,6 +2145,7 @@ def send_typing_indicator(ticket_id, is_typing=True):
             f"ticket:{issue_name}",
             f"user:{current_user}",
         }
+        # 6) Emit websocket event to all rooms (both ticket_typing and typing for 100% Flutter parity)
         for room in rooms:
             try:
                 frappe.publish_realtime(
@@ -2129,10 +2154,16 @@ def send_typing_indicator(ticket_id, is_typing=True):
                     room=room,
                     after_commit=False,  # no DB write — fire immediately
                 )
+                frappe.publish_realtime(
+                    event="typing",
+                    message=typing_payload,
+                    room=room,
+                    after_commit=False,
+                )
             except Exception as e:
                 try:
                     frappe.logger().error(
-                        f"❌ Error emitting ticket_typing to {room}: {str(e)}"
+                        f"❌ Error emitting typing indicator to {room}: {str(e)}"
                     )
                 except Exception:
                     pass
@@ -2141,6 +2172,102 @@ def send_typing_indicator(ticket_id, is_typing=True):
 
     except Exception as e:
         frappe.logger().error(f"send_typing_indicator error: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
+def mark_communications_as_read(ticket_id=None, issue_id=None, communication_indices=None):
+    """Mark specific or all unread communications on a ticket as read."""
+    try:
+        current_user = frappe.session.user
+        if current_user == "Guest":
+            return {"status": "error", "message": "Authentication required"}
+
+        req = getattr(frappe, "form_dict", None) or {}
+        issue_name = ticket_id or issue_id or req.get("ticket_id") or req.get("issue_id")
+        if not issue_name or not frappe.db.exists("Issue", issue_name):
+            return {"status": "error", "message": "Issue not found"}
+
+        indices = communication_indices or req.get("communication_indices")
+        if isinstance(indices, str):
+            try:
+                indices = json.loads(indices)
+            except Exception:
+                pass
+
+        if indices and not isinstance(indices, (list, tuple)):
+            indices = [indices]
+
+        issue = frappe.get_doc("Issue", issue_name)
+        updated_count = 0
+        read_indices = []
+
+        if indices:
+            int_indices = [int(x) for x in indices if str(x).isdigit()]
+            for comm in issue.get("custom_support_communication") or []:
+                if comm.idx in int_indices and comm.sender != current_user:
+                    comm.status = "Read"
+                    comm.delivery = "Read"
+                    read_indices.append(comm.idx)
+                    updated_count += 1
+        else:
+            for comm in issue.get("custom_support_communication") or []:
+                if comm.sender != current_user and comm.status != "Read":
+                    comm.status = "Read"
+                    comm.delivery = "Read"
+                    read_indices.append(comm.idx)
+                    updated_count += 1
+
+        if updated_count > 0:
+            issue.flags.ignore_permissions = True
+            issue.flags.ignore_validate = True
+            issue.save()
+            frappe.db.commit()
+
+            # Emit websocket read event to ticket and user rooms
+            read_payload = {
+                "ticket_id": issue_name,
+                "issue_id": issue_name,
+                "read_by": current_user,
+                "read_indices": read_indices,
+                "timestamp": frappe.utils.now(),
+            }
+            rooms = {
+                "support_team",
+                f"doc:Issue/{issue_name}",
+                f"doc:Ticket/{issue_name}",
+                issue_name,
+                f"ticket:{issue_name}",
+                f"user:{current_user}",
+            }
+            if issue.raised_by:
+                rooms.add(f"user:{issue.raised_by}")
+            for room in rooms:
+                try:
+                    frappe.publish_realtime(
+                        event="communications_read",
+                        message=read_payload,
+                        room=room,
+                        after_commit=True,
+                    )
+                    frappe.publish_realtime(
+                        event="ticket_communications_read",
+                        message=read_payload,
+                        room=room,
+                        after_commit=True,
+                    )
+                except Exception:
+                    pass
+
+        return {
+            "status": "success",
+            "message": "Communications marked as read",
+            "ticket_id": issue_name,
+            "updated_count": updated_count,
+            "read_indices": read_indices,
+        }
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "mark_communications_as_read")
         return {"status": "error", "message": str(e)}
 
 

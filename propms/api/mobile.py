@@ -1146,6 +1146,135 @@ def selcom_ipn_webhook(*args, **kwargs):
     return v1_selcom_ipn_webhook(*args, **kwargs)
 
 
+# Job Card / Ticket Communication & Management Endpoints (100% Helpdesk Parity)
+@frappe.whitelist(methods=["GET", "POST"])
+def send_ticket_communication(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import send_ticket_communication as v1_send_comm
+    return v1_send_comm(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def edit_ticket_communication(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import edit_ticket_communication as v1_edit_comm
+    return v1_edit_comm(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def mark_communications_as_read(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import mark_communications_as_read as v1_mark_read
+    return v1_mark_read(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def send_typing_indicator(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import send_typing_indicator as v1_send_typing
+    return v1_send_typing(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_ticket_communications(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import get_ticket_communications as v1_get_comms
+    return v1_get_comms(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_user_tickets(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import get_user_tickets as v1_get_user_tickets
+    return v1_get_user_tickets(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_support_staff_list(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import get_support_staff_list as v1_get_staff
+    return v1_get_staff(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_subcontractor_list(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import get_subcontractor_list as v1_get_sub
+    return v1_get_sub(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_ticket_priorities(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import get_ticket_priorities as v1_get_priorities
+    return v1_get_priorities(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_issue_types(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import get_issue_types as v1_get_issue_types
+    return v1_get_issue_types(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def change_ticket_priority(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import change_ticket_priority as v1_change_priority
+    return v1_change_priority(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def assign_ticket_to_staff(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import assign_ticket_to_staff as v1_assign_staff
+    return v1_assign_staff(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def assign_subcontractor(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import assign_subcontractor as v1_assign_sub
+    return v1_assign_sub(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def create_ticket(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import create_ticket as v1_create_ticket
+    return v1_create_ticket(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def initialize_app_websocket(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import initialize_app_websocket as v1_init_ws
+    return v1_init_ws(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def subscribe_to_ticket_room(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import subscribe_to_ticket_room as v1_sub_room
+    return v1_sub_room(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def unsubscribe_from_ticket_room(*args, **kwargs):
+    from propms.api.v1.job_card.job_card import unsubscribe_from_ticket_room as v1_unsub_room
+    return v1_unsub_room(*args, **kwargs)
+
+
+# Push Notification Wrappers
+@frappe.whitelist(methods=["GET", "POST"])
+def enqueue_ticket_message_push(*args, **kwargs):
+    from propms.api.v1.notifications.notifications import enqueue_ticket_message_push as v1_push
+    return v1_push(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def enqueue_ticket_assigned_push(*args, **kwargs):
+    from propms.api.v1.notifications.notifications import enqueue_ticket_assigned_push as v1_assign_push
+    return v1_assign_push(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def enqueue_ticket_status_push(*args, **kwargs):
+    from propms.api.v1.notifications.notifications import enqueue_ticket_status_push as v1_status_push
+    return v1_status_push(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def enqueue_ticket_created_push(*args, **kwargs):
+    from propms.api.v1.notifications.notifications import enqueue_ticket_created_push as v1_created_push
+    return v1_created_push(*args, **kwargs)
+
+
+
 
 
 
