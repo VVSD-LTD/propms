@@ -88,7 +88,7 @@ def process_successful_payment(order_id, selcom_ref=None, amount=None, raw_paylo
             first_mop = frappe.db.get_value("Mode of Payment", {}, "name")
             mode_of_payment = first_mop or "Selcom"
 
-    # Resolve paid_to account
+    # Resolve paid_to account (must be active and match currency)
     paid_to_account = settings.get("default_bank_account")
     if not paid_to_account and mode_of_payment and frappe.db.exists("Mode of Payment", mode_of_payment):
         paid_to_account = frappe.db.get_value(
@@ -97,11 +97,13 @@ def process_successful_payment(order_id, selcom_ref=None, amount=None, raw_paylo
             "default_account",
         )
     if not paid_to_account:
+        inv_curr = inv.currency or "TZS"
         paid_to_account = (
             frappe.db.get_value("Company", inv.company, "default_bank_account")
             or frappe.db.get_value("Company", inv.company, "default_cash_account")
-            or frappe.db.get_value("Account", {"company": inv.company, "account_type": "Bank", "is_group": 0}, "name")
-            or frappe.db.get_value("Account", {"company": inv.company, "account_type": "Cash", "is_group": 0}, "name")
+            or frappe.db.get_value("Account", {"company": inv.company, "account_type": "Bank", "is_group": 0, "disabled": 0, "account_currency": inv_curr}, "name")
+            or frappe.db.get_value("Account", {"company": inv.company, "account_type": "Bank", "is_group": 0, "disabled": 0}, "name")
+            or frappe.db.get_value("Account", {"company": inv.company, "account_type": "Cash", "is_group": 0, "disabled": 0}, "name")
         )
 
     # Use ERPNext's official get_payment_entry factory to ensure ledger integrity
