@@ -1140,6 +1140,24 @@ def get_payment_methods():
     return v1_get_payment_methods()
 
 
+@frappe.whitelist(methods=["GET", "POST"])
+def get_stored_cards():
+    from propms.api.v1.payments.services import get_stored_cards as v1_get_stored_cards
+    return v1_get_stored_cards()
+
+
+@frappe.whitelist(methods=["POST"])
+def pay_with_stored_card(invoice_name=None, card_token=None, amount=None, cvv=None):
+    from propms.api.v1.payments.services import pay_with_stored_card as v1_pay_with_stored_card
+    return v1_pay_with_stored_card(invoice_name=invoice_name, card_token=card_token, amount=amount, cvv=cvv)
+
+
+@frappe.whitelist(methods=["POST", "DELETE"])
+def delete_stored_card(card_token=None):
+    from propms.api.v1.payments.services import delete_stored_card as v1_delete_stored_card
+    return v1_delete_stored_card(card_token=card_token)
+
+
 @frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
 def selcom_ipn_webhook(*args, **kwargs):
     from propms.api.v1.payments.webhook import selcom_ipn_webhook as v1_selcom_ipn_webhook

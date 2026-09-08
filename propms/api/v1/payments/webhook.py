@@ -13,6 +13,10 @@ def process_successful_payment(order_id, selcom_ref=None, amount=None, raw_paylo
     if not order_id:
         return {"status": "error", "message": "order_id is required"}
 
+    # Elevate execution privileges to Administrator for unauthenticated webhook calls
+    if frappe.session.user == "Guest":
+        frappe.set_user("Administrator")
+
     # Find matching payment transaction
     txn = None
     if frappe.db.exists("Viva Payment Transaction", {"order_id": order_id}):
@@ -106,42 +110,50 @@ def process_successful_payment(order_id, selcom_ref=None, amount=None, raw_paylo
             or frappe.db.get_value("Account", {"company": inv.company, "account_type": "Cash", "is_group": 0, "disabled": 0}, "name")
         )
 
-    # Use ERPNext's official get_payment_entry factory to ensure ledger integrity
+    # Save current user and set to Administrator for Payment Entry ledger submission
+    original_user = frappe.session.user
+    frappe.set_user("Administrator")
+
     try:
-        from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
-        pe = get_payment_entry("Sales Invoice", inv.name, party_amount=allocated_amt)
-        pe.reference_no = str(selcom_ref or order_id)
-        pe.reference_date = today()
-        pe.mode_of_payment = mode_of_payment
-        if paid_to_account:
-            pe.paid_to = paid_to_account
-    except Exception:
-        # Fallback manual document construction
-        pe = frappe.new_doc("Payment Entry")
-        pe.payment_type = "Receive"
-        pe.party_type = "Customer"
-        pe.party = inv.customer
-        pe.company = inv.company
-        pe.paid_amount = allocated_amt
-        pe.received_amount = allocated_amt
-        pe.paid_to_account_currency = inv.currency or "TZS"
-        pe.reference_no = str(selcom_ref or order_id)
-        pe.reference_date = today()
-        pe.mode_of_payment = mode_of_payment
-        if paid_to_account:
-            pe.paid_to = paid_to_account
+        # Use ERPNext's official get_payment_entry factory to ensure ledger integrity
+        try:
+            from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
+            pe = get_payment_entry("Sales Invoice", inv.name, party_amount=allocated_amt)
+            pe.reference_no = str(selcom_ref or order_id)
+            pe.reference_date = today()
+            pe.mode_of_payment = mode_of_payment
+            if paid_to_account:
+                pe.paid_to = paid_to_account
+        except Exception:
+            # Fallback manual document construction
+            pe = frappe.new_doc("Payment Entry")
+            pe.payment_type = "Receive"
+            pe.party_type = "Customer"
+            pe.party = inv.customer
+            pe.company = inv.company
+            pe.paid_amount = allocated_amt
+            pe.received_amount = allocated_amt
+            pe.paid_to_account_currency = inv.currency or "TZS"
+            pe.reference_no = str(selcom_ref or order_id)
+            pe.reference_date = today()
+            pe.mode_of_payment = mode_of_payment
+            if paid_to_account:
+                pe.paid_to = paid_to_account
 
-        if flt(inv.outstanding_amount) > 0:
-            pe.append("references", {
-                "reference_doctype": "Sales Invoice",
-                "reference_name": inv.name,
-                "total_amount": inv.grand_total,
-                "outstanding_amount": inv.outstanding_amount,
-                "allocated_amount": allocated_amt,
-            })
+            if flt(inv.outstanding_amount) > 0:
+                pe.append("references", {
+                    "reference_doctype": "Sales Invoice",
+                    "reference_name": inv.name,
+                    "total_amount": inv.grand_total,
+                    "outstanding_amount": inv.outstanding_amount,
+                    "allocated_amount": allocated_amt,
+                })
 
-    pe.insert(ignore_permissions=True)
-    pe.submit()
+        pe.insert(ignore_permissions=True)
+        pe.submit()
+    finally:
+        if original_user:
+            frappe.set_user(original_user)
 
     # Update Transaction record
     if txn:
@@ -196,7 +208,7 @@ def process_successful_payment(order_id, selcom_ref=None, amount=None, raw_paylo
     except Exception as e:
         frappe.log_error(f"WebSocket publish error on payment: {str(e)}", "Selcom Webhook Realtime")
 
-    # Firebase Cloud Messaging (FCM) Push Notification
+    # Firebase Cloud Messaging (FCM) Push Notification (Safely wrapped)
     try:
         target_user = None
         if inv.contact_email and frappe.db.exists("User", inv.contact_email):
@@ -207,15 +219,17 @@ def process_successful_payment(order_id, selcom_ref=None, amount=None, raw_paylo
                 target_user = portal_user
 
         if target_user:
-            from propms.api.v1.job_card.job_card import _send_push_notification_to_user
-            _send_push_notification_to_user(
-                user=target_user,
-                title="Payment Received",
-                body=f"Your payment of {inv.currency or 'TZS'} {allocated_amt:,.0f} for invoice {inv.name} was successfully received. Thank you!",
-                notification_type="invoice_paid",
-            )
+            tokens = frappe.db.get_all("Mobile Device Token", {"user": target_user}, pluck="token")
+            if tokens:
+                from propms.utils.fcm import send_to_tokens
+                send_to_tokens(
+                    tokens=tokens,
+                    title="Payment Received",
+                    body=f"Your payment of {inv.currency or 'TZS'} {allocated_amt:,.0f} for invoice {inv.name} was successfully received. Thank you!",
+                    data={"type": "invoice_paid", "invoice": inv.name, "order_id": order_id},
+                )
     except Exception as e:
-        frappe.log_error(f"FCM notification error on payment: {str(e)}", "Selcom Webhook FCM")
+        frappe.log_error(title="Selcom FCM Error", message=f"FCM notification error on payment: {str(e)}")
 
     return {
         "status": "success",

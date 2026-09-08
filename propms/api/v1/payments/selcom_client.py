@@ -22,11 +22,36 @@ class SelcomClient:
 
     def __init__(self, base_url=None, api_key=None, api_secret=None, vendor_id=None):
         settings = get_selcom_settings()
-        self.base_url = (base_url or settings.get("base_url") or "https://apigw.selcommobile.com").rstrip("/")
-        self.api_key = api_key or settings.get("api_key")
-        self.api_secret = api_secret or settings.get_password("api_secret") or settings.get("api_secret")
-        self.vendor_id = vendor_id or settings.get("vendor_id")
-        self.enabled = bool(settings.get("enabled", 1))
+        
+        # 1. Base URL Sanitization
+        raw_base = (base_url or settings.get("base_url") or "https://apigw.selcommobile.com").strip().rstrip("/")
+        if raw_base.endswith("/v1"):
+            raw_base = raw_base[:-3].rstrip("/")
+        self.base_url = raw_base
+
+        # 2. API Key (Data field)
+        raw_key = api_key or settings.get("api_key") or ""
+        self.api_key = str(raw_key).strip() if raw_key else ""
+
+        # 3. API Secret (Password field with full decryption fallbacks)
+        if api_secret:
+            raw_secret = api_secret
+        else:
+            from frappe.utils.password import get_decrypted_password
+            raw_secret = (
+                settings.get_password("api_secret")
+                or get_decrypted_password("Viva Selcom Settings", "Viva Selcom Settings", "api_secret", raise_exception=False)
+                or settings.get("api_secret")
+                or ""
+            )
+        self.api_secret = str(raw_secret).strip() if raw_secret else ""
+
+        # 4. Vendor ID (Data field)
+        raw_vendor = vendor_id or settings.get("vendor_id") or ""
+        self.vendor_id = str(raw_vendor).strip() if raw_vendor else ""
+
+        # 5. Enabled flag
+        self.enabled = bool(frappe.utils.cint(settings.get("enabled", 1)))
 
     def compute_header(self, dict_data):
         """Compute the 5 mandatory cryptographic authentication headers for Selcom."""
@@ -38,9 +63,9 @@ class SelcomClient:
         base64_api_key = base64.b64encode(api_key_bytes).decode("ascii")
         auth_token = f"SELCOM {base64_api_key}"
 
-        # 2. ISO 8601 Timestamp with timezone (Tanzania UTC+3)
+        # 2. ISO 8601 Timestamp with timezone (Tanzania UTC+3, e.g. 2026-09-07T15:05:00+03:00)
         now = datetime.datetime.now().astimezone()
-        timestamp = now.strftime("%Y-%m-%dT%H:%M:%S%z")
+        timestamp = now.isoformat(timespec="seconds")
 
         # 3. Build string of signed fields
         signed_fields_list = []

@@ -104,8 +104,8 @@ def _get_tenant_context(user_email=None):
 def _check_invoice_access(invoice_name, user_email=None):
     """
     Verify that the logged-in tenant owns or has access to the requested invoice.
-    An invoice is accessible if it is tied to any of the tenant's active leases
-    (via `lease` or `lease_name`) or property cost centers.
+    An invoice is accessible if it belongs to the tenant's customer AND is tied
+    to any of the tenant's active leases (or has no lease and matches tenant cost center).
     
     Returns:
         frappe.Document: The Sales Invoice doc if authorized.
@@ -116,20 +116,20 @@ def _check_invoice_access(invoice_name, user_email=None):
         frappe.throw(_("Invoice {0} not found").format(invoice_name), frappe.DoesNotExistError)
 
     inv = frappe.get_doc("Sales Invoice", invoice_name)
+    if "System Manager" in frappe.get_roles(frappe.session.user):
+        return inv
+
     user_leases, user_customers, lease_to_prop, cost_centers, cc_to_prop = _get_tenant_context(user_email)
 
+    if not user_customers and not user_leases:
+        frappe.throw(_("You are not authorized to view invoice {0}").format(invoice_name), frappe.PermissionError)
+
+    # Must belong to tenant's customer
+    if user_customers and inv.customer not in user_customers:
+        frappe.throw(_("You are not authorized to view invoice {0}").format(invoice_name), frappe.PermissionError)
+
     lease_ref = inv.get("lease") or inv.get("lease_name")
-
-    # Check if invoice is linked to one of user's assigned leases or cost centers
-    has_access = False
-    if lease_ref and lease_ref in user_leases:
-        has_access = True
-    elif inv.cost_center and inv.cost_center in cost_centers:
-        has_access = True
-    elif "System Manager" in frappe.get_roles(frappe.session.user):
-        has_access = True
-
-    if not has_access:
+    if lease_ref and user_leases and lease_ref not in user_leases:
         frappe.throw(_("You are not authorized to view invoice {0}").format(invoice_name), frappe.PermissionError)
 
     return inv
@@ -140,8 +140,7 @@ def get_tenant_invoices(status="all", lease=None, page=1, page_length=20):
     """
     Fetch all Sales Invoices for the authenticated tenant mobile user.
     
-    Invoices are strictly scoped to the Lease(s) and Apartment Properties assigned
-    to the tenant user in Tenant Details.
+    Invoices are strictly scoped to the tenant's customer, Lease(s), and Apartment Properties.
     
     Parameters:
         status (str): "all", "outstanding" / "pending", "overdue", "paid"
@@ -158,7 +157,7 @@ def get_tenant_invoices(status="all", lease=None, page=1, page_length=20):
     user_email = _get_current_user_email()
     user_leases, user_customers, lease_to_prop, cost_centers, cc_to_prop = _get_tenant_context(user_email)
 
-    if not user_leases and not cost_centers:
+    if not user_leases and not user_customers:
         return {
             "status": "success",
             "summary": {
@@ -175,57 +174,35 @@ def get_tenant_invoices(status="all", lease=None, page=1, page_length=20):
             },
         }
 
-    # If specific lease requested, ensure user owns it and restrict to that lease
+    where_conditions = ["si.docstatus = 1"]
+    base_params = []
+
+    # 1. Scope strictly to tenant's customer
+    if user_customers:
+        cust_placeholders = ', '.join(['%s'] * len(user_customers))
+        where_conditions.append(f"si.customer IN ({cust_placeholders})")
+        base_params.extend(user_customers)
+
+    # 2. Scope by lease / apartment cost center
     if lease:
         if lease not in user_leases:
             frappe.throw(_("Access denied for lease {0}").format(lease), frappe.PermissionError)
-        query_leases = [lease]
-        
-        # Resolve cost center for only this lease
-        p_name = lease_to_prop.get(lease)
-        query_ccs = []
-        if p_name:
-            cc = frappe.db.get_value("Property", p_name, "cost_center")
-            if cc:
-                query_ccs.append(cc)
-    else:
-        query_leases = user_leases
-        query_ccs = cost_centers
+        where_conditions.append("(si.lease = %s OR si.lease_name = %s)")
+        base_params.extend([lease, lease])
+    elif user_leases:
+        lease_placeholders = ', '.join(['%s'] * len(user_leases))
+        lease_clause = f"(si.lease IN ({lease_placeholders}) OR si.lease_name IN ({lease_placeholders}) OR COALESCE(NULLIF(si.lease, ''), si.lease_name) IS NULL"
 
-    # Base WHERE clause: invoice strictly belongs to assigned lease(s) OR apartment cost centers
-    where_conditions = ["si.docstatus = 1"]
-    or_clauses = []
-    base_params = []
+        base_params.extend(user_leases)
+        base_params.extend(user_leases)
 
-    if query_leases:
-        placeholders = ', '.join(['%s'] * len(query_leases))
-        or_clauses.append(f"(si.lease IN ({placeholders}) OR si.lease_name IN ({placeholders}))")
-        base_params.extend(query_leases)
-        base_params.extend(query_leases)
+        if cost_centers:
+            cc_placeholders = ', '.join(['%s'] * len(cost_centers))
+            lease_clause += f" OR si.cost_center IN ({cc_placeholders}) OR si.cost_center IS NULL"
+            base_params.extend(cost_centers)
 
-    if query_ccs:
-        # Invoices (e.g. POS / Maintenance) where cost center matches the leased apartment property
-        or_clauses.append(f"(si.cost_center IN ({', '.join(['%s'] * len(query_ccs))}))")
-        base_params.extend(query_ccs)
-
-    if not or_clauses:
-        return {
-            "status": "success",
-            "summary": {
-                "total_outstanding": {},
-                "total_overdue": {},
-                "counts": {"total": 0, "pending": 0, "overdue": 0, "paid": 0},
-            },
-            "invoices": [],
-            "pagination": {
-                "page": 1,
-                "page_length": page_length,
-                "total_records": 0,
-                "total_pages": 0,
-            },
-        }
-
-    where_conditions.append(f"({' OR '.join(or_clauses)})")
+        lease_clause += ")"
+        where_conditions.append(lease_clause)
 
     # 1. Compute financial summary stats across all tenant invoices
     summary_sql = f"""
