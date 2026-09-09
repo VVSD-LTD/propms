@@ -144,15 +144,13 @@ def _issue_assigned_technician_employee(issue):
 
 
 def _get_officer_manager_recipients():
-    """User identifiers for Mobile Maintenance Officer/Manager app users (Maintenance Users.role)."""
+    """User identifiers for Mobile Maintenance staff, officers, managers, and system managers."""
     recipients = set()
+    # 1. Maintenance Users doctype rows
     try:
         rows = frappe.get_all(
             "Maintenance Users",
-            filters={
-                "enabled": 1,
-                "role": ["in", ["Mobile Maintenance Officer", "Mobile Maintenance Manager"]],
-            },
+            filters={"enabled": 1},
             fields=["user_email", "user"],
         )
         for r in rows or []:
@@ -162,6 +160,33 @@ def _get_officer_manager_recipients():
                 recipients.add(r["user"])
     except Exception:
         pass
+
+    # 2. Users with Maintenance / Staff Roles in Has Role table
+    try:
+        target_roles = [
+            "Mobile Maintenance Officer",
+            "Mobile Maintenance Manager",
+            "Maintenance Officer",
+            "Maintenance Manager",
+            "Mobile Technician",
+            "Property Staff",
+            "System Manager",
+        ]
+        role_rows = frappe.get_all(
+            "Has Role",
+            filters={"role": ["in", target_roles], "parenttype": "User"},
+            fields=["parent"],
+        )
+        for r in role_rows or []:
+            user_id = r.get("parent")
+            if user_id and user_id != "Guest":
+                if frappe.db.get_value("User", user_id, "enabled"):
+                    user_email = frappe.db.get_value("User", user_id, "email") or user_id
+                    recipients.add(user_email)
+                    recipients.add(user_id)
+    except Exception:
+        pass
+
     return recipients
 
 
@@ -958,95 +983,7 @@ def create_ticket(subject=None, description=None, property_name=None, issue_type
                 )
 
         # Broadcast real-time notifications to staff and creator
-        try:
-            creator_fullname = frappe.utils.get_fullname(frappe.session.user) or frappe.session.user
-            customer_display = issue.customer or creator_fullname
-            staff_recipients = _get_officer_manager_recipients()
-            now_iso = frappe.utils.now_datetime().isoformat()
-
-            # 1. Real-time ticket_created payload
-            created_payload = {
-                "ticket_id": issue.name,
-                "issue_id": issue.name,
-                "subject": issue.subject,
-                "customer": customer_display,
-                "property_name": issue.property_name,
-                "issue_type": issue.issue_type,
-                "description": first_message or issue.subject,
-                "priority": issue.priority or "Medium",
-                "status": issue.status or "Open",
-                "raised_by": frappe.session.user,
-                "creator_name": creator_fullname,
-                "creation": str(issue.creation),
-                "timestamp": now_iso,
-            }
-
-            # Staff broadcast rooms for Flutter app
-            staff_broadcast_rooms = {
-                "maintenance",
-                "management",
-                "staff",
-                "all_staff",
-                "support_team",
-                "role:Property Staff",
-            }
-
-            for room in staff_broadcast_rooms:
-                try:
-                    frappe.publish_realtime(
-                        event="ticket_created",
-                        message=created_payload,
-                        room=room,
-                        after_commit=True,
-                    )
-                except Exception:
-                    pass
-
-            for u in staff_recipients:
-                for r in [f"user:{u}", f"user_{u}"]:
-                    try:
-                        frappe.publish_realtime(
-                            event="ticket_created",
-                            message=created_payload,
-                            room=r,
-                            after_commit=True,
-                        )
-                    except Exception:
-                        pass
-                try:
-                    frappe.publish_realtime(
-                        event="ticket_created",
-                        message=created_payload,
-                        user=u,
-                        after_commit=True,
-                    )
-                except Exception:
-                    pass
-
-            # 2. Background FCM push notifications to Maintenance Officers & Managers (Single clean alert)
-            from propms.api.v1.notifications.notifications import enqueue_ticket_created_push
-
-            title = f"New Job Card: #{issue.name}"
-            body = f"{customer_display} reported: {issue.subject}"
-
-            for staff_user in staff_recipients:
-                try:
-                    frappe.enqueue(
-                        enqueue_ticket_created_push,
-                        user=staff_user,
-                        ticket_id=issue.name,
-                        title=title,
-                        body=body,
-                        ticket_title=issue.subject,
-                        property_name=issue.property_name,
-                        creator_name=creator_fullname,
-                        queue="short",
-                    )
-                except Exception:
-                    pass
-
-        except Exception as notify_err:
-            frappe.log_error(frappe.get_traceback(), f"create_ticket notification dispatch error: {notify_err}")
+        notify_ticket_created(issue)
 
         return {
             "status": "success",
@@ -1066,6 +1003,125 @@ def create_ticket(subject=None, description=None, property_name=None, issue_type
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "create_ticket")
         return {"status": "error", "message": str(e)}
+
+
+def notify_ticket_created(issue):
+    """Broadcast real-time WebSocket events and FCM push notifications when a new ticket (Issue) is created."""
+    if not issue or getattr(issue.flags, "notified_created", False):
+        return
+    issue.flags.notified_created = True
+
+    try:
+        creator_user = getattr(issue, "raised_by", None) or getattr(issue, "owner", None) or frappe.session.user
+        creator_fullname = frappe.utils.get_fullname(creator_user) or creator_user
+        customer_display = getattr(issue, "customer", None) or creator_fullname
+        staff_recipients = _get_officer_manager_recipients()
+        now_iso = frappe.utils.now_datetime().isoformat()
+
+        first_message = getattr(issue, "description", None) or getattr(issue, "subject", "") or ""
+
+        created_payload = {
+            "ticket_id": issue.name,
+            "issue_id": issue.name,
+            "subject": getattr(issue, "subject", "") or "",
+            "customer": customer_display,
+            "property_name": getattr(issue, "property_name", "") or "",
+            "issue_type": getattr(issue, "issue_type", "") or "",
+            "description": first_message,
+            "priority": getattr(issue, "priority", None) or "Medium",
+            "status": getattr(issue, "status", None) or "Open",
+            "raised_by": creator_user,
+            "creator_name": creator_fullname,
+            "creation": str(getattr(issue, "creation", None) or frappe.utils.now()),
+            "timestamp": now_iso,
+        }
+
+        events_to_emit = ("ticket_created", "new_ticket", "issue_created", "maintenance_job_card_created")
+
+        # 1. Global Socket.io Broadcast (reaches all connected mobile WebSocket clients immediately)
+        for ev in events_to_emit:
+            try:
+                frappe.publish_realtime(
+                    event=ev,
+                    message=created_payload,
+                    after_commit=False,
+                )
+            except Exception:
+                pass
+
+        # 2. Staff Broadcast Rooms
+        staff_broadcast_rooms = {
+            "maintenance",
+            "management",
+            "staff",
+            "all_staff",
+            "support_team",
+            "role:Property Staff",
+            "role:Mobile Maintenance Officer",
+            "role:Mobile Maintenance Manager",
+            "role:Maintenance Manager",
+            "role:Maintenance Officer",
+        }
+
+        for room in staff_broadcast_rooms:
+            for ev in events_to_emit:
+                try:
+                    frappe.publish_realtime(
+                        event=ev,
+                        message=created_payload,
+                        room=room,
+                        after_commit=False,
+                    )
+                except Exception:
+                    pass
+
+        # 3. Direct user socket channels
+        for u in staff_recipients:
+            for ev in events_to_emit:
+                try:
+                    frappe.publish_realtime(
+                        event=ev,
+                        message=created_payload,
+                        user=u,
+                        after_commit=False,
+                    )
+                except Exception:
+                    pass
+                for r in [f"user:{u}", f"user_{u}"]:
+                    try:
+                        frappe.publish_realtime(
+                            event=ev,
+                            message=created_payload,
+                            room=r,
+                            after_commit=False,
+                        )
+                    except Exception:
+                        pass
+
+        # 4. FCM Push Notifications
+        from propms.api.v1.notifications.notifications import enqueue_ticket_created_push
+
+        title = f"New Job Card: #{issue.name}"
+        body = f"{customer_display} reported: {getattr(issue, 'subject', '')}"
+
+        for staff_user in staff_recipients:
+            try:
+                frappe.enqueue(
+                    enqueue_ticket_created_push,
+                    user=staff_user,
+                    ticket_id=issue.name,
+                    title=title,
+                    body=body,
+                    ticket_title=getattr(issue, "subject", "") or "",
+                    property_name=getattr(issue, "property_name", "") or "",
+                    creator_name=creator_fullname,
+                    queue="short",
+                )
+            except Exception:
+                pass
+
+    except Exception as notify_err:
+        frappe.log_error(frappe.get_traceback(), f"notify_ticket_created dispatch error: {notify_err}")
 
 
 ##############################################################

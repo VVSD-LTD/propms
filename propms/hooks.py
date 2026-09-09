@@ -136,6 +136,9 @@ doc_events = {
         "validate": [
             "propms.issue_hook.validate",
         ],
+        "after_insert": [
+            "propms.issue_hook.after_insert",
+        ],
     },
     "Material Request": {
         "validate": "propms.auto_custom.makeSalesInvoice",

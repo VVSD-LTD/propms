@@ -319,6 +319,15 @@ def validate(doc, method):
         make_transaction(doc, for_self_consumption=True)
 
 
+def after_insert(doc, method=None):
+    """Trigger realtime websocket and FCM notifications whenever an Issue (ticket) is created."""
+    try:
+        from propms.api.v1.job_card.job_card import notify_ticket_created
+        notify_ticket_created(doc)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Issue after_insert notification error")
+
+
 def get_taxes_template(item_code):
     item_tax_template = get_taxes_and_charges("Item", item_code)
     if len(item_tax_template) > 0:
