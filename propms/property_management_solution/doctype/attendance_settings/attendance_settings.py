@@ -205,6 +205,81 @@ def build_report_pdf_html(report_name, report_result, filters=None):
 	return html
 
 
+def schedule_email_message_id(row_name):
+	"""Stable id so a failed send can be recognized on the next cron tick."""
+	if not row_name:
+		return None
+	return f"attendance-schedule-{row_name}-{today()}@{frappe.local.site}"
+
+
+def queue_attendance_report_email(
+	recipients, cc, bcc, subject, message, attachments, reference_name=None
+):
+	"""Queue one Communication + one Email Queue the way Frappe Notifications send mail.
+
+	Do not send with now=True or queue_separately=True. Those make Frappe create a
+	separate SMTP delivery (and, with queue_separately, a separate Email Queue) for
+	every To recipient, so each BCC address is copied on every copy.
+	"""
+	from frappe.core.doctype.communication.email import _make as make_communication
+
+	message_id = schedule_email_message_id(reference_name)
+
+	communication = make_communication(
+		doctype="Attendance Settings",
+		name="Attendance Settings",
+		content=message,
+		subject=subject,
+		recipients=recipients,
+		cc=cc or None,
+		bcc=bcc or None,
+		send_email=False,
+		communication_type="Automated Message",
+	).get("name")
+
+	if message_id:
+		frappe.db.sql(
+			"UPDATE `tabCommunication` SET message_id=%s WHERE name=%s",
+			(message_id, communication),
+		)
+
+	frappe.sendmail(
+		recipients=recipients,
+		cc=cc or None,
+		bcc=bcc or None,
+		subject=subject,
+		message=message,
+		attachments=attachments,
+		reference_doctype="Attendance Settings",
+		reference_name="Attendance Settings",
+		expose_recipients="header",
+		communication=communication,
+		message_id=message_id,
+		add_unsubscribe_link=0,
+		queue_separately=False,
+		delayed=True,
+	)
+	return communication
+
+
+def mark_schedule_attempted(row_name):
+	"""Stamp last_sent_at even when queueing fails, so the next cron tick cannot recreate."""
+	if not row_name:
+		return
+	frappe.db.set_value("Attendance Report Schedule", row_name, "last_sent_at", now())
+
+
+def todays_schedule_email_exists(row_name):
+	"""True if this schedule row already created a Communication or Email Queue today."""
+	message_id = schedule_email_message_id(row_name)
+	if not message_id:
+		return False
+	return bool(
+		frappe.db.exists("Communication", {"message_id": message_id})
+		or frappe.db.exists("Email Queue", {"message_id": message_id})
+	)
+
+
 def send_single_scheduled_report(row_doc, force=False):
 	if not force and not row_doc.enabled:
 		return False
@@ -214,6 +289,16 @@ def send_single_scheduled_report(row_doc, force=False):
 	current_dom = now_dt.day
 
 	if not force:
+		# Lock the child row so overlapping */5 cron ticks cannot double-send.
+		if row_doc.name and frappe.db.exists("Attendance Report Schedule", row_doc.name):
+			frappe.db.sql(
+				"SELECT name FROM `tabAttendance Report Schedule` WHERE name=%s FOR UPDATE",
+				row_doc.name,
+			)
+			row_doc.last_sent_at = frappe.db.get_value(
+				"Attendance Report Schedule", row_doc.name, "last_sent_at"
+			)
+
 		# Check frequency
 		if row_doc.frequency == "Weekly" and row_doc.day_of_week != current_day:
 			return False
@@ -237,6 +322,11 @@ def send_single_scheduled_report(row_doc, force=False):
 		send_sec = send_time_obj.hour * 3600 + send_time_obj.minute * 60 + send_time_obj.second
 
 		if curr_sec < send_sec:
+			return False
+
+		# Email already created today (queue may have failed after Communication insert).
+		if todays_schedule_email_exists(row_doc.name):
+			mark_schedule_attempted(row_doc.name)
 			return False
 
 	# Fetch report data
@@ -311,22 +401,30 @@ def send_single_scheduled_report(row_doc, force=False):
 	message = render_jinja_template(row_doc.message, context) if row_doc.message else default_message
 
 	recipients = parse_email_addresses(row_doc.recipients)
-	cc = parse_email_addresses(row_doc.cc) if row_doc.cc else None
-	bcc = parse_email_addresses(row_doc.bcc) if row_doc.bcc else None
+	cc = parse_email_addresses(row_doc.cc) if row_doc.cc else []
+	bcc = parse_email_addresses(row_doc.bcc) if row_doc.bcc else []
 
-	frappe.sendmail(
-		recipients=recipients,
-		cc=cc,
-		bcc=bcc,
-		subject=subject,
-		message=message,
-		attachments=attachments,
-		now=True,
-	)
-
-	# Update last_sent_at
-	frappe.db.set_value("Attendance Report Schedule", row_doc.name, "last_sent_at", now())
-	return True
+	try:
+		queue_attendance_report_email(
+			recipients=recipients,
+			cc=cc,
+			bcc=bcc,
+			subject=subject,
+			message=message,
+			attachments=attachments,
+			reference_name=row_doc.name,
+		)
+		return True
+	except Exception:
+		frappe.log_error(
+			title=f"Attendance scheduled report email failed ({row_doc.name})",
+			message=frappe.get_traceback(),
+		)
+		return False
+	finally:
+		# Always stamp the attempt. If last_sent_at is left empty, the next */5
+		# cron recreates Communication + Email Queue even though the first try failed.
+		mark_schedule_attempted(row_doc.name)
 
 
 def send_scheduled_reports():
