@@ -2,3 +2,5 @@
 
 [post_model_sync]
 propms.patches.data_population.populate_data
+propms.patches.data_population.set_legacy_email_settings_pre_due
+propms.patches.data_population.remap_email_setting_payment_terms_template

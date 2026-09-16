@@ -8,8 +8,25 @@
  "engine": "InnoDB",
  "field_order": [
   "enabled",
+  "reminder_type",
   "payment_term",
+  "pre_due_section",
   "days_due",
+  "after_overdue_section",
+  "days_after_overdue",
+  "use_penalty_grace_period",
+  "overdue_condition",
+  "withholding_tax_section",
+  "wh_date_basis",
+  "wh_condition",
+  "schedule_section",
+  "frequency",
+  "weekday",
+  "day_of_month",
+  "exclusion_section",
+  "use_penalty_exclusion_calendar",
+  "excluded_days",
+  "template_section",
   "subject",
   "body",
   "print_format",
@@ -18,20 +35,161 @@
  ],
  "fields": [
   {
-   "fieldname": "payment_term",
-   "fieldtype": "Link",
+   "allow_on_submit": 1,
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled?"
+  },
+  {
+   "default": "Pre-Due",
+   "description": "<b>Pre-Due</b> \u2014 reminder before the due date for <b>standard</b> (non-withholding) invoices.<br><b>After Overdue</b> \u2014 recurring reminders for <b>standard</b> invoices that are past due.<br><b>Withholding Tax</b> \u2014 reminders for invoices marked <b>Outstanding is W/H</b>, using flexible date rules (not tied to overdue).",
+   "fieldname": "reminder_type",
+   "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Payment Term",
-   "options": "Payment Term",
+   "label": "Reminder Type",
+   "options": "Pre-Due\nAfter Overdue\nWithholding Tax",
    "reqd": 1
   },
   {
+   "description": "Only submitted Sales Invoices with this <b>Payment Terms Template</b> are included. Must match the invoice field exactly (case differences may still match on case-insensitive databases).",
+   "fieldname": "payment_term",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Payment Terms Template",
+   "options": "Payment Terms Template",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.reminder_type=='Pre-Due'",
+   "fieldname": "pre_due_section",
+   "fieldtype": "Section Break",
+   "label": "Pre-Due Reminder"
+  },
+  {
+   "depends_on": "eval:doc.reminder_type=='Pre-Due'",
+   "description": "Number of days before the invoice due date to send the reminder. Example: 3 sends when due date is 3 days from today.",
    "fieldname": "days_due",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Days Due",
-   "non_negative": 1,
-   "reqd": 1
+   "label": "Days Before Due",
+   "mandatory_depends_on": "eval:doc.reminder_type=='Pre-Due'",
+   "non_negative": 1
+  },
+  {
+   "depends_on": "eval:doc.reminder_type=='After Overdue'",
+   "description": "Applies to <b>standard invoices only</b> (Outstanding is W/H is not ticked). Invoices must be past due (plus grace) before reminders start. Use <b>After Overdue Condition</b> to decide which invoices still qualify.",
+   "fieldname": "after_overdue_section",
+   "fieldtype": "Section Break",
+   "label": "After Overdue Reminder"
+  },
+  {
+   "default": "1",
+   "depends_on": "eval:doc.reminder_type=='After Overdue'",
+   "description": "Grace period after the due date before the first overdue reminder is sent (T+X days).",
+   "fieldname": "days_after_overdue",
+   "fieldtype": "Int",
+   "label": "Days After Overdue",
+   "mandatory_depends_on": "eval:doc.reminder_type=='After Overdue' && !doc.use_penalty_grace_period",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.reminder_type=='After Overdue'",
+   "description": "Use the grace period (T+X) from Sales Invoice Penalty Settings instead of the value above.",
+   "fieldname": "use_penalty_grace_period",
+   "fieldtype": "Check",
+   "label": "Use Penalty Grace Period"
+  },
+  {
+   "depends_on": "eval:doc.reminder_type=='After Overdue'",
+   "description": "Optional Python expression. Leave blank to use the default: <code>flt(outstanding_amount) &gt; 1</code>. Grace period is already controlled by <b>Days After Overdue</b> / penalty settings &mdash; do not put that in the expression.<br>Recommended:<br><code>flt(outstanding_amount) &gt; 1 or (flt(outstanding_penalty_amount) &gt; 1 and not cint(penalty_paid))</code><br>Meaning: keep sending while invoice outstanding &gt; 1; if principal is settled, keep sending only while penalty outstanding &gt; 1 and <b>Penalty Paid</b> is not ticked (invoices with no penalty simply stop when outstanding &le; 1).<br>Available: <code>doc</code>, <code>today</code>, <code>posting_date</code>, <code>due_date</code>, <code>days_overdue</code>, <code>days_after_overdue</code>, <code>outstanding_amount</code>, <code>outstanding_penalty_amount</code>, <code>penalty_paid</code>, <code>flt</code>, <code>cint</code>, <code>add_days</code>, <code>getdate</code>, <code>date_diff</code>.",
+   "fieldname": "overdue_condition",
+   "fieldtype": "Code",
+   "label": "After Overdue Condition",
+   "options": "Python"
+  },
+  {
+   "depends_on": "eval:doc.reminder_type=='Withholding Tax'",
+   "description": "Applies to invoices with <b>Outstanding is W/H</b> ticked and <b>outstanding amount greater than 1</b>. Timing is based on posting or due date, not overdue status. So reminders can be sent before the due date.",
+   "fieldname": "withholding_tax_section",
+   "fieldtype": "Section Break",
+   "label": "Withholding Tax Reminder"
+  },
+  {
+   "default": "Posting Date",
+   "depends_on": "eval:doc.reminder_type=='Withholding Tax'",
+   "description": "The invoice date used to decide when a withholding invoice becomes eligible for reminders.<br><b>Posting Date</b> — invoice posting date.<br><b>Payment Due Date</b> — invoice due date.<br><b>Withholding Date</b> — the date Outstanding is W/H was ticked (hidden field on the invoice).",
+   "fieldname": "wh_date_basis",
+   "fieldtype": "Select",
+   "label": "Date Basis",
+   "mandatory_depends_on": "eval:doc.reminder_type=='Withholding Tax'",
+   "options": "Posting Date\nPayment Due Date\nWithholding Date"
+  },
+  {
+   "depends_on": "eval:doc.reminder_type=='Withholding Tax'",
+   "description": "Optional Python expression (leave blank to default to: start from the <b>1st of the next month</b> after Date Basis).<br>Available: <code>doc</code>, <code>reference_date</code>, <code>posting_date</code>, <code>due_date</code>, <code>withholding_date</code>, <code>today</code>, <code>add_days</code>, <code>add_months</code>, <code>get_first_day</code>, <code>getdate</code>, <code>date_diff</code>.<br>Example (next month start): <code>get_first_day(add_months(reference_date, 1)) &lt;= today</code>",
+   "fieldname": "wh_condition",
+   "fieldtype": "Code",
+   "label": "Withholding Condition",
+   "options": "Python"
+  },
+  {
+   "depends_on": "eval:['After Overdue','Withholding Tax'].includes(doc.reminder_type)",
+   "fieldname": "schedule_section",
+   "fieldtype": "Section Break",
+   "label": "Reminder Schedule"
+  },
+  {
+   "depends_on": "eval:['After Overdue','Withholding Tax'].includes(doc.reminder_type)",
+   "description": "How often reminders are sent on eligible days (after exclusion calendar is applied).",
+   "fieldname": "frequency",
+   "fieldtype": "Select",
+   "label": "Frequency",
+   "mandatory_depends_on": "eval:['After Overdue','Withholding Tax'].includes(doc.reminder_type)",
+   "options": "Daily\nWeekly\nMonthly"
+  },
+  {
+   "depends_on": "eval:['After Overdue','Withholding Tax'].includes(doc.reminder_type) && doc.frequency=='Weekly'",
+   "fieldname": "weekday",
+   "fieldtype": "Select",
+   "label": "Weekday",
+   "mandatory_depends_on": "eval:['After Overdue','Withholding Tax'].includes(doc.reminder_type) && doc.frequency=='Weekly'",
+   "options": "Monday\nTuesday\nWednesday\nThursday\nFriday\nSaturday\nSunday"
+  },
+  {
+   "depends_on": "eval:['After Overdue','Withholding Tax'].includes(doc.reminder_type) && doc.frequency=='Monthly'",
+   "fieldname": "day_of_month",
+   "fieldtype": "Int",
+   "label": "Day of Month",
+   "mandatory_depends_on": "eval:['After Overdue','Withholding Tax'].includes(doc.reminder_type) && doc.frequency=='Monthly'",
+   "non_negative": 1
+  },
+  {
+   "depends_on": "eval:['After Overdue','Withholding Tax'].includes(doc.reminder_type)",
+   "fieldname": "exclusion_section",
+   "fieldtype": "Section Break",
+   "label": "Exclusion Calendar"
+  },
+  {
+   "default": "1",
+   "depends_on": "eval:['After Overdue','Withholding Tax'].includes(doc.reminder_type)",
+   "description": "When enabled, uses the same excluded days as Sales Invoice Penalty Settings. Reminders are not sent on excluded days including when a weekly or monthly schedule falls on an excluded day.",
+   "fieldname": "use_penalty_exclusion_calendar",
+   "fieldtype": "Check",
+   "label": "Use Penalty Exclusion Calendar"
+  },
+  {
+   "depends_on": "eval:['After Overdue','Withholding Tax'].includes(doc.reminder_type) && !doc.use_penalty_exclusion_calendar",
+   "fieldname": "excluded_days",
+   "fieldtype": "Table",
+   "label": "Excluded Days",
+   "options": "Sales Invoice Penalty Excluded Day"
+  },
+  {
+   "fieldname": "template_section",
+   "fieldtype": "Section Break",
+   "label": "Email Template"
   },
   {
    "fieldname": "subject",
@@ -54,6 +212,13 @@
    "options": "Print Format"
   },
   {
+   "allow_on_submit": 1,
+   "fieldname": "letter_head",
+   "fieldtype": "Link",
+   "label": "Letter Head",
+   "options": "Letter Head"
+  },
+  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -62,31 +227,17 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "1",
-   "fieldname": "enabled",
-   "fieldtype": "Check",
-   "label": "Enabled?"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "letter_head",
-   "fieldtype": "Link",
-   "label": "Letter Head",
-   "options": "Letter Head"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-15 15:22:16.398503",
+ "modified": "2026-09-02 10:41:03.293757",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property Management Email Setting",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {

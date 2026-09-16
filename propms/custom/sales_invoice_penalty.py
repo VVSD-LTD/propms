@@ -1,32 +1,15 @@
 # -*- coding: utf-8 -*-
 import frappe
 from frappe.utils import cint, date_diff, flt, getdate, today
-from propms.property_management_solution.doctype.sales_invoice_penalty_settings.sales_invoice_penalty_settings import (
-    is_date_public_holiday,
-)
+from propms.utils.business_calendar import get_excluded_days_map, is_excluded_today
 
 
 def is_penalty_excluded_today(settings_doc, target_date=None):
     if not target_date:
         target_date = today()
 
-    dt = getdate(target_date)
-    day_name = dt.strftime("%A")
-
-    excluded_days_map = {
-        row.day: row.exclude for row in settings_doc.get("excluded_days", [])
-    }
-
-    # Check Day of Week (Monday - Sunday)
-    if excluded_days_map.get(day_name):
-        return True, f"Day of week ({day_name}) is excluded"
-
-    # Check Public Holiday
-    if excluded_days_map.get("Public Holiday"):
-        if is_date_public_holiday(dt):
-            return True, f"Date ({dt}) is a Public Holiday"
-
-    return False, None
+    excluded_days_map = get_excluded_days_map(settings_doc)
+    return is_excluded_today(excluded_days_map, target_date)
 
 
 def evaluate_penalty_formula(formula, settings_doc, invoice_doc):

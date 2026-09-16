@@ -34,5 +34,18 @@
         "allow_on_submit": 1,
         "no_copy": 1,
         "doctype": "Custom Field"
+    },
+    {
+        "name": "Sales Invoice-custom_penalty_paid",
+        "dt": "Sales Invoice",
+        "label": "Penalty Paid",
+        "fieldname": "penalty_paid",
+        "insert_after": "sales_invoice_penalty_details",
+        "fieldtype": "Check",
+        "default": "0",
+        "description": "Mark when penalty has been settled. Reference this in After Overdue Condition on Property Management Email Setting (e.g. not cint(penalty_paid)).",
+        "allow_on_submit": 1,
+        "no_copy": 1,
+        "doctype": "Custom Field"
     }
 ]

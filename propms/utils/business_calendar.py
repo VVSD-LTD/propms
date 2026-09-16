@@ -349,7 +349,8 @@ def evaluate_overdue_condition(condition, invoice_doc, current_date=None, days_a
 		invoice_doc, current_date, days_after_overdue=days_after_overdue
 	)
 	if not condition:
-		return context["outstanding_amount"] > 0 or context["outstanding_penalty_amount"] > 0
+		# Default when blank: same threshold as before (principal outstanding > 1)
+		return context["outstanding_amount"] > 1
 
 	try:
 		result = frappe.safe_eval(
@@ -404,9 +405,6 @@ def is_after_overdue_invoice_eligible(invoice_doc, setting_doc, current_date=Non
 
 	days_after = resolve_days_after_overdue(setting_doc)
 	if date_diff(current_date, due_date) < days_after:
-		return False
-
-	if cint(invoice_doc.get("penalty_paid")):
 		return False
 
 	return evaluate_overdue_condition(

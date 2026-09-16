@@ -1,13 +1,70 @@
 import frappe
 from datetime import timedelta
+from frappe import _
+from frappe.utils import cint, date_diff, flt, fmt_money, getdate, today
 from frappe.utils.pdf import get_pdf
+
+from propms.utils.business_calendar import (
+	get_email_setting_excluded_days_map,
+	get_wh_reference_date,
+	is_excluded_today,
+	is_schedule_due_today,
+	is_after_overdue_invoice_eligible,
+	is_wh_invoice_eligible,
+	resolve_days_after_overdue,
+)
+
+
+def _format_currency(amount, currency=None, precision=None):
+	"""Jinja-friendly money formatter: format_currency(amount, currency)."""
+	return fmt_money(flt(amount), precision=precision, currency=currency)
+
+
+def _format_schedule_label(setting_doc):
+	frequency = setting_doc.get("frequency") or ""
+	if frequency == "Weekly" and setting_doc.get("weekday"):
+		return f"Weekly / {setting_doc.weekday}"
+	if frequency == "Monthly" and setting_doc.get("day_of_month"):
+		return f"Monthly / day {cint(setting_doc.day_of_month)}"
+	return frequency or ""
 
 def before_save(doc, method):
     # Only for Sales Invoice
     if doc.doctype != "Sales Invoice":
         return
 
-    # Return if doc doesnot edit_payment_due_date field
+    _set_outstanding_withholding_date(doc)
+    _apply_due_date_from_item_duration(doc)
+
+
+def before_update_after_submit(doc, method):
+    """Submitted invoices only update allow_on_submit fields via this path."""
+    if doc.doctype != "Sales Invoice":
+        return
+
+    _set_outstanding_withholding_date(doc)
+
+
+def _set_outstanding_withholding_date(doc):
+    """Stamp the date when Outstanding is W/H is newly ticked (draft or submitted)."""
+    if not hasattr(doc, "outstanding_withholding"):
+        return
+
+    is_ticked = cint(doc.outstanding_withholding)
+    prev = doc.get_doc_before_save()
+    was_ticked = cint(prev.get("outstanding_withholding")) if prev else 0
+
+    if is_ticked and not was_ticked:
+        doc.outstanding_withholding_date = today()
+    elif is_ticked and not doc.get("outstanding_withholding_date"):
+        # Already ticked (e.g. before this field existed, or update-after-submit missed stamp)
+        doc.outstanding_withholding_date = today()
+    elif not is_ticked:
+        doc.outstanding_withholding_date = None
+
+
+def _apply_due_date_from_item_duration(doc):
+    # Return if doc does not have edit_payment_due_date field
     if not hasattr(doc, "edit_payment_due_date"):
         return
 
@@ -125,6 +182,11 @@ def _get_primary_contact_emails(customer_name):
     return emails
 
 def get_overdue_sales_invoices():
+    """Backward-compatible entry point for the scheduled job."""
+    return process_invoice_email_reminders()
+
+
+def process_invoice_email_reminders():
     enabled_email_settings = frappe.db.get_single_value(
         "Property Management Settings", "enable_due_invoice_email_sending"
     )
@@ -134,7 +196,7 @@ def get_overdue_sales_invoices():
     email_settings = frappe.db.get_all(
         "Property Management Email Setting",
         filters={"enabled": 1, "docstatus": 1},
-        fields=["name", "payment_term"],
+        fields=["name", "payment_term", "reminder_type"],
     )
     if not email_settings:
         return []
@@ -143,116 +205,561 @@ def get_overdue_sales_invoices():
         if not setting.payment_term:
             frappe.log_error(
                 f"Payment term not set for email setting: {setting.name}",
-                "Overdue Invoice Email Sending",
+                "Invoice Email Reminder",
             )
             continue
 
         doc = frappe.get_doc("Property Management Email Setting", setting.name)
+        reminder_type = doc.reminder_type or "Pre-Due"
 
-        # Today + days_due = the due date we are targeting
-        # e.g. today = 06-09-2026, days_due = 3 → target = 09-09-2026
-        target_due_date = frappe.utils.add_days(frappe.utils.today(), doc.days_due)
+        if reminder_type == "Pre-Due":
+            _process_pre_due_reminder(doc)
+        elif reminder_type == "After Overdue":
+            _process_after_overdue_reminder(doc)
+        elif reminder_type == "Withholding Tax":
+            _process_withholding_tax_reminder(doc)
 
-        overdue_invoices = frappe.db.sql(
-            """
-            SELECT
-                name, customer, due_date, grand_total, outstanding_amount
-            FROM
-                `tabSales Invoice`
-            WHERE
-                docstatus = 1
-            AND
-                outstanding_amount > 0
-            AND
-                payment_terms_template = %s
-            AND
-                due_date = %s
-            AND
-               outstanding_withholding = 0 
-            """,
-            (setting.payment_term, target_due_date),
-            as_dict=True,
+
+def _process_pre_due_reminder(setting_doc):
+    target_due_date = frappe.utils.add_days(frappe.utils.today(), setting_doc.days_due or 0)
+
+    invoices = frappe.db.sql(
+        """
+        SELECT
+            name, customer, due_date, grand_total, outstanding_amount
+        FROM
+            `tabSales Invoice`
+        WHERE
+            docstatus = 1
+        AND
+            outstanding_amount > 0
+        AND
+            payment_terms_template = %s
+        AND
+            due_date = %s
+        AND
+            outstanding_withholding = 0
+        """,
+        (setting_doc.payment_term, target_due_date),
+        as_dict=True,
+    )
+
+    _create_notify_customer_records(
+        setting_doc,
+        invoices,
+        audience="Standard",
+        frequency="Daily",
+    )
+
+
+def _process_after_overdue_reminder(setting_doc):
+    current_date = today()
+    excluded_days_map = get_email_setting_excluded_days_map(setting_doc)
+    is_excluded, reason = is_excluded_today(excluded_days_map, current_date)
+
+    if is_excluded:
+        frappe.logger().info(
+            f"Skipping after-overdue email reminders for {setting_doc.name} on {current_date}: {reason}"
+        )
+        return
+
+    if not is_schedule_due_today(
+        setting_doc.frequency,
+        weekday=setting_doc.weekday,
+        day_of_month=setting_doc.day_of_month,
+        target_date=current_date,
+    ):
+        return
+
+    days_after_overdue = resolve_days_after_overdue(setting_doc)
+    candidates = _get_after_overdue_invoices(
+        setting_doc.payment_term,
+        current_date,
+        days_after_overdue,
+        withholding=0,
+    )
+    eligible_invoices = []
+    for invoice in candidates:
+        invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
+        if is_after_overdue_invoice_eligible(invoice_doc, setting_doc, current_date):
+            eligible_invoices.append(invoice)
+
+    _create_notify_customer_records(
+        setting_doc,
+        eligible_invoices,
+        audience="Standard",
+        frequency=setting_doc.frequency,
+    )
+
+
+def _process_withholding_tax_reminder(setting_doc):
+    current_date = today()
+    excluded_days_map = get_email_setting_excluded_days_map(setting_doc)
+    is_excluded, reason = is_excluded_today(excluded_days_map, current_date)
+
+    if is_excluded:
+        frappe.logger().info(
+            f"Skipping withholding tax email reminders for {setting_doc.name} on {current_date}: {reason}"
+        )
+        return
+
+    if not is_schedule_due_today(
+        setting_doc.frequency,
+        weekday=setting_doc.weekday,
+        day_of_month=setting_doc.day_of_month,
+        target_date=current_date,
+    ):
+        return
+
+    candidates = frappe.db.sql(
+        """
+        SELECT
+            name, customer, due_date, posting_date, grand_total, outstanding_amount
+        FROM
+            `tabSales Invoice`
+        WHERE
+            docstatus = 1
+        AND
+            outstanding_amount > 1
+        AND
+            payment_terms_template = %s
+        AND
+            outstanding_withholding = 1
+        """,
+        (setting_doc.payment_term,),
+        as_dict=True,
+    )
+
+    eligible_invoices = []
+    for invoice in candidates:
+        invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
+        if is_wh_invoice_eligible(invoice_doc, setting_doc, current_date):
+            eligible_invoices.append(invoice)
+
+    _create_notify_customer_records(
+        setting_doc,
+        eligible_invoices,
+        audience="Withholding",
+        frequency=setting_doc.frequency,
+    )
+
+
+def _get_after_overdue_invoices(payment_term, current_date, days_after_overdue, withholding=0):
+    return frappe.db.sql(
+        """
+        SELECT
+            name, customer, due_date, grand_total, outstanding_amount
+        FROM
+            `tabSales Invoice`
+        WHERE
+            docstatus = 1
+        AND
+            payment_terms_template = %s
+        AND
+            due_date < %s
+        AND
+            outstanding_withholding = %s
+        AND
+            DATEDIFF(%s, due_date) >= %s
+        """,
+        (payment_term, current_date, withholding, current_date, days_after_overdue),
+        as_dict=True,
+    )
+
+
+def _already_notified(
+    email_setting_name,
+    invoice_name,
+    customer,
+    email,
+    audience,
+    frequency,
+    target_date=None,
+):
+    target_date = target_date or today()
+    dt = getdate(target_date)
+
+    base_filters = {
+        "customer": customer,
+        "invoice_no": invoice_name,
+        "customer_email": email,
+        "email_setting": email_setting_name,
+        "reminder_audience": audience,
+    }
+
+    if frequency == "Daily":
+        if frappe.db.exists(
+            "Notify Customer",
+            {**base_filters, "posting_date": target_date},
+        ):
+            return True
+
+        # Backward compatibility with notifications created before tracking fields existed
+        return frappe.db.exists(
+            "Notify Customer",
+            {
+                "customer": customer,
+                "invoice_no": invoice_name,
+                "customer_email": email,
+                "posting_date": target_date,
+                "email_setting": ("is", "not set"),
+            },
         )
 
-        for invoice in overdue_invoices:
-            # Collect all unique emails from primary contacts
-            customer_emails = _get_primary_contact_emails(invoice.customer)
+    if frequency == "Weekly":
+        week_start = dt - timedelta(days=dt.weekday())
+        week_end = week_start + timedelta(days=6)
+        return frappe.db.sql(
+            """
+            SELECT name
+            FROM `tabNotify Customer`
+            WHERE customer = %s
+              AND invoice_no = %s
+              AND customer_email = %s
+              AND email_setting = %s
+              AND reminder_audience = %s
+              AND posting_date BETWEEN %s AND %s
+            LIMIT 1
+            """,
+            (
+                customer,
+                invoice_name,
+                email,
+                email_setting_name,
+                audience,
+                week_start,
+                week_end,
+            ),
+        )
 
-            if not customer_emails:
-                frappe.log_error(
-                    f"No primary contact email found for customer {invoice.customer}, skipping invoice {invoice.name}",
-                    "Overdue Invoice Email Sending",
-                )
+    if frequency == "Monthly":
+        return frappe.db.sql(
+            """
+            SELECT name
+            FROM `tabNotify Customer`
+            WHERE customer = %s
+              AND invoice_no = %s
+              AND customer_email = %s
+              AND email_setting = %s
+              AND reminder_audience = %s
+              AND YEAR(posting_date) = %s
+              AND MONTH(posting_date) = %s
+            LIMIT 1
+            """,
+            (
+                customer,
+                invoice_name,
+                email,
+                email_setting_name,
+                audience,
+                dt.year,
+                dt.month,
+            ),
+        )
+
+    return False
+
+
+def _build_reminder_template_context(setting_doc, invoice_doc, customer_doc=None, is_test=False):
+    if not customer_doc:
+        customer_doc = frappe.get_doc("Customer", invoice_doc.customer)
+
+    currency = (
+        customer_doc.default_currency
+        or frappe.get_cached_value("Global Defaults", None, "default_currency")
+    )
+    current_date = getdate(today())
+    due_date = getdate(invoice_doc.due_date) if invoice_doc.get("due_date") else None
+    posting_date = getdate(invoice_doc.posting_date) if invoice_doc.get("posting_date") else None
+    withholding_date = (
+        getdate(invoice_doc.get("outstanding_withholding_date"))
+        if invoice_doc.get("outstanding_withholding_date")
+        else None
+    )
+
+    reference_date = None
+    is_eligible = None
+    eligibility_note = ""
+    next_month_start = None
+    if setting_doc.reminder_type == "Withholding Tax":
+        reference_date = get_wh_reference_date(invoice_doc, setting_doc.wh_date_basis)
+        is_eligible = is_wh_invoice_eligible(invoice_doc, setting_doc, current_date)
+        if reference_date:
+            next_month_start = frappe.utils.get_first_day(
+                frappe.utils.add_months(reference_date, 1)
+            )
+            eligibility_note = (
+                f"Reference ({setting_doc.wh_date_basis})={reference_date}; "
+                f"next month starts {next_month_start}; "
+                f"eligible today={is_eligible}"
+            )
+        else:
+            eligibility_note = (
+                f"No reference date for basis '{setting_doc.wh_date_basis}' "
+                f"(withholding_date empty?)"
+            )
+    elif setting_doc.reminder_type == "After Overdue":
+        days_after = resolve_days_after_overdue(setting_doc)
+        days_overdue = date_diff(current_date, due_date) if due_date else None
+        is_eligible = is_after_overdue_invoice_eligible(
+            invoice_doc, setting_doc, current_date
+        )
+        eligibility_note = (
+            f"days_overdue={days_overdue}, grace={days_after}, "
+            f"WH={cint(invoice_doc.get('outstanding_withholding'))}, "
+            f"outstanding={flt(invoice_doc.outstanding_amount)}, "
+            f"penalty_outstanding={flt(invoice_doc.get('outstanding_penalty_amount'))}, "
+            f"penalty_paid={cint(invoice_doc.get('penalty_paid'))}"
+        )
+    else:
+        target = frappe.utils.add_days(current_date, setting_doc.days_due or 0)
+        is_eligible = bool(due_date and due_date == getdate(target))
+        eligibility_note = f"Pre-Due target due_date={target}"
+
+    excluded_map = get_email_setting_excluded_days_map(setting_doc) if setting_doc.reminder_type in (
+        "After Overdue",
+        "Withholding Tax",
+    ) else {}
+    is_excluded, exclude_reason = (
+        is_excluded_today(excluded_map, current_date) if excluded_map is not None else (False, None)
+    )
+    schedule_due = (
+        is_schedule_due_today(
+            setting_doc.frequency,
+            weekday=setting_doc.weekday,
+            day_of_month=setting_doc.day_of_month,
+            target_date=current_date,
+        )
+        if setting_doc.reminder_type in ("After Overdue", "Withholding Tax")
+        else True
+    )
+
+    context = invoice_doc.as_dict()
+    context.update({
+        "doc": invoice_doc,
+        "customer_doc": customer_doc,
+        "currency": currency,
+        "frappe": frappe,
+        "nowdate": frappe.utils.nowdate,
+        "format_currency": _format_currency,
+        "add_days": frappe.utils.add_days,
+        "add_months": frappe.utils.add_months,
+        "get_first_day": frappe.utils.get_first_day,
+        "getdate": getdate,
+        "today": current_date,
+        "days_overdue": date_diff(current_date, due_date) if due_date else None,
+        "posting_date": posting_date,
+        "due_date": due_date,
+        "withholding_date": withholding_date,
+        "reference_date": reference_date,
+        "next_month_start": next_month_start,
+        "is_eligible": is_eligible,
+        "eligibility_note": eligibility_note,
+        "is_excluded_today": is_excluded,
+        "exclude_reason": exclude_reason or "",
+        "schedule_due_today": schedule_due,
+        "email_setting_name": setting_doc.name,
+        "reminder_type": setting_doc.reminder_type,
+        "wh_date_basis": setting_doc.get("wh_date_basis"),
+        "wh_condition": setting_doc.get("wh_condition") or "",
+        "overdue_condition": setting_doc.get("overdue_condition") or "",
+        "outstanding_penalty_amount": flt(invoice_doc.get("outstanding_penalty_amount")),
+        "penalty_paid": cint(invoice_doc.get("penalty_paid")),
+        "frequency": setting_doc.get("frequency") or "",
+        "weekday": setting_doc.get("weekday") or "",
+        "day_of_month": setting_doc.get("day_of_month") or "",
+        "schedule_label": _format_schedule_label(setting_doc),
+        "payment_term_setting": setting_doc.payment_term,
+        "is_test": is_test,
+        "test_run_at": frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S"),
+    })
+    return context, currency
+
+
+def _create_notify_customer_records(setting_doc, invoices, audience, frequency):
+    for invoice in invoices:
+        customer_emails = _get_primary_contact_emails(invoice.customer)
+
+        if not customer_emails:
+            frappe.log_error(
+                f"No primary contact email found for customer {invoice.customer}, skipping invoice {invoice.name}",
+                "Invoice Email Reminder",
+            )
+            continue
+
+        invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
+        customer_doc = frappe.get_doc("Customer", invoice.customer)
+        context, currency = _build_reminder_template_context(
+            setting_doc, invoice_doc, customer_doc
+        )
+
+        try:
+            rendered_body = frappe.render_template(setting_doc.body, context)
+            rendered_subject = frappe.render_template(setting_doc.subject, context)
+        except Exception as e:
+            frappe.log_error(
+                f"Failed to render template for invoice {invoice.name}: {str(e)}",
+                "Invoice Email Reminder",
+            )
+            continue
+
+        for email in customer_emails:
+            if _already_notified(
+                setting_doc.name,
+                invoice.name,
+                invoice.customer,
+                email,
+                audience,
+                frequency,
+            ):
                 continue
 
-            # Fetch full docs once, outside the per-email loop
-            invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
-            customer_doc = frappe.get_doc("Customer", invoice.customer)
-            currency = (
-                customer_doc.default_currency
-                or frappe.get_cached_value("Global Defaults", None, "default_currency")
+            notify_doc = frappe.get_doc({
+                "doctype": "Notify Customer",
+                "posting_date": today(),
+                "posting_time": frappe.utils.now_datetime().strftime("%H:%M:%S"),
+                "customer": invoice.customer,
+                "customer_email": email,
+                "subject": rendered_subject,
+                "due_amount": invoice_doc.outstanding_amount,
+                "invoice_no": invoice.name,
+                "message": rendered_body,
+                "currency": currency,
+                "email_setting": setting_doc.name,
+                "reminder_audience": audience,
+                "is_test": 0,
+            })
+            notify_doc.insert(ignore_permissions=True)
+
+            if setting_doc.print_format:
+                try:
+                    _attach_pdf(
+                        notify_doc,
+                        invoice_doc,
+                        setting_doc.print_format,
+                        setting_doc.letter_head,
+                    )
+                    notify_doc.save(ignore_permissions=True)
+                except Exception as e:
+                    frappe.log_error(
+                        f"Failed to attach PDF for invoice {invoice.name} to {email}: {str(e)}",
+                        "Invoice Email Reminder",
+                    )
+
+    frappe.db.commit()
+
+
+@frappe.whitelist()
+def get_invoice_emails_for_reminder_test(sales_invoice):
+    frappe.only_for("System Manager")
+    if not sales_invoice:
+        return []
+
+    customer = frappe.db.get_value("Sales Invoice", sales_invoice, "customer")
+    if not customer:
+        return []
+
+    return sorted(_get_primary_contact_emails(customer))
+
+
+@frappe.whitelist()
+def test_property_management_email_setting(email_setting, sales_invoice, to_email, bcc=None):
+    """System Manager test push: render template, create Notify Customer, send email."""
+    frappe.only_for("System Manager")
+
+    if not email_setting or not sales_invoice or not to_email:
+        frappe.throw(_("Email Setting, Sales Invoice and To Email are required"))
+
+    to_email = to_email.strip().lower()
+    bcc_list = []
+    if bcc:
+        bcc_list = [e.strip().lower() for e in bcc.replace(";", ",").split(",") if e.strip()]
+
+    setting_doc = frappe.get_doc("Property Management Email Setting", email_setting)
+    invoice_doc = frappe.get_doc("Sales Invoice", sales_invoice)
+    customer_doc = frappe.get_doc("Customer", invoice_doc.customer)
+
+    audience = "Withholding" if setting_doc.reminder_type == "Withholding Tax" else "Standard"
+    context, currency = _build_reminder_template_context(
+        setting_doc, invoice_doc, customer_doc, is_test=True
+    )
+
+    try:
+        rendered_body = frappe.render_template(setting_doc.body or "", context)
+        rendered_subject = frappe.render_template(setting_doc.subject or "", context)
+    except Exception as e:
+        frappe.throw(_("Failed to render template: {0}").format(str(e)))
+
+    if not rendered_subject.startswith("[TEST]"):
+        rendered_subject = f"[TEST] {rendered_subject}"
+
+    notify_doc = frappe.get_doc({
+        "doctype": "Notify Customer",
+        "posting_date": today(),
+        "posting_time": frappe.utils.now_datetime().strftime("%H:%M:%S"),
+        "customer": invoice_doc.customer,
+        "customer_email": to_email,
+        "bcc": ", ".join(bcc_list) if bcc_list else None,
+        "subject": rendered_subject,
+        "due_amount": invoice_doc.outstanding_amount,
+        "invoice_no": invoice_doc.name,
+        "message": rendered_body,
+        "currency": currency,
+        "email_setting": setting_doc.name,
+        "reminder_audience": audience,
+        "is_test": 1,
+    })
+    notify_doc.insert(ignore_permissions=True)
+
+    if setting_doc.print_format:
+        try:
+            _attach_pdf(
+                notify_doc,
+                invoice_doc,
+                setting_doc.print_format,
+                setting_doc.letter_head,
+            )
+            notify_doc.save(ignore_permissions=True)
+        except Exception as e:
+            frappe.log_error(
+                f"Test reminder PDF attach failed for {invoice_doc.name}: {e}",
+                "Invoice Email Reminder Test",
             )
 
-            context = invoice_doc.as_dict()
-            context.update({
-                "doc": invoice_doc,
-                "customer_doc": customer_doc,
-                "currency": currency,
-                "frappe": frappe,
-                "nowdate": frappe.utils.nowdate,
-                "format_currency": frappe.utils.fmt_money,
-            })
+    send_kwargs = {
+        "recipients": [to_email],
+        "subject": rendered_subject,
+        "message": rendered_body,
+        "reference_doctype": "Notify Customer",
+        "reference_name": notify_doc.name,
+        "now": True,
+    }
+    if bcc_list:
+        send_kwargs["bcc"] = bcc_list
 
-            try:
-                rendered_body = frappe.render_template(doc.body, context)
-                rendered_subject = frappe.render_template(doc.subject, context)
-            except Exception as e:
-                frappe.log_error(
-                    f"Failed to render template for invoice {invoice.name}: {str(e)}",
-                    "Overdue Invoice Email Sending",
-                )
-                continue
+    try:
+        frappe.sendmail(**send_kwargs)
+        email_sent = 1
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Invoice Email Reminder Test Send")
+        email_sent = 0
+        frappe.msgprint(
+            _("Notify Customer created but email send failed: {0}").format(str(e)),
+            indicator="orange",
+        )
 
-            # Create one Notify Customer doc per unique email
-            for email in customer_emails:
-                # Skip if already notified today for this invoice + email combination
-                already_notified = frappe.db.exists(
-                    "Notify Customer",
-                    {
-                        "customer": invoice.customer,
-                        "invoice_no": invoice.name,
-                        "customer_email": email,
-                        "posting_date": frappe.utils.today(),
-                    },
-                )
-                if already_notified:
-                    continue
+    frappe.db.commit()
 
-                notify_doc = frappe.get_doc({
-                    "doctype": "Notify Customer",
-                    "posting_date": frappe.utils.today(),
-                    "posting_time": frappe.utils.now_datetime().strftime("%H:%M:%S"),
-                    "customer": invoice.customer,
-                    "customer_email": email,
-                    "subject": rendered_subject,
-                    "due_amount": invoice_doc.outstanding_amount,
-                    "invoice_no": invoice.name,
-                    "message": rendered_body,
-                    "currency": currency,
-                })
-                notify_doc.insert(ignore_permissions=True)
-
-                if doc.print_format:
-                    try:
-                        _attach_pdf(notify_doc, invoice_doc, doc.print_format, doc.letter_head)
-                        notify_doc.save(ignore_permissions=True)
-                    except Exception as e:
-                        frappe.log_error(
-                            f"Failed to attach PDF for invoice {invoice.name} to {email}: {str(e)}",
-                            "Overdue Invoice Email Sending",
-                        )
-
-            frappe.db.commit()
+    return {
+        "notify_customer": notify_doc.name,
+        "email_sent": email_sent,
+        "to_email": to_email,
+        "bcc": bcc_list,
+        "is_eligible": context.get("is_eligible"),
+        "reference_date": str(context.get("reference_date") or ""),
+        "next_month_start": str(context.get("next_month_start") or ""),
+        "subject": rendered_subject,
+    }
 
 
 def _attach_pdf(notify_doc, invoice_doc, print_format, letter_head):
