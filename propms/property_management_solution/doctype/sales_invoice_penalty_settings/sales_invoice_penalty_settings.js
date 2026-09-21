@@ -16,7 +16,7 @@ frappe.ui.form.on('Sales Invoice Penalty Settings', {
 					frappe.call({
 						method: 'propms.custom.sales_invoice_penalty.backfill_previous_sales_invoice_penalties',
 						freeze: true,
-						freeze_message: __('Queuing penalty backfill...'),
+						freeze_message: __('Creating previous penalties...'),
 						callback: function(r) {
 							if (r.message && r.message.message) {
 								frappe.msgprint({

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import frappe
-from frappe.utils import cint, date_diff, flt, getdate, today
+from frappe import _
+from frappe.utils import add_days, cint, date_diff, flt, getdate, today
 from propms.utils.business_calendar import get_excluded_days_map, is_excluded_today
 
 
@@ -52,6 +53,130 @@ def evaluate_penalty_formula(formula, settings_doc, invoice_doc):
         return 0.0
 
 
+def iter_penalty_dates(due_date, settings, current_date=None, existing_dates=None):
+    """Dates that should get a penalty row for one invoice, using current settings."""
+    if not due_date:
+        return []
+
+    current_date = getdate(current_date or today())
+    due_date = getdate(due_date)
+    existing_dates = {getdate(d) for d in (existing_dates or [])}
+    days_after_overdue = cint(getattr(settings, "days_after_overdue", None) or 1)
+    start_date = add_days(due_date, days_after_overdue)
+    if start_date > current_date:
+        return []
+
+    dates = []
+    day = start_date
+    while day <= current_date:
+        if day not in existing_dates:
+            is_excluded, _reason = is_penalty_excluded_today(settings, day)
+            if not is_excluded:
+                dates.append(day)
+        day = add_days(day, 1)
+    return dates
+
+
+def _existing_penalty_dates(doc):
+    return {
+        getdate(row.date)
+        for row in doc.get("sales_invoice_penalty_details", [])
+        if row.get("date")
+    }
+
+
+def _append_penalty_row(doc, settings, target_date):
+    penalty_amount = evaluate_penalty_formula(settings.formula, settings, doc)
+    if penalty_amount <= 0:
+        return False
+
+    doc.append(
+        "sales_invoice_penalty_details",
+        {
+            "date": getdate(target_date),
+            "outstanding_amount": doc.outstanding_amount,
+            "formula": settings.formula,
+            "percent": settings.penalty_percent,
+            "amount": penalty_amount,
+            "currency": doc.currency,
+        },
+    )
+    return True
+
+
+def _save_penalty_totals(doc):
+    total_penalty = sum(
+        flt(row.amount) for row in doc.get("sales_invoice_penalty_details", [])
+    )
+    doc.total_penalty_amount = total_penalty
+    doc.outstanding_penalty_amount = total_penalty
+    doc.flags.ignore_validate = True
+    doc.save(ignore_permissions=True)
+
+
+def _eligible_penalty_invoices(current_date):
+    return frappe.db.sql(
+        """
+        SELECT name, due_date, outstanding_amount, outstanding_withholding
+        FROM `tabSales Invoice`
+        WHERE docstatus = 1
+          AND outstanding_amount >= 1
+          AND IFNULL(outstanding_withholding, 0) = 0
+          AND due_date < %s
+        """,
+        (current_date,),
+        as_dict=True,
+    )
+
+
+@frappe.whitelist()
+def backfill_previous_sales_invoice_penalties():
+    """Create missing daily penalty rows from due date + T+X through today."""
+    return run_penalty_backfill()
+
+
+def run_penalty_backfill():
+    current_date = today()
+    settings = frappe.get_single("Sales Invoice Penalty Settings")
+    invoices_updated = 0
+    rows_added = 0
+
+    for inv in _eligible_penalty_invoices(current_date):
+        doc = frappe.get_doc("Sales Invoice", inv.name)
+        dates = iter_penalty_dates(
+            due_date=inv.due_date,
+            settings=settings,
+            current_date=current_date,
+            existing_dates=_existing_penalty_dates(doc),
+        )
+        if not dates:
+            continue
+
+        added = 0
+        for day in dates:
+            if _append_penalty_row(doc, settings, day):
+                added += 1
+
+        if not added:
+            continue
+
+        _save_penalty_totals(doc)
+        frappe.db.commit()
+        invoices_updated += 1
+        rows_added += added
+
+    message = _(
+        "Penalty backfill finished: {0} row(s) added on {1} sales invoice(s)."
+    ).format(rows_added, invoices_updated)
+    frappe.publish_realtime(
+        "msgprint",
+        {"message": message, "title": _("Penalty Backfill"), "indicator": "green"},
+        user=frappe.session.user,
+    )
+    frappe.logger().info(message)
+    return {"message": message, "invoices_updated": invoices_updated, "rows_added": rows_added}
+
+
 def process_daily_sales_invoice_penalties():
     current_date = today()
     settings = frappe.get_single("Sales Invoice Penalty Settings")
@@ -63,23 +188,7 @@ def process_daily_sales_invoice_penalties():
 
     days_after_overdue = cint(settings.days_after_overdue or 1)
 
-    invoices = frappe.db.sql(
-        """
-        SELECT name, due_date, outstanding_amount, outstanding_withholding
-        FROM `tabSales Invoice`
-        WHERE docstatus = 1
-          AND outstanding_amount >= 1
-          AND outstanding_withholding = 0
-          AND due_date < %s
-        """,
-        (current_date,),
-        as_dict=True,
-    )
-
-    for inv in invoices:
-        # if inv.get("outstanding_withholding"):
-        #     continue
-
+    for inv in _eligible_penalty_invoices(current_date):
         due_date = getdate(inv.due_date)
         days_overdue = date_diff(current_date, due_date)
 
@@ -87,36 +196,11 @@ def process_daily_sales_invoice_penalties():
             continue
 
         doc = frappe.get_doc("Sales Invoice", inv.name)
-
-        already_processed = any(
-            getdate(row.date) == getdate(current_date)
-            for row in doc.get("sales_invoice_penalty_details", [])
-        )
-        if already_processed:
+        if getdate(current_date) in _existing_penalty_dates(doc):
             continue
 
-        penalty_amount = evaluate_penalty_formula(settings.formula, settings, doc)
-        if penalty_amount <= 0:
+        if not _append_penalty_row(doc, settings, current_date):
             continue
 
-        doc.append(
-            "sales_invoice_penalty_details",
-            {
-                "date": current_date,
-                "outstanding_amount": doc.outstanding_amount,
-                "formula": settings.formula,
-                "percent": settings.penalty_percent,
-                "amount": penalty_amount,
-                "currency": doc.currency,
-            },
-        )
-
-        total_penalty = sum(
-            flt(row.amount) for row in doc.get("sales_invoice_penalty_details", [])
-        )
-        doc.total_penalty_amount = total_penalty
-        doc.outstanding_penalty_amount = total_penalty
-
-        doc.flags.ignore_validate = True
-        doc.save(ignore_permissions=True)
+        _save_penalty_totals(doc)
         frappe.db.commit()
