@@ -189,7 +189,8 @@ def submit_notification(notification_id=None):
 			"message": "Notification is already submitted",
 		}
 
-	doc.submit(ignore_permissions=True)
+	doc.flags.ignore_permissions = True
+	doc.submit()
 	doc.reload()
 
 	return {
