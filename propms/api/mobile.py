@@ -1302,3 +1302,14 @@ def enqueue_ticket_created_push(*args, **kwargs):
 
 
 
+
+@frappe.whitelist(methods=["POST"])
+def create_notification(*args, **kwargs):
+    from propms.api.v1.notifications.staff import create_notification as v1_create_notification
+    return v1_create_notification(*args, **kwargs)
+
+
+@frappe.whitelist(methods=["POST"])
+def submit_notification(*args, **kwargs):
+    from propms.api.v1.notifications.staff import submit_notification as v1_submit_notification
+    return v1_submit_notification(*args, **kwargs)
