@@ -43,6 +43,7 @@ def create_fields_from_json(custom_fields_obj):
             if doctype not in meta_cache:
                 meta_cache[doctype] = frappe.get_meta(doctype)
             if meta_cache[doctype].has_field(fieldname):
+                _sync_existing_custom_field(doctype, fieldname, custom_field)
                 continue
         all_fields = frappe.get_meta("Custom Field").get_valid_columns()
         field_list = set(all_fields).difference(disallowed_fields)
@@ -58,6 +59,50 @@ def create_fields_from_json(custom_fields_obj):
 
     # Use update=True so reruns don't fail when fields already exist
     create_custom_fields(doctype_custom_fields_dict, update=True)
+
+
+def _sync_existing_custom_field(doctype, fieldname, spec):
+    """Apply fieldtype changes from JSON onto an existing Custom Field.
+
+    Standard DocFields are left alone. This is how Penalty Invoice moves from
+    Link to Data without a new column: both types share the same varchar column,
+    and dropping the link stops cancel/delete checks on the stored name.
+    """
+    custom_field_name = frappe.db.get_value(
+        "Custom Field", {"dt": doctype, "fieldname": fieldname}, "name"
+    )
+    if not custom_field_name:
+        return
+
+    desired_fieldtype = spec.get("fieldtype")
+    if not desired_fieldtype:
+        return
+
+    current = frappe.db.get_value(
+        "Custom Field",
+        custom_field_name,
+        ["fieldtype", "options", "description"],
+        as_dict=True,
+    )
+    desired_options = spec.get("options") or None
+    desired_description = spec.get("description")
+    if (
+        current.fieldtype == desired_fieldtype
+        and (current.options or None) == desired_options
+        and (desired_description is None or current.description == desired_description)
+    ):
+        return
+
+    # Customize Form blocks Link -> Data. Both types use varchar(140), so the
+    # stored invoice name stays put and only the link metadata is removed.
+    updates = {
+        "fieldtype": desired_fieldtype,
+        "options": desired_options,
+    }
+    if desired_description is not None:
+        updates["description"] = desired_description
+    frappe.db.set_value("Custom Field", custom_field_name, updates, update_modified=False)
+    frappe.clear_cache(doctype=doctype)
 
 
 def execute():

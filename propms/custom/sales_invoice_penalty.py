@@ -204,3 +204,68 @@ def process_daily_sales_invoice_penalties():
 
         _save_penalty_totals(doc)
         frappe.db.commit()
+
+
+def penalty_amount(source):
+    amount = flt(source.get("outstanding_penalty_amount"))
+    if amount <= 0:
+        amount = flt(source.get("total_penalty_amount"))
+    return amount
+
+
+def assert_can_create_penalty_invoice(source, settings):
+    if cint(source.get("docstatus")) != 1:
+        frappe.throw(_("Penalty invoice can only be created from a submitted Sales Invoice"))
+    if not cint(source.get("penalty_paid")):
+        frappe.throw(_("Tick Penalty Paid before creating a penalty invoice"))
+    if source.get("penalty_invoice"):
+        frappe.throw(
+            _("Penalty invoice {0} already exists").format(source.get("penalty_invoice"))
+        )
+    if not settings.get("penalty_item"):
+        frappe.throw(_("Set Penalty Item on Sales Invoice Penalty Settings"))
+    if penalty_amount(source) <= 0:
+        frappe.throw(_("This invoice has no penalty amount to bill"))
+
+
+def penalty_invoice_payload(source, settings):
+    amount = penalty_amount(source)
+    cost_center = source.get("cost_center")
+    return {
+        "doctype": "Sales Invoice",
+        "customer": source.get("customer"),
+        "company": source.get("company"),
+        "currency": source.get("currency"),
+        "selling_price_list": source.get("selling_price_list"),
+        "cost_center": cost_center,
+        "update_stock": 0,
+        "remarks": _("Late payment penalty for {0}").format(source.get("name")),
+        "items": [
+            {
+                "item_code": settings.get("penalty_item"),
+                "qty": 1,
+                "rate": amount,
+                "cost_center": cost_center,
+            }
+        ],
+    }
+
+
+@frappe.whitelist()
+def create_penalty_invoice(sales_invoice):
+    """Create a draft Sales Invoice for accrued penalty and store its name."""
+    source = frappe.get_doc("Sales Invoice", sales_invoice)
+    settings = frappe.get_single("Sales Invoice Penalty Settings")
+    assert_can_create_penalty_invoice(source, settings)
+
+    payload = penalty_invoice_payload(source, settings)
+    if not payload.get("cost_center"):
+        company_cost_center = frappe.db.get_value("Company", source.company, "cost_center")
+        payload["cost_center"] = company_cost_center
+        payload["items"][0]["cost_center"] = company_cost_center
+
+    invoice = frappe.get_doc(payload)
+    invoice.insert(ignore_permissions=True)
+    source.db_set("penalty_invoice", invoice.name, update_modified=True)
+    frappe.db.commit()
+    return {"penalty_invoice": invoice.name}

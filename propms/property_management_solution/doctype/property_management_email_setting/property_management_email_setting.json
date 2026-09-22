@@ -119,7 +119,7 @@
   {
    "default": "Posting Date",
    "depends_on": "eval:doc.reminder_type=='Withholding Tax'",
-   "description": "The invoice date used to decide when a withholding invoice becomes eligible for reminders.<br><b>Posting Date</b> — invoice posting date.<br><b>Payment Due Date</b> — invoice due date.<br><b>Withholding Date</b> — the date Outstanding is W/H was ticked (hidden field on the invoice).",
+   "description": "The invoice date used to decide when a withholding invoice becomes eligible for reminders.<br><b>Posting Date</b> \u2014 invoice posting date.<br><b>Payment Due Date</b> \u2014 invoice due date.<br><b>Withholding Date</b> \u2014 the date Outstanding is W/H was ticked (hidden field on the invoice).",
    "fieldname": "wh_date_basis",
    "fieldtype": "Select",
    "label": "Date Basis",
@@ -193,7 +193,7 @@
   },
   {
    "fieldname": "subject",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "in_list_view": 1,
    "label": "Subject",
    "reqd": 1
@@ -233,7 +233,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-02 10:41:03.293757",
+ "modified": "2026-09-21 16:08:14.025989",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property Management Email Setting",
