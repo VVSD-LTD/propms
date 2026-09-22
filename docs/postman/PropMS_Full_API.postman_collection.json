@@ -7582,7 +7582,7 @@
     },
     {
       "name": "12. Notifications & FCM",
-      "description": "**notifications** \u2014 19 endpoints (10 mobile/top, 9 v1).",
+      "description": "**notifications** \u2014 17 endpoints (8 mobile/top, 9 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
