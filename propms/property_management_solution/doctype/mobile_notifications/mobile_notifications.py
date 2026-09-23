@@ -69,13 +69,21 @@ def _resolve_recipient_emails(doc) -> list[str]:
 
 class MobileNotifications(Document):
 	def before_save(self):
+		# Single-company: auto-fill and keep Company hidden on form
+		if not self.company:
+			company = frappe.defaults.get_user_default("Company")
+			if not company:
+				company = frappe.db.get_value("Company", {}, "name", order_by="creation asc")
+			self.company = company
+		if not self.customer:
+			frappe.throw(_("Customer is required"))
 		self.fetch_users()
 
 	def before_submit(self):
 		if not self.recipients:
 			frappe.throw(
 				_(
-					"No recipients. Set Company and/or Property and/or Customer to load tenants from matching "
+					"No recipients. Set Customer (and optional Property) to load tenants from matching "
 					"Active leases (Tenant Details), or add Recipient(s) manually before submitting."
 				)
 			)

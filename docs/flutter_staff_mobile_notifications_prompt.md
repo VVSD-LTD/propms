@@ -1,259 +1,206 @@
-# Master AI Directive: Staff Mobile Notifications (Compose & Send)
+# Master AI Directive: Staff Mobile Notifications — UX & API Update
 
-> **Target Audience**: Cursor / Antigravity agent working on the **Viva Towers Flutter Mobile App**.  
-> **Objective**: Build the **staff-only** UI and API integration so Mobile Maintenance **Manager / Officer** can compose a notice, preview resolved resident recipients, attach files, and send — without using Frappe Desk.  
-> **Backend**: Already implemented on PropMS (`propms`). Do **not** invent new backend endpoints.
+> **Target Audience**: Cursor agent on the **Viva Towers Flutter** app.  
+> **Objective**: Update the staff Notices feature to match backend changes: **no Company field**, **Customer dropdown**, **Property filtered by Customer**, and a **staff list/detail** of created notices.  
+> **Backend**: Already updated on PropMS. Do **not** invent endpoints.
 
----
-
-## 1. Scope & Roles
-
-### Who sees this feature
-Show the staff “Compose Notification” entry point **only** when the logged-in user’s roles include any of:
-- `Mobile Maintenance Manager`
-- `Mobile Maintenance Officer`
-- `System Manager` (optional for QA)
-
-**Hide** from: `Mobile VIVA Tenant`, `Mobile Technician`, `Mobile Sub Contractor`, Guest.
-
-Use existing auth / `get_user_roles` (or whatever the app already uses for role gates). Do not hardcode emails.
-
-### Out of scope (v1)
-- Editing the recipient list (add/remove people)
-- Saving drafts for later edit beyond the create→preview→send flow
-- Staff inbox/history of sent notifications
-- Changing tenant notification inbox behavior
+**Base URL:** `https://dev15-viva2.vvsdtz.com`  
+Prefer `propms.api.mobile.*`. Response envelope: `{ "message": { ... } }`.
 
 ---
 
-## 2. Backend Base URL & Auth
+## 1. What changed (replace previous compose UX)
 
-- **Base URL**: `https://dev15-viva2.vvsdtz.com`
-- **Prefer mobile facade**:
-  - `POST /api/method/propms.api.mobile.create_notification`
-  - `POST /api/method/propms.api.mobile.submit_notification`
-- Equivalent v1 (same payloads):
-  - `POST /api/method/propms.api.v1.notifications.staff.create_notification`
-  - `POST /api/method/propms.api.v1.notifications.staff.submit_notification`
-- Auth: existing Frappe session cookie / token used by the app (same as tickets).
-- All responses are wrapped: `{ "message": { ... } }`. Read fields from `message`.
+| Before | After |
+|--------|--------|
+| Show Company / Property / Customer filters | **Do not show Company** (server auto-fills) |
+| Customer typed as free text | **Customer dropdown** from API (`name` + `customer_name`) |
+| Property independent | **Property dropdown loads only after Customer**; filtered by that customer |
+| Create/send only | **List + detail** of notices staff created (drafts + sent) |
 
-Upload attachments **before** create, using existing file APIs (reuse ticket upload patterns):
-- `propms.api.mobile.upload_attachment` / `upload_mobile_image`, **or**
-- Chunked: `start_upload_session` → `upload_chunk` → `finalize_upload`
-
-Pass resulting **file URL** strings (e.g. `/files/...`) into create.
+**Roles (unchanged):** show only for `Mobile Maintenance Manager` / `Mobile Maintenance Officer` (and System Manager if you already gate QA that way).
 
 ---
 
-## 3. Product Flow (exact)
+## 2. Screens
 
+### A) Staff Notices list (new home for the feature)
+- Entry: “Notices” / “Resident Notices”
+- Load: `list_staff_notifications`
+- Tabs or filter chips: **All** / **Draft** / **Submitted** → `status=all|draft|submitted`
+- Row: subject, customer, property, `status_label`, `creation`, `recipient_count`
+- Tap row → Detail
+- FAB / “+” → Compose
+
+### B) Detail
+- Load: `get_staff_notification(notification_id)`
+- Show subject, message, customer, property, category, delivery, recipients, attachments
+- If `docstatus == 0` (Draft): show **Send** → `submit_notification`
+- If already submitted: hide Send
+
+### C) Compose (updated)
+1. Subject, message, category (optional), attachments (optional)
+2. **Customer** — searchable dropdown (required)
+3. **Property** — searchable dropdown (optional), enabled only after Customer selected; reload when Customer changes; clear Property when Customer changes
+4. Preview recipients → `create_notification`
+5. Confirm → `submit_notification` → then open Detail or List
+
+**Do not** show a Company field.
+
+---
+
+## 3. API contracts
+
+All staff-only. Strip/ignore `cmd` is handled server-side.
+
+### 3.1 `get_notification_customers`
+`GET|POST /api/method/propms.api.mobile.get_notification_customers`
+
+Params: `search` (optional), `limit`, `offset`
+
+```json
+{
+  "status": "success",
+  "customers": [
+    { "name": "CUST-0001", "customer_name": "Acme Ltd" }
+  ],
+  "total_count": 42,
+  "has_more": true
+}
 ```
-[Staff home] → Compose Notice
-  → Form: subject, message, filters (company / property / customer), optional category, optional attachments
-  → Tap "Preview recipients"
-       → POST create_notification  (creates DRAFT on server)
-       → Show recipient_count + list of tenant emails
-       → If error "No recipients for these filters" → stay on form, change filters
-  → Tap "Send"
-       → POST submit_notification(notification_id)
-       → Success → toast + navigate back
-  → Tap "Cancel" on preview → discard UX-side; draft may remain on server (v1 has no cancel API — optional: just leave it)
-```
 
-**Do not** call submit until the user confirms the recipient list.
+**Flutter:** display `customer_name`, submit `name` as `customer`.
 
 ---
 
-## 4. API Contracts
+### 3.2 `get_notification_properties`
+`GET|POST /api/method/propms.api.mobile.get_notification_properties`
 
-### 4.1 Create draft + preview — `create_notification`
+Params: `customer` (**required**, Customer `name`), `search`, `limit`, `offset`
 
-**Method:** `POST`  
-**Content-Type:** `application/json`
+```json
+{
+  "status": "success",
+  "customer": "CUST-0001",
+  "properties": [
+    { "name": "A-101", "property_name": "Apartment 101" }
+  ],
+  "total_count": 3,
+  "has_more": false
+}
+```
 
-**Request body:**
+**Flutter:** display `property_name`, submit `name` as `property`. If Customer empty → empty list / disabled control.
+
+---
+
+### 3.3 `list_staff_notifications`
+`GET|POST /api/method/propms.api.mobile.list_staff_notifications`
+
+Params: `status` = `all` | `draft` | `submitted`, `limit`, `offset`
+
+```json
+{
+  "status": "success",
+  "notifications": [
+    {
+      "notification_id": "NTF-2026-00012",
+      "subject": "Water outage",
+      "message": "...",
+      "customer": "CUST-0001",
+      "property": "A-101",
+      "category": "Notice",
+      "docstatus": 1,
+      "delivery": "Sent",
+      "sender": "officer@example.com",
+      "creation": "2026-09-23 10:00:00.000000",
+      "recipient_count": 12,
+      "status_label": "Sent"
+    }
+  ],
+  "total_count": 10,
+  "has_more": false
+}
+```
+
+`docstatus`: `0` = Draft, `1` = Submitted, `2` = Cancelled.
+
+---
+
+### 3.4 `get_staff_notification`
+`GET|POST /api/method/propms.api.mobile.get_staff_notification`
+
+Params: `notification_id`
+
+Returns same shape as create preview (includes `recipients`, `attachments`, `delivery`, etc.).
+
+---
+
+### 3.5 `create_notification` (updated body)
+`POST /api/method/propms.api.mobile.create_notification`
+
 ```json
 {
   "subject": "Water outage tonight",
-  "message": "Maintenance from 8pm–10pm on Tower A.",
-  "company": "",
-  "property": "PROPERTY-NAME",
-  "customer": "",
+  "message": "Maintenance 8pm–10pm",
+  "customer": "CUST-0001",
+  "property": "A-101",
   "category": "Notice",
-  "target_audience": "Everyone",
   "attachments": [
     { "title": "Notice PDF", "attachment": "/files/notice.pdf" }
   ]
 }
 ```
 
-| Field | Required | Notes |
-|-------|----------|--------|
-| `subject` | yes | Non-empty string |
-| `message` | yes | Non-empty string |
-| `company` | at least one of company / property / customer | Frappe Company name |
-| `property` | | Property name |
-| `customer` | | Customer (lease customer) name |
-| `category` | no | Default `Notice`. Options: `Notice`, `Maintenance`, `Safety`, `Event`, `General`, `Emergency` |
-| `target_audience` | no | Default `Everyone` |
-| `target_floor` / `target_unit` | no | Only if you expose those UI fields |
-| `attachments` | no | List of `{ title, attachment }` where `attachment` is a file URL |
+- **Required:** `subject`, `message`, `customer` (Customer **name**)
+- **Optional:** `property` (must belong to that customer’s Active leases), `category`, `attachments`
+- **Do not send `company`** (ignored; server sets default)
 
-**Success (`message.status == "success"`):**
-```json
-{
-  "status": "success",
-  "notification_id": "NTF-2026-00012",
-  "docstatus": 0,
-  "subject": "...",
-  "message": "...",
-  "company": "...",
-  "property": "...",
-  "customer": "...",
-  "category": "Notice",
-  "target_audience": "Everyone",
-  "recipient_count": 12,
-  "recipients": [
-    { "tenant": "resident@example.com", "read_status": "Unread" }
-  ],
-  "attachments": [
-    { "title": "Notice PDF", "attachment": "/files/notice.pdf" }
-  ]
-}
-```
-
-**Errors (handle in UI):**
-- `subject is required` / `message is required`
-- `At least one of company, property, or customer is required`
-- `No recipients for these filters` — show friendly copy: no active lease tenants match; change filters
-- HTTP 403 / `Not permitted` — user is not Manager/Officer
-
-Store `notification_id` in state for the send step.
+Errors to handle:
+- `customer is required`
+- `Invalid customer: ...`
+- `Property does not belong to the selected customer (Active lease)`
+- `No recipients for these filters`
 
 ---
 
-### 4.2 Send — `submit_notification`
-
-**Method:** `POST`  
-**Body:**
-```json
-{
-  "notification_id": "NTF-2026-00012"
-}
-```
-
-**Success:**
-```json
-{
-  "status": "success",
-  "notification_id": "NTF-2026-00012",
-  "docstatus": 1,
-  "delivery": "Sent",
-  "recipient_count": 12
-}
-```
-
-**Errors:**
-- `notification_id is required`
-- `Notification not found`
-- `Notification is already submitted` — treat as already done / disable Send
-
-On success, residents receive:
-- Realtime WebSocket event `notification_received` (tenant apps)
-- FCM push with `data.type == "app_notification"` and `notification_id`
-
-Staff compose UI does **not** need to listen for those events for v1.
+### 3.6 `submit_notification` (unchanged)
+`POST /api/method/propms.api.mobile.submit_notification`  
+Body: `{ "notification_id": "NTF-..." }`
 
 ---
 
-## 5. Flutter UI Requirements
+## 4. UX rules (must implement)
 
-### Screens / steps
-1. **Compose** — form with validation (subject, message, ≥1 filter).
-2. **Preview** — show subject, message, attachment chips, `recipient_count`, scrollable recipient emails; primary CTA **Send**; secondary **Back** to edit filters (creating again is OK if they change filters — call create again with new filters; do not reuse old draft if filters changed).
-3. Loading / error states for both API calls.
-
-### Filter pickers
-- Use existing property / company / customer data sources already in the app if available (desk Links are Frappe document names).
-- Filters are **AND** when multiple are set (same as Desk).
-- Prefer starting with **Property** as the primary filter for mobile UX if you only expose one field initially; still send empty string / omit unused keys.
-
-### Attachments
-- Allow 0..N files.
-- Upload first → collect `{ title, attachment: fileUrl }`.
-- `title` required by backend (use filename if user doesn’t enter one).
-
-### Permissions UX
-- If role gate fails when opening Compose → snackbar “Only maintenance managers and officers can send notices.”
-
-### Design notes
-- Follow existing Viva staff screens (tickets / maintenance) — don’t invent a new visual language.
-- Preview must make it obvious this will notify **residents**, not staff.
+1. Customer picker uses **API list**, not free-text typing of IDs.
+2. Changing Customer **clears** Property and reloads property options.
+3. Property picker disabled until Customer is selected.
+4. After successful Send, refresh list (or navigate to detail showing `delivery: Sent`).
+5. Drafts from abandoned Preview may appear under Draft — allow opening and Send from Detail.
+6. Keep existing attachment upload flow (upload first → pass file URLs).
 
 ---
 
-## 6. Suggested Dart Models (minimal)
+## 5. Acceptance checklist
 
-```dart
-class StaffNotificationPreview {
-  final String notificationId;
-  final int docstatus;
-  final String subject;
-  final String message;
-  final String? company;
-  final String? property;
-  final String? customer;
-  final String category;
-  final int recipientCount;
-  final List<StaffNotificationRecipient> recipients;
-  final List<StaffNotificationAttachment> attachments;
-
-  // fromJson: read from response['message']
-}
-
-class StaffNotificationRecipient {
-  final String tenant; // email
-  final String readStatus;
-}
-
-class StaffNotificationAttachment {
-  final String title;
-  final String attachment; // file URL
-}
-```
-
-API client methods:
-```dart
-Future<StaffNotificationPreview> createNotification({...});
-Future<Map<String, dynamic>> submitNotification(String notificationId);
-```
-
----
-
-## 7. Acceptance Checklist
-
-- [ ] Compose entry visible only for Manager / Officer (and SM if you include it)
-- [ ] Tenant / Technician cannot open or successfully call create/submit
-- [ ] Preview shows `recipient_count` and emails from create response
-- [ ] Zero-recipient error is handled without calling submit
-- [ ] Attachments upload then appear in preview
-- [ ] Send calls submit with `notification_id`; success closes flow
-- [ ] Double-tap Send does not crash (handle already submitted)
-- [ ] Uses `propms.api.mobile.*` paths
+- [ ] No Company field anywhere in staff Notices UI
+- [ ] Customer is a searchable dropdown from `get_notification_customers`
+- [ ] Property options come from `get_notification_properties` for selected customer only
+- [ ] List shows drafts + submitted notices via `list_staff_notifications`
+- [ ] Detail + Send for drafts works
+- [ ] Create requires Customer document `name`, not display label alone
+- [ ] Tenant / Technician cannot access these endpoints / screens
 - [ ] `flutter analyze` clean for touched files
 
 ---
 
-## 8. Reference
+## 6. Method path cheat-sheet
 
-| Item | Location |
-|------|----------|
-| Design spec | `docs/superpowers/specs/2026-09-22-staff-mobile-notifications-design.md` |
-| Implementation plan | `docs/superpowers/plans/2026-09-22-staff-mobile-notifications.md` |
-| Backend staff API | `propms/api/v1/notifications/staff.py` |
-| Mobile wrappers | `propms/api/mobile.py` → `create_notification`, `submit_notification` |
-| Tenant inbox (existing) | `Mobile Notifications` DocType methods `get_user_notifications`, `get_notification_details`, `mark_as_read` |
-| Postman | Collection folder **12. Notifications & FCM** |
-
-**Do not** call ticket push helpers (`enqueue_ticket_*_push`) for this feature — those are server-side workers, not staff compose APIs.
+| Action | Method |
+|--------|--------|
+| Customers dropdown | `propms.api.mobile.get_notification_customers` |
+| Properties dropdown | `propms.api.mobile.get_notification_properties` |
+| Staff list | `propms.api.mobile.list_staff_notifications` |
+| Staff detail | `propms.api.mobile.get_staff_notification` |
+| Create draft / preview | `propms.api.mobile.create_notification` |
+| Send | `propms.api.mobile.submit_notification` |

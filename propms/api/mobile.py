@@ -742,10 +742,16 @@ def get_invoice_details(invoice_name=None):
     return v1_invoices.get_invoice_details(invoice_name=invoice_name)
 
 
-@frappe.whitelist(methods=["GET"])
+@frappe.whitelist(methods=["GET", "POST"])
 def download_invoice_pdf(invoice_name=None):
     from propms.api.v1.invoices import invoices as v1_invoices
     return v1_invoices.download_invoice_pdf(invoice_name=invoice_name)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def download_receipt_pdf(invoice_name=None, payment_entry_name=None):
+    from propms.api.v1.invoices import invoices as v1_invoices
+    return v1_invoices.download_receipt_pdf(invoice_name=invoice_name, payment_entry_name=payment_entry_name)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -757,6 +763,72 @@ def initiate_invoice_payment(invoice_name=None, amount=None, phone_number=None, 
         phone_number=phone_number,
         payment_channel=payment_channel,
     )
+
+
+# -------------------------------------------------------------------------
+# Drinking Water & Utilities API Wrappers (v1)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def get_drinking_water_products():
+    from propms.api.v1.water import water as v1_water
+    return v1_water.get_drinking_water_products()
+
+
+@frappe.whitelist(methods=["POST"])
+def add_to_cart(item_code=None, quantity=1, delivery_instructions=None, lease=None):
+    from propms.api.v1.water import water as v1_water
+    return v1_water.add_to_cart(
+        item_code=item_code,
+        quantity=quantity,
+        delivery_instructions=delivery_instructions,
+        lease=lease,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def order_drinking_water(item_code=None, quantity=1, delivery_instructions=None, lease=None):
+    """Adds item to water cart (draft Sales Order). Prefer add_to_cart."""
+    from propms.api.v1.water import water as v1_water
+    return v1_water.add_to_cart(
+        item_code=item_code,
+        quantity=quantity,
+        delivery_instructions=delivery_instructions,
+        lease=lease,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def update_cart_item(sales_order=None, quantity=None, delivery_instructions=None):
+    from propms.api.v1.water import water as v1_water
+    return v1_water.update_cart_item(
+        sales_order=sales_order,
+        quantity=quantity,
+        delivery_instructions=delivery_instructions,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def remove_from_cart(sales_order=None):
+    from propms.api.v1.water import water as v1_water
+    return v1_water.remove_from_cart(sales_order=sales_order)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_cart(lease=None):
+    from propms.api.v1.water import water as v1_water
+    return v1_water.get_cart(lease=lease)
+
+
+@frappe.whitelist(methods=["POST"])
+def checkout_water_order(sales_order=None, payment_method="MOBILE_MONEY", phone_number=None, amount=None):
+    from propms.api.v1.water import water as v1_water
+    return v1_water.checkout_water_order(
+        sales_order=sales_order,
+        payment_method=payment_method,
+        phone_number=phone_number,
+        amount=amount,
+    )
+
 
 
 # -------------------------------------------------------------------------
@@ -1099,6 +1171,16 @@ def close_ticket_with_feedback(ticket_id=None, rating=None, customer_feedback=No
 
 
 @frappe.whitelist(methods=["GET", "POST"])
+def submit_tenant_rating_and_feedback(ticket_id=None, rating=None, customer_feedback=None):
+    from propms.api.v1.job_card.job_card import submit_tenant_rating_and_feedback as v1_submit_tenant_rating_and_feedback
+    return v1_submit_tenant_rating_and_feedback(
+        ticket_id=ticket_id,
+        rating=rating,
+        customer_feedback=customer_feedback,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
 def change_ticket_status(ticket_id=None, status=None, reason=None, defect_found=None, resolution_details=None):
     from propms.api.v1.job_card.job_card import change_ticket_status as v1_change_ticket_status
     return v1_change_ticket_status(
@@ -1116,6 +1198,26 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
     from propms.api.v1.payments.services import initiate_payment as v1_initiate_payment
     return v1_initiate_payment(
         invoice_name=invoice_name,
+        amount=amount,
+        payment_method=payment_method,
+        phone_number=phone_number,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def initiate_reference_payment(
+    reference_doctype=None,
+    reference_name=None,
+    payment_workflow=None,
+    amount=None,
+    payment_method="MOBILE_MONEY",
+    phone_number=None,
+):
+    from propms.api.v1.payments.services import initiate_reference_payment as v1_initiate_reference_payment
+    return v1_initiate_reference_payment(
+        reference_doctype=reference_doctype,
+        reference_name=reference_name,
+        payment_workflow=payment_workflow,
         amount=amount,
         payment_method=payment_method,
         phone_number=phone_number,
@@ -1292,24 +1394,68 @@ def enqueue_ticket_created_push(*args, **kwargs):
     return v1_created_push(*args, **kwargs)
 
 
-
-
-
-
-
-
-
-
-
-
-
 @frappe.whitelist(methods=["POST"])
-def create_notification(*args, **kwargs):
+def create_notification(**kwargs):
+    """Staff compose: create draft Mobile Notification and return recipient preview."""
     from propms.api.v1.notifications.staff import create_notification as v1_create_notification
-    return v1_create_notification(*args, **kwargs)
+
+    # Frappe injects cmd (and sometimes other keys) into form_dict kwargs
+    kwargs.pop("cmd", None)
+    return v1_create_notification(**kwargs)
 
 
 @frappe.whitelist(methods=["POST"])
-def submit_notification(*args, **kwargs):
+def submit_notification(**kwargs):
+    """Staff compose: submit draft Mobile Notification (send to residents)."""
     from propms.api.v1.notifications.staff import submit_notification as v1_submit_notification
-    return v1_submit_notification(*args, **kwargs)
+
+    kwargs.pop("cmd", None)
+    return v1_submit_notification(**kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_notification_customers(**kwargs):
+    """Staff: Customer dropdown options (Active lease customers)."""
+    from propms.api.v1.notifications.staff import get_notification_customers as v1_get_customers
+
+    kwargs.pop("cmd", None)
+    return v1_get_customers(**kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_notification_properties(**kwargs):
+    """Staff: Property dropdown options filtered by Customer."""
+    from propms.api.v1.notifications.staff import get_notification_properties as v1_get_properties
+
+    kwargs.pop("cmd", None)
+    return v1_get_properties(**kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def list_staff_notifications(**kwargs):
+    """Staff: list created Mobile Notifications (draft + submitted)."""
+    from propms.api.v1.notifications.staff import list_staff_notifications as v1_list
+
+    kwargs.pop("cmd", None)
+    return v1_list(**kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_staff_notification(**kwargs):
+    """Staff: detail of one Mobile Notification (includes recipients)."""
+    from propms.api.v1.notifications.staff import get_staff_notification as v1_get
+
+    kwargs.pop("cmd", None)
+    return v1_get(**kwargs)
+
+
+
+
+
+
+
+
+
+
+
+
