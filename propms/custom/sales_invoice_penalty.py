@@ -228,10 +228,46 @@ def assert_can_create_penalty_invoice(source, settings):
         frappe.throw(_("This invoice has no penalty amount to bill"))
 
 
+def penalty_invoice_tax_template(source):
+    """Default Sales Taxes and Charges Template for the company, else the source invoice."""
+    company = source.get("company")
+    default_template = None
+    if company:
+        default_template = frappe.db.get_value(
+            "Sales Taxes and Charges Template",
+            {"is_default": 1, "company": company, "disabled": 0},
+            "name",
+        )
+    return default_template or source.get("taxes_and_charges")
+
+
+def penalty_invoice_exchange_rates(source):
+    """Reuse the source invoice rate so a foreign-currency penalty does not need a new Currency Exchange row."""
+    company = source.get("company")
+    currency = source.get("currency")
+    if not (company and currency):
+        return {}
+
+    company_currency = frappe.get_cached_value("Company", company, "default_currency")
+    if not company_currency or currency == company_currency:
+        return {}
+
+    rates = {}
+    conversion_rate = flt(source.get("conversion_rate"))
+    if conversion_rate:
+        rates["conversion_rate"] = conversion_rate
+
+    price_list_currency = source.get("price_list_currency")
+    plc_conversion_rate = flt(source.get("plc_conversion_rate"))
+    if price_list_currency and price_list_currency != company_currency and plc_conversion_rate:
+        rates["plc_conversion_rate"] = plc_conversion_rate
+    return rates
+
+
 def penalty_invoice_payload(source, settings):
     amount = penalty_amount(source)
     cost_center = source.get("cost_center")
-    return {
+    payload = {
         "doctype": "Sales Invoice",
         "customer": source.get("customer"),
         "company": source.get("company"),
@@ -249,6 +285,11 @@ def penalty_invoice_payload(source, settings):
             }
         ],
     }
+    payload.update(penalty_invoice_exchange_rates(source))
+    tax_template = penalty_invoice_tax_template(source)
+    if tax_template:
+        payload["taxes_and_charges"] = tax_template
+    return payload
 
 
 @frappe.whitelist()
@@ -265,6 +306,9 @@ def create_penalty_invoice(sales_invoice):
         payload["items"][0]["cost_center"] = company_cost_center
 
     invoice = frappe.get_doc(payload)
+    if invoice.get("taxes_and_charges"):
+        invoice.append_taxes_from_master()
+    invoice.calculate_taxes_and_totals()
     invoice.insert(ignore_permissions=True)
     source.db_set("penalty_invoice", invoice.name, update_modified=True)
     frappe.db.commit()

@@ -49,6 +49,44 @@ class TestCreatePenaltyInvoice:
 		assert flt(row["rate"]) == 1500
 		assert row["cost_center"] == "Main - VPL"
 		assert "ACC-SINV-TEST" in payload["remarks"]
+		assert payload["taxes_and_charges"] == "Incl VAT TZ - VPL"
+
+	def test_payload_uses_company_default_tax_template(self):
+		from propms.custom.sales_invoice_penalty import penalty_invoice_payload
+
+		source = _source(taxes_and_charges="Tanzania Tax - VPL")
+		payload = penalty_invoice_payload(source, _settings("PENALTY-ITEM"))
+		assert payload["taxes_and_charges"] == "Incl VAT TZ - VPL"
+
+	def test_payload_falls_back_to_source_tax_template(self):
+		from propms.custom.sales_invoice_penalty import penalty_invoice_payload
+
+		source = _source(
+			company="Company Without Default Tax",
+			taxes_and_charges="Tanzania Tax - VPL",
+		)
+		payload = penalty_invoice_payload(source, _settings("PENALTY-ITEM"))
+		assert payload["taxes_and_charges"] == "Tanzania Tax - VPL"
+
+	def test_payload_keeps_company_currency_without_exchange_rate(self):
+		from propms.custom.sales_invoice_penalty import penalty_invoice_payload
+
+		payload = penalty_invoice_payload(_source(currency="TZS", conversion_rate=1), _settings())
+		assert "conversion_rate" not in payload
+
+	def test_payload_copies_foreign_exchange_rate(self):
+		from propms.custom.sales_invoice_penalty import penalty_invoice_payload
+
+		source = _source(
+			currency="USD",
+			conversion_rate=2650,
+			price_list_currency="USD",
+			plc_conversion_rate=2650,
+		)
+		payload = penalty_invoice_payload(source, _settings())
+		assert payload["currency"] == "USD"
+		assert flt(payload["conversion_rate"]) == 2650
+		assert flt(payload["plc_conversion_rate"]) == 2650
 
 	def test_refuses_when_penalty_paid_is_off(self):
 		from propms.custom.sales_invoice_penalty import assert_can_create_penalty_invoice
@@ -101,6 +139,10 @@ def execute():
 	cases = [
 		"test_create_function_exists",
 		"test_payload_uses_settings_item_and_outstanding_penalty",
+		"test_payload_uses_company_default_tax_template",
+		"test_payload_falls_back_to_source_tax_template",
+		"test_payload_keeps_company_currency_without_exchange_rate",
+		"test_payload_copies_foreign_exchange_rate",
 		"test_refuses_when_penalty_paid_is_off",
 		"test_refuses_when_penalty_invoice_already_set",
 		"test_refuses_when_penalty_item_missing",
