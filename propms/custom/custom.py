@@ -182,8 +182,19 @@ def _get_primary_contact_emails(customer_name):
     return emails
 
 def get_overdue_sales_invoices():
-    """Backward-compatible entry point for the scheduled job."""
-    return process_invoice_email_reminders()
+    """Scheduled entry point.
+
+    The cron wrapper is limited to 300 seconds. Queue the actual run on the
+    same default worker with a one-hour limit.
+    """
+    frappe.enqueue(
+        "propms.custom.custom.process_invoice_email_reminders",
+        queue="default",
+        timeout=60 * 60,
+        job_id="propms_process_invoice_email_reminders",
+        deduplicate=True,
+        enqueue_after_commit=False,
+    )
 
 
 def process_invoice_email_reminders():
@@ -280,8 +291,7 @@ def _process_after_overdue_reminder(setting_doc):
     )
     eligible_invoices = []
     for invoice in candidates:
-        invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
-        if is_after_overdue_invoice_eligible(invoice_doc, setting_doc, current_date):
+        if is_after_overdue_invoice_eligible(invoice, setting_doc, current_date):
             eligible_invoices.append(invoice)
 
     _create_notify_customer_records(
@@ -345,10 +355,18 @@ def _process_withholding_tax_reminder(setting_doc):
 
 
 def _get_after_overdue_invoices(payment_term, current_date, days_after_overdue, withholding=0):
+    """Submitted invoices past grace for this payment term.
+
+    Outstanding amount, penalty, and Penalty Paid are not filtered here.
+    Those rules come from After Overdue Condition on the email setting and
+    are applied in is_after_overdue_invoice_eligible using these columns.
+    """
     return frappe.db.sql(
         """
         SELECT
-            name, customer, due_date, grand_total, outstanding_amount
+            name, customer, posting_date, due_date, grand_total,
+            outstanding_amount, outstanding_penalty_amount, penalty_paid,
+            outstanding_withholding
         FROM
             `tabSales Invoice`
         WHERE
@@ -358,9 +376,10 @@ def _get_after_overdue_invoices(payment_term, current_date, days_after_overdue, 
         AND
             due_date < %s
         AND
-            outstanding_withholding = %s
+            IFNULL(outstanding_withholding, 0) = %s
         AND
             DATEDIFF(%s, due_date) >= %s
+        ORDER BY due_date DESC, name DESC
         """,
         (payment_term, current_date, withholding, current_date, days_after_overdue),
         as_dict=True,
@@ -578,75 +597,83 @@ def _build_reminder_template_context(setting_doc, invoice_doc, customer_doc=None
 
 def _create_notify_customer_records(setting_doc, invoices, audience, frequency):
     for invoice in invoices:
-        customer_emails = _get_primary_contact_emails(invoice.customer)
-
-        if not customer_emails:
-            frappe.log_error(
-                f"No primary contact email found for customer {invoice.customer}, skipping invoice {invoice.name}",
-                "Invoice Email Reminder",
-            )
-            continue
-
-        invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
-        customer_doc = frappe.get_doc("Customer", invoice.customer)
-        context, currency = _build_reminder_template_context(
-            setting_doc, invoice_doc, customer_doc
-        )
-
         try:
-            rendered_body = frappe.render_template(setting_doc.body, context)
-            rendered_subject = frappe.render_template(setting_doc.subject, context)
-        except Exception as e:
-            frappe.log_error(
-                f"Failed to render template for invoice {invoice.name}: {str(e)}",
-                "Invoice Email Reminder",
-            )
+            _create_one_notify_customer_record(setting_doc, invoice, audience, frequency)
+            frappe.db.commit()
+        except Exception:
+            frappe.db.rollback()
+            frappe.log_error(frappe.get_traceback(), "Invoice Email Reminder")
+            frappe.db.commit()
+
+
+def _create_one_notify_customer_record(setting_doc, invoice, audience, frequency):
+    customer_emails = _get_primary_contact_emails(invoice.customer)
+
+    if not customer_emails:
+        frappe.log_error(
+            f"No primary contact email found for customer {invoice.customer}, skipping invoice {invoice.name}",
+            "Invoice Email Reminder",
+        )
+        return
+
+    invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
+    customer_doc = frappe.get_doc("Customer", invoice.customer)
+    context, currency = _build_reminder_template_context(
+        setting_doc, invoice_doc, customer_doc
+    )
+
+    try:
+        rendered_body = frappe.render_template(setting_doc.body, context)
+        rendered_subject = frappe.render_template(setting_doc.subject, context)
+    except Exception as e:
+        frappe.log_error(
+            f"Failed to render template for invoice {invoice.name}: {str(e)}",
+            "Invoice Email Reminder",
+        )
+        return
+
+    for email in customer_emails:
+        if _already_notified(
+            setting_doc.name,
+            invoice.name,
+            invoice.customer,
+            email,
+            audience,
+            frequency,
+        ):
             continue
 
-        for email in customer_emails:
-            if _already_notified(
-                setting_doc.name,
-                invoice.name,
-                invoice.customer,
-                email,
-                audience,
-                frequency,
-            ):
-                continue
+        notify_doc = frappe.get_doc({
+            "doctype": "Notify Customer",
+            "posting_date": today(),
+            "posting_time": frappe.utils.now_datetime().strftime("%H:%M:%S"),
+            "customer": invoice.customer,
+            "customer_email": email,
+            "subject": rendered_subject,
+            "due_amount": invoice_doc.outstanding_amount,
+            "invoice_no": invoice.name,
+            "message": rendered_body,
+            "currency": currency,
+            "email_setting": setting_doc.name,
+            "reminder_audience": audience,
+            "is_test": 0,
+        })
+        notify_doc.insert(ignore_permissions=True)
 
-            notify_doc = frappe.get_doc({
-                "doctype": "Notify Customer",
-                "posting_date": today(),
-                "posting_time": frappe.utils.now_datetime().strftime("%H:%M:%S"),
-                "customer": invoice.customer,
-                "customer_email": email,
-                "subject": rendered_subject,
-                "due_amount": invoice_doc.outstanding_amount,
-                "invoice_no": invoice.name,
-                "message": rendered_body,
-                "currency": currency,
-                "email_setting": setting_doc.name,
-                "reminder_audience": audience,
-                "is_test": 0,
-            })
-            notify_doc.insert(ignore_permissions=True)
-
-            if setting_doc.print_format:
-                try:
-                    _attach_pdf(
-                        notify_doc,
-                        invoice_doc,
-                        setting_doc.print_format,
-                        setting_doc.letter_head,
-                    )
-                    notify_doc.save(ignore_permissions=True)
-                except Exception as e:
-                    frappe.log_error(
-                        f"Failed to attach PDF for invoice {invoice.name} to {email}: {str(e)}",
-                        "Invoice Email Reminder",
-                    )
-
-    frappe.db.commit()
+        if setting_doc.print_format:
+            try:
+                _attach_pdf(
+                    notify_doc,
+                    invoice_doc,
+                    setting_doc.print_format,
+                    setting_doc.letter_head,
+                )
+                notify_doc.save(ignore_permissions=True)
+            except Exception as e:
+                frappe.log_error(
+                    f"Failed to attach PDF for invoice {invoice.name} to {email}: {str(e)}",
+                    "Invoice Email Reminder",
+                )
 
 
 @frappe.whitelist()
