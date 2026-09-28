@@ -2,9 +2,9 @@
   "info": {
     "_postman_id": "6b4d0ef2-b177-4274-a291-bae706f772f0",
     "name": "PropMS Mobile & API (Full)",
-    "description": "# PropMS API \u2014 Full Collection\n\nWhitelisted endpoints under `propms/api` (**201** methods).\n\n## Base URL\n`{{base_url}}` = `https://dev15-viva2.vvsdtz.com`\n\n## Call style\n```\nPOST|GET {{base_url}}/api/method/<method.path>\n```\nResponse envelope: `{ \"message\": { ... } }`.\n\n## Auth (Frappe session)\n1. Set collection variables `usr` and `pwd` (e.g. `Administrator` or a tenant user).\n2. Run **00. Session Login \u2192 Login**.\n3. Postman keeps the `sid` cookie for later requests \u2014 no API key needed.\n4. To test as another user: change `usr`/`pwd`, run **Logout**, then **Login** again.\n\n## Prefer mobile wrappers\nFlutter should use `propms.api.mobile.*` (and some `propms.api.*`).  \nEach domain has a **Direct v1** subfolder for underlying handlers.\n\n## Domains\nAuth, Water Cart, Selcom Payments, Invoices, Tickets/Job Cards, Gate Pass, Amenities, Emergency, Directory, Calls, Files, Notifications.\n\n## Guest endpoints\n- `propms.api.mobile.request_password_reset_otp`\n- `propms.api.mobile.verify_otp`\n- `propms.api.mobile.reset_password_after_otp`\n- `propms.api.mobile.verify_otp_and_reset_password`\n- `propms.api.mobile.get_payment_methods`\n- `propms.api.mobile.selcom_ipn_webhook`\n- `propms.api.v1.invoices.invoices.selcom_payment_webhook`\n- `propms.api.v1.payments.services.get_payment_methods`\n- `propms.api.v1.payments.webhook.selcom_ipn_webhook`\n\n## Publish (NextSMS-style docs)\nPostman \u2192 collection **\u2026** \u2192 **View Documentation** / **Publish Docs** \u2192 public  \n`https://documenter.getpostman.com/view/...`\n",
+    "description": "# PropMS API — Full Collection\n\nWhitelisted endpoints under `propms/api` (**201** methods).\n\n## Base URL\n`{{base_url}}` = `https://dev15-viva2.vvsdtz.com`\n\n## Call style\n```\nPOST|GET {{base_url}}/api/method/<method.path>\n```\nResponse envelope: `{ \"message\": { ... } }`.\n\n## Auth (Frappe session)\n1. Set collection variables `usr` and `pwd` (e.g. `Administrator` or a tenant user).\n2. Run **00. Session Login → Login**.\n3. Postman keeps the `sid` cookie for later requests — no API key needed.\n4. To test as another user: change `usr`/`pwd`, run **Logout**, then **Login** again.\n\n## Prefer mobile wrappers\nFlutter should use `propms.api.mobile.*` (and some `propms.api.*`).  \nEach domain has a **Direct v1** subfolder for underlying handlers.\n\n## Domains\nAuth, POS Store Services (Maintenance POS), Electricity (POS), Drinking Water Cart (DEPRECATED), Selcom Payments, Invoices, Tickets/Job Cards, Gate Pass, Amenities, Emergency, Directory, Calls, Files, Notifications.\n\n**POS Store hub** is curated in Desk: **Mobile App Settings → POS Store Services** (Item+qty or Special+amount). Prefer **02c**. Do not use Item checkbox `show_in_mobile_pos_store` (removed).\n\n## Guest endpoints\n- `propms.api.mobile.request_password_reset_otp`\n- `propms.api.mobile.verify_otp`\n- `propms.api.mobile.reset_password_after_otp`\n- `propms.api.mobile.verify_otp_and_reset_password`\n- `propms.api.mobile.get_payment_methods`\n- `propms.api.mobile.selcom_ipn_webhook`\n- `propms.api.v1.invoices.invoices.selcom_payment_webhook`\n- `propms.api.v1.payments.services.get_payment_methods`\n- `propms.api.v1.payments.webhook.selcom_ipn_webhook`\n\n## Publish (NextSMS-style docs)\nPostman → collection **…** → **View Documentation** / **Publish Docs** → public  \n`https://documenter.getpostman.com/view/...`\n",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "2.0.0"
+    "version": "2.2.0"
   },
   "variable": [
     {
@@ -29,7 +29,7 @@
     },
     {
       "key": "item_code",
-      "value": "DRINKING WATER BOTTLE 18.9LTR"
+      "value": "DRINKING WATER"
     },
     {
       "key": "sales_order",
@@ -70,6 +70,18 @@
     {
       "key": "fcm_token",
       "value": ""
+    },
+    {
+      "key": "tanesco_amount",
+      "value": "15000"
+    },
+    {
+      "key": "generator_amount",
+      "value": "5000"
+    },
+    {
+      "key": "total_amount",
+      "value": "20000"
     }
   ],
   "auth": {
@@ -158,7 +170,7 @@
     },
     {
       "name": "01. Auth & Profile",
-      "description": "**auth** \u2014 15 endpoints (9 mobile/top, 6 v1).",
+      "description": "**auth** — 15 endpoints (9 mobile/top, 6 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -784,8 +796,8 @@
       ]
     },
     {
-      "name": "02. Drinking Water Cart",
-      "description": "**water** \u2014 14 endpoints (7 mobile/top, 7 v1).",
+      "name": "02. Drinking Water Cart (DEPRECATED)",
+      "description": "**DEPRECATED** — use **02c. POS Store Services**. Water cart APIs return code DEPRECATED.\n\n**Water cart** — draft Sales Order → Selcom (`sales_order_pos`) → Paid POS SI.\n\nFlow: `get_drinking_water_products` → `add_to_cart` → `get_cart` → `checkout_water_order` (or `pay_with_stored_card` with `sales_order`).\n\nPrefer **Mobile / App wrappers**.",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -816,7 +828,7 @@
                     "propms.api.mobile.add_to_cart"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.add_to_cart`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\nAdd a water product to cart as a draft Sales Order (one item per SO).\n\nWraps: `propms.api.v1.water.water.add_to_cart`\n\n**Parameters:** `item_code`, `quantity`, `delivery_instructions`, `lease`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.add_to_cart\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.add_to_cart`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nAdd / update qty on draft water Sales Order. Creates SO if none.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.add_to_cart\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"item_code\": \"{{item_code}}\",\n  \"quantity\": 1,\n  \"delivery_instructions\": \"Leave at reception\",\n  \"lease\": \"{{lease}}\"\n}",
@@ -854,10 +866,10 @@
                     "propms.api.mobile.checkout_water_order"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.checkout_water_order`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\nPay one water cart Sales Order via Selcom (no bulk pay).\n\nWraps: `propms.api.v1.water.water.checkout_water_order`\n\n**Parameters:** `sales_order`, `payment_method`, `phone_number`, `amount`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.checkout_water_order\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.checkout_water_order`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nPay one **draft water cart Sales Order** via Selcom.\nOn success: SO submitted + **Paid POS Sales Invoice** (`payment_workflow=sales_order_pos`).\n\nWraps: `propms.api.v1.water.water.checkout_water_order`\n\n**Parameters:** `sales_order`, `payment_method`, `phone_number`, `amount`\n\nPoll `propms.api.mobile.get_payment_status` with `order_id`.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.checkout_water_order\n```",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"sales_order\": \"{{sales_order}}\",\n  \"payment_method\": \"MOBILE_MONEY\",\n  \"phone_number\": \"{{phone_number}}\"\n}",
+                  "raw": "{\n  \"sales_order\": \"{{sales_order}}\",\n  \"payment_method\": \"MOBILE_MONEY\",\n  \"phone_number\": \"{{phone_number}}\",\n  \"amount\": null\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -892,7 +904,7 @@
                     "propms.api.mobile.get_cart"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.get_cart`\n**HTTP:** `GET|POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\nList draft water cart Sales Orders for the authenticated tenant.\n\nWraps: `propms.api.v1.water.water.get_cart`\n\n**Parameters:** `lease`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.get_cart\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.get_cart`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nCurrent draft water cart (Sales Order) for the tenant.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.get_cart\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"lease\": \"{{lease}}\"\n}",
@@ -930,7 +942,7 @@
                     "propms.api.mobile.get_drinking_water_products"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.get_drinking_water_products`\n**HTTP:** `GET|POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\nFetch active drinking water items for the mobile catalog.\n\nWraps: `propms.api.v1.water.water.get_drinking_water_products`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.get_drinking_water_products\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.get_drinking_water_products`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nCatalog of drinking-water items for the cart.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.get_drinking_water_products\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -1034,7 +1046,7 @@
                     "propms.api.mobile.remove_from_cart"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.remove_from_cart`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\nRemove a draft water cart item (delete draft Sales Order).\n\nWraps: `propms.api.v1.water.water.remove_from_cart`\n\n**Parameters:** `sales_order`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.remove_from_cart\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.remove_from_cart`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nRemove a line from the draft water cart SO.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.remove_from_cart\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"sales_order\": \"{{sales_order}}\"\n}",
@@ -1072,7 +1084,7 @@
                     "propms.api.mobile.update_cart_item"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.update_cart_item`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\nUpdate quantity (and optional notes) on a draft water cart Sales Order.\n\nWraps: `propms.api.v1.water.water.update_cart_item`\n\n**Parameters:** `sales_order`, `quantity`, `delivery_instructions`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.update_cart_item\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.update_cart_item`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nChange qty of a line on the draft water SO.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.update_cart_item\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"sales_order\": \"{{sales_order}}\",\n  \"quantity\": 3\n}",
@@ -1116,7 +1128,7 @@
                     "propms.api.v1.water.water.add_to_cart"
                   ]
                 },
-                "description": "**Method path:** `propms.api.v1.water.water.add_to_cart`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `v1`\n\nAdd a water product to cart as a draft Sales Order (one item per SO).\n\n**Parameters:** `item_code`, `quantity`, `delivery_instructions`, `lease`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.add_to_cart\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.v1.water.water.add_to_cart`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nAdd / update qty on draft water Sales Order. Creates SO if none.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.add_to_cart\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"item_code\": null,\n  \"quantity\": 1,\n  \"delivery_instructions\": null,\n  \"lease\": \"{{lease}}\"\n}",
@@ -1154,7 +1166,7 @@
                     "propms.api.v1.water.water.checkout_water_order"
                   ]
                 },
-                "description": "**Method path:** `propms.api.v1.water.water.checkout_water_order`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `v1`\n\nPay one water cart Sales Order via Selcom (no bulk pay).\n\n**Parameters:** `sales_order`, `payment_method`, `phone_number`, `amount`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.checkout_water_order\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.v1.water.water.checkout_water_order`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nPay one **draft water cart Sales Order** via Selcom.\nOn success: SO submitted + **Paid POS Sales Invoice** (`payment_workflow=sales_order_pos`).\n\n**Parameters:** `sales_order`, `payment_method`, `phone_number`, `amount`\n\nPoll `propms.api.mobile.get_payment_status` with `order_id`.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.checkout_water_order\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"sales_order\": \"{{sales_order}}\",\n  \"payment_method\": \"MOBILE_MONEY\",\n  \"phone_number\": \"{{phone_number}}\",\n  \"amount\": null\n}",
@@ -1192,7 +1204,7 @@
                     "propms.api.v1.water.water.get_cart"
                   ]
                 },
-                "description": "**Method path:** `propms.api.v1.water.water.get_cart`\n**HTTP:** `GET|POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `v1`\n\nList draft water cart Sales Orders for the authenticated tenant.\n\n**Parameters:** `lease`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.get_cart\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.v1.water.water.get_cart`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nCurrent draft water cart (Sales Order) for the tenant.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.get_cart\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"lease\": \"{{lease}}\"\n}",
@@ -1230,7 +1242,7 @@
                     "propms.api.v1.water.water.get_drinking_water_products"
                   ]
                 },
-                "description": "**Method path:** `propms.api.v1.water.water.get_drinking_water_products`\n**HTTP:** `GET|POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `v1`\n\nFetch active drinking water items for the mobile catalog.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.get_drinking_water_products\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.v1.water.water.get_drinking_water_products`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nCatalog of drinking-water items for the cart.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.get_drinking_water_products\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -1306,7 +1318,7 @@
                     "propms.api.v1.water.water.remove_from_cart"
                   ]
                 },
-                "description": "**Method path:** `propms.api.v1.water.water.remove_from_cart`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `v1`\n\nRemove a draft water cart item (delete draft Sales Order).\n\n**Parameters:** `sales_order`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.remove_from_cart\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.v1.water.water.remove_from_cart`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nRemove a line from the draft water cart SO.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.remove_from_cart\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"sales_order\": \"{{sales_order}}\"\n}",
@@ -1344,7 +1356,7 @@
                     "propms.api.v1.water.water.update_cart_item"
                   ]
                 },
-                "description": "**Method path:** `propms.api.v1.water.water.update_cart_item`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `v1`\n\nUpdate quantity (and optional notes) on a draft water cart Sales Order.\n\n**Parameters:** `sales_order`, `quantity`, `delivery_instructions`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.update_cart_item\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.v1.water.water.update_cart_item`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nChange qty of a line on the draft water SO.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.water.water.update_cart_item\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"sales_order\": \"{{sales_order}}\",\n  \"quantity\": 1,\n  \"delivery_instructions\": null\n}",
@@ -1362,8 +1374,800 @@
       ]
     },
     {
+      "name": "02b. Electricity Purchase (POS)",
+      "description": "**Electricity** — amount + TANESCO/Generator split → Selcom (`electricity_pos`) → **Paid POS Sales Invoice**.\n\nFlow: `get_electricity_rates` → `preview_electricity_purchase` → `checkout_electricity` (or `pay_electricity_with_stored_card`) → `get_payment_status`.\n\n**No unpaid SI before pay.** `create_electricity_invoice` is deprecated.\n\nPrefer **Mobile / App wrappers**.",
+      "item": [
+        {
+          "name": "Mobile / App wrappers",
+          "description": "Prefer these for Flutter (`propms.api.mobile.*`).",
+          "item": [
+            {
+              "name": "get_electricity_rates",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.get_electricity_rates",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.get_electricity_rates"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.get_electricity_rates`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nRates for TANESCO / Generator + auto-resolved meter for tenant lease.\n\n**Parameters:** `lease` (optional)\n\nIf `meter` is null, check `meter_warning` — purchase blocked until meter exists on Property.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.get_electricity_rates\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lease\": \"{{lease}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "preview_electricity_purchase",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.preview_electricity_purchase",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.preview_electricity_purchase"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.preview_electricity_purchase`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nLive allocation preview (no document written).\n`tanesco_amount + generator_amount` must equal `total_amount` (VAT-inclusive).\nReturns units (`lines[].qty`) and ERPNext tax totals.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.preview_electricity_purchase\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"total_amount\": {{total_amount}},\n  \"tanesco_amount\": {{tanesco_amount}},\n  \"generator_amount\": {{generator_amount}},\n  \"lease\": \"{{lease}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "checkout_electricity",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.checkout_electricity",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.checkout_electricity"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.checkout_electricity`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\n**Pay first** — starts Selcom with `payment_workflow=electricity_pos`.\n**No Sales Invoice until payment succeeds.**\nOn success: **Paid POS SI** (`is_pos=1`, Mobile Cart POS Profile).\n\n**Parameters:** `total_amount`, `tanesco_amount`, `generator_amount`, `lease`, `payment_method`, `phone_number`, `amount`\n\nThen poll `get_payment_status` → `invoice_name`.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.checkout_electricity\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"total_amount\": {{total_amount}},\n  \"tanesco_amount\": {{tanesco_amount}},\n  \"generator_amount\": {{generator_amount}},\n  \"lease\": \"{{lease}}\",\n  \"payment_method\": \"MOBILE_MONEY\",\n  \"phone_number\": \"{{phone_number}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "pay_electricity_with_stored_card",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.pay_electricity_with_stored_card",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.pay_electricity_with_stored_card"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.pay_electricity_with_stored_card`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nCharge saved card for electricity (`electricity_pos`).\nMay return `OPEN_3DS_WEBVIEW` or `PAYMENT_COMPLETED` with `invoice_name`.\n\nDo **not** use `pay_with_stored_card` + invoice for this flow.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.pay_electricity_with_stored_card\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"total_amount\": {{total_amount}},\n  \"tanesco_amount\": {{tanesco_amount}},\n  \"generator_amount\": {{generator_amount}},\n  \"lease\": \"{{lease}}\",\n  \"card_token\": \"{{card_token}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "create_electricity_invoice (DEPRECATED)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.create_electricity_invoice",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.create_electricity_invoice"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.create_electricity_invoice`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\n**DEPRECATED** — returns error. Use `checkout_electricity` instead (pay first → Paid POS SI).\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.create_electricity_invoice\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"total_amount\": {{total_amount}},\n  \"tanesco_amount\": {{tanesco_amount}},\n  \"generator_amount\": {{generator_amount}},\n  \"lease\": \"{{lease}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Direct v1",
+          "description": "Underlying handlers (`propms.api.v1.electricity.electricity.*`).",
+          "item": [
+            {
+              "name": "get_electricity_rates",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.v1.electricity.electricity.get_electricity_rates",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.v1.electricity.electricity.get_electricity_rates"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.v1.electricity.electricity.get_electricity_rates`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nRates for TANESCO / Generator + auto-resolved meter for tenant lease.\n\n**Parameters:** `lease` (optional)\n\nIf `meter` is null, check `meter_warning` — purchase blocked until meter exists on Property.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.electricity.electricity.get_electricity_rates\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lease\": \"{{lease}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "preview_electricity_purchase",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.v1.electricity.electricity.preview_electricity_purchase",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.v1.electricity.electricity.preview_electricity_purchase"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.v1.electricity.electricity.preview_electricity_purchase`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nLive allocation preview (no document written).\n`tanesco_amount + generator_amount` must equal `total_amount` (VAT-inclusive).\nReturns units (`lines[].qty`) and ERPNext tax totals.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.electricity.electricity.preview_electricity_purchase\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"total_amount\": {{total_amount}},\n  \"tanesco_amount\": {{tanesco_amount}},\n  \"generator_amount\": {{generator_amount}},\n  \"lease\": \"{{lease}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "checkout_electricity",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.v1.electricity.electricity.checkout_electricity",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.v1.electricity.electricity.checkout_electricity"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.v1.electricity.electricity.checkout_electricity`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\n**Pay first** — starts Selcom with `payment_workflow=electricity_pos`.\n**No Sales Invoice until payment succeeds.**\nOn success: **Paid POS SI** (`is_pos=1`, Mobile Cart POS Profile).\n\n**Parameters:** `total_amount`, `tanesco_amount`, `generator_amount`, `lease`, `payment_method`, `phone_number`, `amount`\n\nThen poll `get_payment_status` → `invoice_name`.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.electricity.electricity.checkout_electricity\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"total_amount\": {{total_amount}},\n  \"tanesco_amount\": {{tanesco_amount}},\n  \"generator_amount\": {{generator_amount}},\n  \"lease\": \"{{lease}}\",\n  \"payment_method\": \"MOBILE_MONEY\",\n  \"phone_number\": \"{{phone_number}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "pay_electricity_with_stored_card",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.v1.electricity.electricity.pay_electricity_with_stored_card",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.v1.electricity.electricity.pay_electricity_with_stored_card"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.v1.electricity.electricity.pay_electricity_with_stored_card`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nCharge saved card for electricity (`electricity_pos`).\nMay return `OPEN_3DS_WEBVIEW` or `PAYMENT_COMPLETED` with `invoice_name`.\n\nDo **not** use `pay_with_stored_card` + invoice for this flow.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.electricity.electricity.pay_electricity_with_stored_card\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"total_amount\": {{total_amount}},\n  \"tanesco_amount\": {{tanesco_amount}},\n  \"generator_amount\": {{generator_amount}},\n  \"lease\": \"{{lease}}\",\n  \"card_token\": \"{{card_token}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "create_electricity_invoice (DEPRECATED)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.v1.electricity.electricity.create_electricity_invoice",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.v1.electricity.electricity.create_electricity_invoice"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.v1.electricity.electricity.create_electricity_invoice`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\n**DEPRECATED** — returns error. Use `checkout_electricity` instead (pay first → Paid POS SI).\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.electricity.electricity.create_electricity_invoice\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"total_amount\": {{total_amount}},\n  \"tanesco_amount\": {{tanesco_amount}},\n  \"generator_amount\": {{generator_amount}},\n  \"lease\": \"{{lease}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02c. POS Store Services (Maintenance POS)",
+      "description": "Hub from **Mobile App Settings → POS Store Services** (child table: Item+qty or Special+amount).\n\nFlow: `get_pos_store_catalog` → `services[]` → product detail (`get_pos_store_item`) → `checkout_pos_item` / `pay_pos_item_with_stored_card` → Selcom → Paid POS SI (`maintenance_pos`).\n\n- Prefer `message.services` (ordered). Also returns `items[]` (qty) and `special_services[]` (e.g. electricity).\n- `purchase_mode=qty` → checkout_pos_item. `purchase_mode=amount` + `special_key=electricity` → **02b** electricity APIs (not checkout_pos_item).\n- `image` is Item.image path (e.g. `/files/kisimab.png`); app builds `{{base_url}}` + path.\n- No Sales Order. Water cart (**02**) is DEPRECATED.",
+      "item": [
+        {
+          "name": "Mobile / App wrappers",
+          "item": [
+            {
+              "name": "get_pos_store_catalog",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.get_pos_store_catalog",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.get_pos_store_catalog"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.get_pos_store_catalog`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nHub catalog from **Mobile App Settings → POS Store Services**.\n\nReturns `services[]` (prefer), `items[]` (qty-mode), `special_services[]` (e.g. electricity), `source: Mobile App Settings`.\nEach Item row includes `image` (Item.image path), `rate`, `sold_out`, `purchase_mode`.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.get_pos_store_catalog\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "Catalog success",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": "{{base_url}}/api/method/propms.api.mobile.get_pos_store_catalog"
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": {\n    \"status\": \"success\",\n    \"currency\": \"TZS\",\n    \"count\": 2,\n    \"pos_profile\": \"Selcom Mobile Payment\",\n    \"warehouse\": \"Stores - VPL\",\n    \"source\": \"Mobile App Settings\",\n    \"services\": [\n      {\n        \"key\": \"item:DRINKING WATER\",\n        \"item_code\": \"DRINKING WATER\",\n        \"item_name\": \"DRINKING WATER\",\n        \"label\": \"Drinking Water\",\n        \"item_group\": \"Maintenance POS\",\n        \"description\": \"DRINKING WATER\",\n        \"stock_uom\": \"Nos\",\n        \"rate\": 6500.0,\n        \"formatted_rate\": \"TZS 6,500.00\",\n        \"currency\": \"TZS\",\n        \"image\": \"/files/kisimab.png\",\n        \"is_stock_item\": 1,\n        \"actual_qty\": 100.0,\n        \"in_stock\": true,\n        \"sold_out\": false,\n        \"warehouse\": \"Stores - VPL\",\n        \"service_type\": \"Item\",\n        \"purchase_mode\": \"qty\",\n        \"sort_order\": 1\n      },\n      {\n        \"key\": \"special:electricity\",\n        \"special_key\": \"electricity\",\n        \"service_type\": \"Special\",\n        \"purchase_mode\": \"amount\",\n        \"label\": \"Electricity\",\n        \"api\": \"propms.api.mobile.get_electricity_rates\",\n        \"checkout_api\": \"propms.api.mobile.checkout_electricity\",\n        \"preview_api\": \"propms.api.mobile.preview_electricity_purchase\",\n        \"sort_order\": 2\n      }\n    ],\n    \"items\": [\n      {\n        \"key\": \"item:DRINKING WATER\",\n        \"item_code\": \"DRINKING WATER\",\n        \"label\": \"Drinking Water\",\n        \"image\": \"/files/kisimab.png\",\n        \"rate\": 6500.0,\n        \"purchase_mode\": \"qty\",\n        \"service_type\": \"Item\"\n      }\n    ],\n    \"special_services\": [\n      {\n        \"key\": \"special:electricity\",\n        \"special_key\": \"electricity\",\n        \"label\": \"Electricity\",\n        \"purchase_mode\": \"amount\",\n        \"api\": \"propms.api.mobile.get_electricity_rates\",\n        \"checkout_api\": \"propms.api.mobile.checkout_electricity\"\n      }\n    ]\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "get_pos_store_item",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.get_pos_store_item",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.get_pos_store_item"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.get_pos_store_item`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nProduct detail for one **Item** row enabled on Mobile App Settings (qty mode).\n\n**Parameters:** `item_code` (e.g. `DRINKING WATER`)\n\nReturns `item` with `image`, `rate`, `sold_out`, etc. Absolute image URL = `{{base_url}}` + `item.image`.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.get_pos_store_item\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"item_code\": \"{{item_code}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [
+                {
+                  "name": "Item detail success",
+                  "originalRequest": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      },
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"item_code\": \"DRINKING WATER\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": "{{base_url}}/api/method/propms.api.mobile.get_pos_store_item"
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"message\": {\n    \"status\": \"success\",\n    \"item\": {\n      \"item_code\": \"DRINKING WATER\",\n      \"item_name\": \"DRINKING WATER\",\n      \"label\": \"Drinking Water\",\n      \"item_group\": \"Maintenance POS\",\n      \"description\": \"DRINKING WATER\",\n      \"stock_uom\": \"Nos\",\n      \"rate\": 6500.0,\n      \"formatted_rate\": \"TZS 6,500.00\",\n      \"currency\": \"TZS\",\n      \"image\": \"/files/kisimab.png\",\n      \"is_stock_item\": 1,\n      \"actual_qty\": 100.0,\n      \"in_stock\": true,\n      \"sold_out\": false,\n      \"warehouse\": \"Stores - VPL\",\n      \"service_type\": \"Item\",\n      \"purchase_mode\": \"qty\"\n    }\n  }\n}"
+                }
+              ]
+            },
+            {
+              "name": "checkout_pos_item",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.checkout_pos_item",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.checkout_pos_item"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.checkout_pos_item`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nPay first for a qty-mode POS Store item (`payment_workflow=maintenance_pos`). Paid POS SI on Selcom success. **No Sales Order.**\n\n**Parameters:** `item_code`, `qty`/`quantity`, `lease` (optional), `payment_method`, `phone_number`, `amount` (optional; must match line total).\n\nPoll `propms.api.mobile.get_payment_status` with `order_id`.\n\nDo **not** use for electricity — use `checkout_electricity` (02b).\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.checkout_pos_item\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"item_code\": \"{{item_code}}\",\n  \"qty\": 1,\n  \"lease\": \"{{lease}}\",\n  \"payment_method\": \"MOBILE_MONEY\",\n  \"phone_number\": \"{{phone_number}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "pay_pos_item_with_stored_card",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.pay_pos_item_with_stored_card",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.pay_pos_item_with_stored_card"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.pay_pos_item_with_stored_card`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `mobile`\n\nStored card checkout for a qty-mode POS Store item (`payment_workflow=maintenance_pos`).\n\n**Parameters:** `item_code`, `qty`/`quantity`, `lease` (optional), `card_token`, `amount` (optional), `cvv` (optional).\n\nMay return `OPEN_3DS_WEBVIEW` or `PAYMENT_COMPLETED` with `invoice_name`.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.pay_pos_item_with_stored_card\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"item_code\": \"{{item_code}}\",\n  \"qty\": 1,\n  \"lease\": \"{{lease}}\",\n  \"card_token\": \"{{card_token}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Direct v1",
+          "item": [
+            {
+              "name": "get_pos_store_catalog",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.v1.pos_store.pos_store.get_pos_store_catalog",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.v1.pos_store.pos_store.get_pos_store_catalog"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.v1.pos_store.pos_store.get_pos_store_catalog`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nHub catalog from **Mobile App Settings → POS Store Services**. Same payload as mobile wrapper (`services[]`, `items[]`, `special_services[]`, `image` on Item rows).\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.pos_store.pos_store.get_pos_store_catalog\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "get_pos_store_item",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.v1.pos_store.pos_store.get_pos_store_item",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.v1.pos_store.pos_store.get_pos_store_item"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.v1.pos_store.pos_store.get_pos_store_item`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nProduct detail for one Item enabled on Mobile App Settings (qty mode). Params: `item_code`.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.pos_store.pos_store.get_pos_store_item\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"item_code\": \"{{item_code}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "checkout_pos_item",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.v1.pos_store.pos_store.checkout_pos_item",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.v1.pos_store.pos_store.checkout_pos_item"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.v1.pos_store.pos_store.checkout_pos_item`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nPay first (`maintenance_pos`). Paid POS SI on Selcom success. No Sales Order. Not for electricity.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.pos_store.pos_store.checkout_pos_item\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"item_code\": \"{{item_code}}\",\n  \"qty\": 1,\n  \"lease\": \"{{lease}}\",\n  \"payment_method\": \"MOBILE_MONEY\",\n  \"phone_number\": \"{{phone_number}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "pay_pos_item_with_stored_card",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.v1.pos_store.pos_store.pay_pos_item_with_stored_card",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.v1.pos_store.pos_store.pay_pos_item_with_stored_card"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.v1.pos_store.pos_store.pay_pos_item_with_stored_card`\n**HTTP:** `POST`\n**Auth:** Required\n**Layer:** `v1`\n\nStored card checkout for qty-mode POS Store item (`maintenance_pos`).\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.pos_store.pos_store.pay_pos_item_with_stored_card\n```",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"item_code\": \"{{item_code}}\",\n  \"qty\": 1,\n  \"lease\": \"{{lease}}\",\n  \"card_token\": \"{{card_token}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "03. Selcom Payments",
-      "description": "**payments** \u2014 18 endpoints (9 mobile/top, 9 v1).",
+      "description": "**payments** — 18 endpoints (9 mobile/top, 9 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -1511,7 +2315,7 @@
                     "propms.api.mobile.get_payment_status"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.get_payment_status`\n**HTTP:** `GET|POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\nQuery current payment status from local DB and Selcom Gateway.\n\nWraps: `propms.api.v1.payments.services.get_payment_status`\n\n**Parameters:** `order_id`, `transaction_id`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.get_payment_status\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.get_payment_status`\n**HTTP:** `POST`\n**Auth:** Required\n\nPoll payment after water (`checkout_water_order`), electricity (`checkout_electricity`), or invoice checkout.\nOn success for water/electricity POS flows, `invoice_name` is the Paid POS SI.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.get_payment_status\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"order_id\": \"{{order_id}}\"\n}",
@@ -1663,10 +2467,10 @@
                     "propms.api.mobile.pay_with_stored_card"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.pay_with_stored_card`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\nInitiate and process a payment using a previously saved/tokenized card.\n\nWraps: `propms.api.v1.payments.services.pay_with_stored_card`\n\n**Parameters:** `invoice_name`, `card_token`, `amount`, `cvv`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.pay_with_stored_card\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.pay_with_stored_card`\n**HTTP:** `POST`\n**Auth:** Required\n\nPay with saved card.\n\n- **Invoice:** `invoice_name` + `card_token` → `sales_invoice_payment`\n- **Water cart SO:** `sales_order` + `card_token` → `sales_order_pos`\n- **Electricity:** use `pay_electricity_with_stored_card` instead\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.pay_with_stored_card\n```",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"invoice_name\": \"{{invoice_name}}\",\n  \"card_token\": \"{{card_token}}\",\n  \"amount\": 10000\n}",
+                  "raw": "{\n  \"invoice_name\": \"{{invoice_name}}\",\n  \"sales_order\": \"{{sales_order}}\",\n  \"card_token\": \"{{card_token}}\",\n  \"amount\": null\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1865,7 +2669,7 @@
                     "propms.api.v1.payments.services.get_payment_status"
                   ]
                 },
-                "description": "**Method path:** `propms.api.v1.payments.services.get_payment_status`\n**HTTP:** `GET|POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `v1`\n\nQuery current payment status from local DB and Selcom Gateway.\n\n**Parameters:** `order_id`, `transaction_id`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.payments.services.get_payment_status\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.v1.payments.services.get_payment_status`\n**HTTP:** `POST`\n**Auth:** Required\n\nPoll payment after water (`checkout_water_order`), electricity (`checkout_electricity`), or invoice checkout.\nOn success for water/electricity POS flows, `invoice_name` is the Paid POS SI.\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.payments.services.get_payment_status\n```",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"order_id\": \"{{order_id}}\",\n  \"transaction_id\": null\n}",
@@ -2017,10 +2821,10 @@
                     "propms.api.v1.payments.services.pay_with_stored_card"
                   ]
                 },
-                "description": "**Method path:** `propms.api.v1.payments.services.pay_with_stored_card`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `v1`\n\nInitiate and process a payment using a previously saved/tokenized card.\n\n**Parameters:** `invoice_name`, `card_token`, `amount`, `cvv`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.payments.services.pay_with_stored_card\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.v1.payments.services.pay_with_stored_card`\n**HTTP:** `POST`\n**Auth:** Required\n\nPay with saved card.\n\n- **Invoice:** `invoice_name` + `card_token` → `sales_invoice_payment`\n- **Water cart SO:** `sales_order` + `card_token` → `sales_order_pos`\n- **Electricity:** use `pay_electricity_with_stored_card` instead\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.payments.services.pay_with_stored_card\n```",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"invoice_name\": \"{{invoice_name}}\",\n  \"card_token\": \"{{card_token}}\",\n  \"amount\": null,\n  \"cvv\": null\n}",
+                  "raw": "{\n  \"invoice_name\": \"{{invoice_name}}\",\n  \"sales_order\": \"{{sales_order}}\",\n  \"card_token\": \"{{card_token}}\",\n  \"amount\": null\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2077,7 +2881,7 @@
     },
     {
       "name": "04. Invoices & Receipts",
-      "description": "**invoices** \u2014 11 endpoints (5 mobile/top, 6 v1).",
+      "description": "**invoices** — 11 endpoints (5 mobile/top, 6 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -2516,7 +3320,7 @@
     },
     {
       "name": "05. Tickets / Job Cards",
-      "description": "**job_card_tickets** \u2014 55 endpoints (24 mobile/top, 31 v1).",
+      "description": "**job_card_tickets** — 55 endpoints (24 mobile/top, 31 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -4624,7 +5428,7 @@
     },
     {
       "name": "06. Visitor Gate Pass",
-      "description": "**visitors_gate_pass** \u2014 17 endpoints (8 mobile/top, 9 v1).",
+      "description": "**visitors_gate_pass** — 17 endpoints (8 mobile/top, 9 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -5288,7 +6092,7 @@
     },
     {
       "name": "07. Amenities Booking",
-      "description": "**amenities** \u2014 18 endpoints (12 mobile/top, 6 v1).",
+      "description": "**amenities** — 21 endpoints (15 mobile/top, 6 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -5585,10 +6389,124 @@
                     "propms.api.mobile.create_amenity_booking"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.create_amenity_booking`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\ncreate_amenity_booking\n\nWraps: `propms.api.v1.amenities.create_booking`\n\n**Parameters:** `amenity`, `booking_date`, `start_time`, `end_time`, `guests_count`, `notes`, `lease`, `property_unit`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.create_amenity_booking\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.create_amenity_booking`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\ncreate_amenity_booking\n\nWraps: `propms.api.v1.amenities.create_booking`\n\n**Parameters:** `amenity`, `booking_date`, `start_time`, `end_time`, `guests_count`, `notes`, `lease`, `property_unit`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.create_amenity_booking\n```\n\n**Overlap error shape** (exclusive range + cleanup buffer):\n```json\n{\n  \"status\": \"error\",\n  \"message\": \"This time overlaps an existing booking (18:00:00–21:00:00).\",\n  \"conflict_booking_id\": \"AMB-0001\",\n  \"conflict_start\": \"18:00:00\",\n  \"conflict_end\": \"21:00:00\"\n}\n```\nPrefer day availability UI over `get_available_slots` for Party Hall exclusive booking.\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"amenity\": \"{{amenity}}\",\n  \"booking_date\": \"2026-09-25\",\n  \"start_time\": \"10:00:00\",\n  \"end_time\": \"12:00:00\",\n  \"guests_count\": 2,\n  \"notes\": \"Birthday\",\n  \"lease\": \"{{lease}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "get_amenity_day_availability",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.get_amenity_day_availability",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.get_amenity_day_availability"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.get_amenity_day_availability`\n**HTTP:** `GET|POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\nget_amenity_day_availability\n\nBusy intervals + free gaps for exclusive range booking UI.\n\nWraps: `propms.api.v1.amenities.get_amenity_day_availability`\n\nSuccess includes: `busy[]`, `free_gaps[]`, `open_time`, `close_time`, `booking_time_step_mins`, `cleanup_buffer_mins`, `requires_approval`, `cancel_before_hours`, `capacity`, `is_staff`.\n\n**Parameters:** `amenity`, `booking_date`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.get_amenity_day_availability\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amenity\": \"{{amenity}}\",\n  \"booking_date\": \"2026-09-28\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "approve_amenity_booking",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.approve_amenity_booking",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.approve_amenity_booking"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.approve_amenity_booking`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\napprove_amenity_booking\n\nStaff-only: Pending → Confirmed (re-checks exclusive overlap).\n\nWraps: `propms.api.v1.amenities.approve_amenity_booking`\n\n**Parameters:** `booking_id`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.approve_amenity_booking\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"booking_id\": \"{{booking_id}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "reject_amenity_booking",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/method/propms.api.mobile.reject_amenity_booking",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "method",
+                    "propms.api.mobile.reject_amenity_booking"
+                  ]
+                },
+                "description": "**Method path:** `propms.api.mobile.reject_amenity_booking`\n**HTTP:** `POST`\n**Auth:** Required (session cookie or API token)\n**Layer:** `mobile`\n\nreject_amenity_booking\n\nStaff-only: Pending → Rejected (`rejection_reason` required); frees time.\n\nWraps: `propms.api.v1.amenities.reject_amenity_booking`\n\n**Parameters:** `booking_id`, `rejection_reason`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.reject_amenity_booking\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"booking_id\": \"{{booking_id}}\",\n  \"rejection_reason\": \"Amenity reserved for building event\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5990,7 +6908,7 @@
     },
     {
       "name": "08. Emergency",
-      "description": "**emergency** \u2014 10 endpoints (6 mobile/top, 4 v1).",
+      "description": "**emergency** — 10 endpoints (6 mobile/top, 4 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -6388,7 +7306,7 @@
     },
     {
       "name": "09. Directory",
-      "description": "**directory** \u2014 3 endpoints (2 mobile/top, 1 v1).",
+      "description": "**directory** — 3 endpoints (2 mobile/top, 1 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -6520,7 +7438,7 @@
     },
     {
       "name": "10. Calls (LiveKit)",
-      "description": "**calls** \u2014 15 endpoints (10 mobile/top, 5 v1).",
+      "description": "**calls** — 15 endpoints (10 mobile/top, 5 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -7108,7 +8026,7 @@
     },
     {
       "name": "11. File Uploads",
-      "description": "**files** \u2014 12 endpoints (7 mobile/top, 5 v1).",
+      "description": "**files** — 12 endpoints (7 mobile/top, 5 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -7582,7 +8500,7 @@
     },
     {
       "name": "12. Notifications & FCM",
-      "description": "**notifications** \u2014 17 endpoints (8 mobile/top, 9 v1).",
+      "description": "**notifications** — 17 endpoints (8 mobile/top, 9 v1).",
       "item": [
         {
           "name": "Mobile / App wrappers",
@@ -7841,7 +8759,7 @@
                     "propms.api.mobile.create_notification"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.create_notification`\n**HTTP:** `POST`\n**Auth:** Required \u2014 staff only (Manager/Officer)\n**Layer:** `mobile`\n\nCreate a draft Mobile Notification and return resolved recipients for preview.\n\nWraps: `propms.api.v1.notifications.staff.create_notification`\n\n**Parameters:** `subject`, `message`, `company`, `property`, `customer`, `category`, `attachments`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.create_notification\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.create_notification`\n**HTTP:** `POST`\n**Auth:** Required — staff only (Manager/Officer)\n**Layer:** `mobile`\n\nCreate a draft Mobile Notification and return resolved recipients for preview.\n\nWraps: `propms.api.v1.notifications.staff.create_notification`\n\n**Parameters:** `subject`, `message`, `company`, `property`, `customer`, `category`, `attachments`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.create_notification\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"subject\": \"Water outage tonight\",\n  \"message\": \"Maintenance from 8pm-10pm\",\n  \"company\": \"{{company}}\",\n  \"property\": \"{{property}}\",\n  \"customer\": \"\",\n  \"category\": \"Notice\",\n  \"attachments\": [\n    { \"title\": \"Notice\", \"attachment\": \"{{file_url}}\" }\n  ]\n}",
@@ -7879,7 +8797,7 @@
                     "propms.api.mobile.submit_notification"
                   ]
                 },
-                "description": "**Method path:** `propms.api.mobile.submit_notification`\n**HTTP:** `POST`\n**Auth:** Required \u2014 staff only (Manager/Officer)\n**Layer:** `mobile`\n\nSubmit a draft Mobile Notification (fires WebSocket + FCM via DocType hooks).\n\nWraps: `propms.api.v1.notifications.staff.submit_notification`\n\n**Parameters:** `notification_id`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.submit_notification\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.mobile.submit_notification`\n**HTTP:** `POST`\n**Auth:** Required — staff only (Manager/Officer)\n**Layer:** `mobile`\n\nSubmit a draft Mobile Notification (fires WebSocket + FCM via DocType hooks).\n\nWraps: `propms.api.v1.notifications.staff.submit_notification`\n\n**Parameters:** `notification_id`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.mobile.submit_notification\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"notification_id\": \"{{notification_id}}\"\n}",
@@ -8189,7 +9107,7 @@
                     "propms.api.v1.notifications.staff.create_notification"
                   ]
                 },
-                "description": "**Method path:** `propms.api.v1.notifications.staff.create_notification`\n**HTTP:** `POST`\n**Auth:** Required \u2014 staff only (Manager/Officer)\n**Layer:** `v1`\n\nCreate a draft Mobile Notification and return resolved recipients for preview.\n\n**Parameters:** `subject`, `message`, `company`, `property`, `customer`, `category`, `attachments`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.notifications.staff.create_notification\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.v1.notifications.staff.create_notification`\n**HTTP:** `POST`\n**Auth:** Required — staff only (Manager/Officer)\n**Layer:** `v1`\n\nCreate a draft Mobile Notification and return resolved recipients for preview.\n\n**Parameters:** `subject`, `message`, `company`, `property`, `customer`, `category`, `attachments`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.notifications.staff.create_notification\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"subject\": \"Water outage tonight\",\n  \"message\": \"Maintenance from 8pm-10pm\",\n  \"company\": \"{{company}}\",\n  \"property\": \"{{property}}\",\n  \"customer\": \"\",\n  \"category\": \"Notice\",\n  \"attachments\": [\n    { \"title\": \"Notice\", \"attachment\": \"{{file_url}}\" }\n  ]\n}",
@@ -8227,7 +9145,7 @@
                     "propms.api.v1.notifications.staff.submit_notification"
                   ]
                 },
-                "description": "**Method path:** `propms.api.v1.notifications.staff.submit_notification`\n**HTTP:** `POST`\n**Auth:** Required \u2014 staff only (Manager/Officer)\n**Layer:** `v1`\n\nSubmit a draft Mobile Notification (fires WebSocket + FCM via DocType hooks).\n\n**Parameters:** `notification_id`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.notifications.staff.submit_notification\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
+                "description": "**Method path:** `propms.api.v1.notifications.staff.submit_notification`\n**HTTP:** `POST`\n**Auth:** Required — staff only (Manager/Officer)\n**Layer:** `v1`\n\nSubmit a draft Mobile Notification (fires WebSocket + FCM via DocType hooks).\n\n**Parameters:** `notification_id`\n\n**URL**\n```\n{{base_url}}/api/method/propms.api.v1.notifications.staff.submit_notification\n```\n\nFrappe wraps results as `{ \"message\": { ... } }`. Check `message.status` when present.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"notification_id\": \"{{notification_id}}\"\n}",
