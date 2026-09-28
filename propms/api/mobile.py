@@ -972,6 +972,24 @@ def cancel_amenity_booking(booking_id=None, cancellation_reason=None):
     return v1_cancel_booking(booking_id=booking_id, cancellation_reason=cancellation_reason)
 
 
+@frappe.whitelist(methods=["GET", "POST"])
+def get_amenity_day_availability(amenity=None, booking_date=None):
+    from propms.api.v1.amenities import get_amenity_day_availability as v1
+    return v1(amenity=amenity, booking_date=booking_date)
+
+
+@frappe.whitelist(methods=["POST"])
+def approve_amenity_booking(booking_id=None):
+    from propms.api.v1.amenities import approve_amenity_booking as v1
+    return v1(booking_id=booking_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def reject_amenity_booking(booking_id=None, rejection_reason=None):
+    from propms.api.v1.amenities import reject_amenity_booking as v1
+    return v1(booking_id=booking_id, rejection_reason=rejection_reason)
+
+
 # -------------------------------------------------------------------------
 # Viva Emergency Incidents API Wrappers (v1)
 # -------------------------------------------------------------------------

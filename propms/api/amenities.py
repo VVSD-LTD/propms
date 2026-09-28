@@ -7,9 +7,12 @@ from propms.api.v1.amenities import (
 	get_amenities as _get_amenities,
 	get_amenity_detail as _get_amenity_detail,
 	get_available_slots as _get_available_slots,
+	get_amenity_day_availability as _get_amenity_day_availability,
 	create_booking as _create_booking,
 	get_my_bookings as _get_my_bookings,
 	cancel_booking as _cancel_booking,
+	approve_amenity_booking as _approve_amenity_booking,
+	reject_amenity_booking as _reject_amenity_booking,
 )
 
 
@@ -59,3 +62,18 @@ def get_my_bookings(status="all", page=1, page_length=20):
 @frappe.whitelist(methods=["POST"])
 def cancel_booking(booking_id=None, cancellation_reason=None):
 	return _cancel_booking(booking_id=booking_id, cancellation_reason=cancellation_reason)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_amenity_day_availability(amenity=None, booking_date=None):
+	return _get_amenity_day_availability(amenity=amenity, booking_date=booking_date)
+
+
+@frappe.whitelist(methods=["POST"])
+def approve_amenity_booking(booking_id=None):
+	return _approve_amenity_booking(booking_id=booking_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def reject_amenity_booking(booking_id=None, rejection_reason=None):
+	return _reject_amenity_booking(booking_id=booking_id, rejection_reason=rejection_reason)
