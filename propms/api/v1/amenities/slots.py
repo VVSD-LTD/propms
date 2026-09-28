@@ -152,7 +152,7 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 			return {"status": "error", "message": "Valid amenity is required"}
 
 		from propms.api.v1.amenities.list import _is_amenity_staff
-		from propms.api.v1.amenities.overlap import compute_free_gaps, expand_end_with_buffer
+		from propms.api.v1.amenities.overlap import compute_free_gaps
 
 		doc = frappe.get_doc("Viva Amenity", amenity)
 		if not doc.is_active:
@@ -180,7 +180,8 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 		open_t = _parse_time_str(doc.open_time or "06:00:00").strftime("%H:%M:%S")
 		close_t = _parse_time_str(doc.close_time or "22:00:00").strftime("%H:%M:%S")
 		step = max(1, cint(getattr(doc, "booking_time_step_mins", None) or doc.slot_duration_mins or 30))
-		buffer_mins = max(0, cint(getattr(doc, "cleanup_buffer_mins", None) or 0))
+		# No post-booking grace period — next booking may start at previous end.
+		buffer_mins = 0
 
 		existing = frappe.get_all(
 			"Viva Amenity Booking",
@@ -198,13 +199,12 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 		for b in existing:
 			s = _parse_time_str(b.start_time).strftime("%H:%M:%S")
 			e = _parse_time_str(b.end_time).strftime("%H:%M:%S")
-			end_buf = expand_end_with_buffer(e, buffer_mins)
 			label = (b.tenant_name or b.tenant or "Booked") if is_staff else "Booked"
 			busy.append({
 				"booking_id": b.name,
 				"start_time": s,
 				"end_time": e,
-				"end_with_buffer": end_buf,
+				"end_with_buffer": e,
 				"status": b.status,
 				"label": label,
 			})

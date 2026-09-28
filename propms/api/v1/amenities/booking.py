@@ -88,7 +88,8 @@ def create_booking(
 				return {"status": "error", "message": "Cannot book a time that has already started"}
 
 		step = max(1, cint(getattr(amenity_doc, "booking_time_step_mins", None) or amenity_doc.slot_duration_mins or 30))
-		buffer_mins = max(0, cint(getattr(amenity_doc, "cleanup_buffer_mins", None) or 0))
+		# No post-booking grace/cleanup buffer — next booking may start at previous end.
+		buffer_mins = 0
 		open_s = _parse_time_str(amenity_doc.open_time).strftime("%H:%M:%S")
 		close_s = _parse_time_str(amenity_doc.close_time).strftime("%H:%M:%S")
 

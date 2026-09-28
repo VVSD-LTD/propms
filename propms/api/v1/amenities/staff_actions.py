@@ -34,7 +34,7 @@ def approve_amenity_booking(booking_id=None):
 			}
 
 		amenity = frappe.get_doc("Viva Amenity", doc.amenity)
-		buffer_mins = max(0, cint(getattr(amenity, "cleanup_buffer_mins", 0) or 0))
+		buffer_mins = 0  # no cleanup grace after booking end
 		s = _parse_time_str(doc.start_time).strftime("%H:%M:%S")
 		e = _parse_time_str(doc.end_time).strftime("%H:%M:%S")
 		conflict = find_conflicting_booking(

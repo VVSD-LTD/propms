@@ -9,7 +9,9 @@
   "basic_info_section",
   "amenity_name",
   "category",
+  "floor",
   "is_active",
+  "is_published",
   "column_break_info",
   "capacity",
   "requires_booking",
@@ -27,6 +29,7 @@
   "cover_image",
   "gallery_images",
   "description",
+  "facilities",
   "guidelines_section",
   "guidelines"
  ],
@@ -56,12 +59,30 @@
    "reqd": 1
   },
   {
+   "description": "Building floor where this amenity is located, e.g. 9th Floor",
+   "fieldname": "floor",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Floor",
+   "reqd": 1
+  },
+  {
    "default": "1",
    "fieldname": "is_active",
    "fieldtype": "Check",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Is Active"
+  },
+  {
+   "default": "0",
+   "description": "When checked, amenity is visible to tenants in the mobile app. Staff can review unpublished amenities first.",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Published"
   },
   {
    "fieldname": "column_break_info",
@@ -129,10 +150,12 @@
   },
   {
    "default": "0",
-   "description": "Minutes blocked after each booking end before the next can start.",
+   "description": "Unused. Cleanup/grace after booking end is disabled — next booking may start at previous end.",
    "fieldname": "cleanup_buffer_mins",
    "fieldtype": "Int",
-   "label": "Cleanup Buffer (Minutes)"
+   "hidden": 1,
+   "label": "Cleanup Buffer (Minutes)",
+   "read_only": 1
   },
   {
    "default": "0",
@@ -170,6 +193,12 @@
    "label": "Description"
   },
   {
+   "description": "What is included for tenants (equipment, furniture, services).",
+   "fieldname": "facilities",
+   "fieldtype": "Text Editor",
+   "label": "Facilities / What's Included"
+  },
+  {
    "fieldname": "guidelines_section",
    "fieldtype": "Section Break",
    "label": "Rules & Guidelines"
@@ -183,7 +212,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-01 12:00:00.000000",
+ "modified": "2026-09-26 11:48:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Viva Amenity",

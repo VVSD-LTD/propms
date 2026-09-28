@@ -21,7 +21,7 @@
 | Rebuild book screen around **day availability** | Drive Party Hall / exclusive amenities from `get_available_slots` chips |
 | Snap Start/End to `booking_time_step_mins` | Invent 15-min steps when API says 30 |
 | Treat **Pending + Confirmed** as busy (blocking) | Allow overlapping ranges client-side “because UI looks free” |
-| Show cleanup buffer on busy strip via `end_with_buffer` | Ignore buffer and let users pick into cleanup time |
+| Paint busy from `start_time` → `end_time` (no grace after end) | Invent a cleanup/grace gap after bookings |
 | Staff: Pending queue + approve/reject | Let tenants call approve/reject |
 | Guests = informational field only | Enforce capacity / shared occupancy math |
 | Cancel + rebook to change times | Build “edit booking” that PATCHes times |
@@ -42,7 +42,7 @@
 - One **Pending** or **Confirmed** booking **owns** the amenity for that window.
 - Amenity policy fields (from detail / day availability):
   - `booking_time_step_mins` — picker step (e.g. 30)
-  - `cleanup_buffer_mins` — blocked minutes **after** booking end (shown as `end_with_buffer`)
+  - `cleanup_buffer_mins` — **always 0** (no grace after end; next booking may start at previous `end_time`). Field kept for API compat; ignore for UX.
   - `requires_approval` — create → `Pending` vs `Confirmed`
   - `cancel_before_hours` — tenant cancel deadline before start
   - `open_time` / `close_time` / `max_advance_days`
@@ -82,7 +82,7 @@ Detect staff the same way you already do for maintenance (role list). If `get_am
 2. On date change → call `get_amenity_day_availability`.
 3. **Day strip / busy timeline**
    - Open–close as full bar.
-   - Paint each `busy[]` from `start_time` → `end_with_buffer` (hatched or second color for buffer segment `end_time` → `end_with_buffer` if buffer > 0).
+   - Paint each `busy[]` from `start_time` → `end_time` (back-to-back OK; `end_with_buffer` equals `end_time` — no grace period).
    - Tenant: show `label` (usually `"Booked"`). Staff: may show tenant name.
 4. **Free gaps** list or tappable regions — tap → prefill Start/End.
 5. **Start time** / **End time** pickers
@@ -176,7 +176,7 @@ All JSON POST bodies work; GET query params also OK where noted.
   "open_time": "06:00:00",
   "close_time": "22:00:00",
   "booking_time_step_mins": 30,
-  "cleanup_buffer_mins": 30,
+    "cleanup_buffer_mins": 0,
   "requires_approval": 1,
   "cancel_before_hours": 2,
   "capacity": 50,
@@ -185,14 +185,14 @@ All JSON POST bodies work; GET query params also OK where noted.
       "booking_id": "VAB-2026-00010",
       "start_time": "18:00:00",
       "end_time": "21:00:00",
-      "end_with_buffer": "21:30:00",
+        "end_with_buffer": "21:00:00",
       "status": "Pending",
       "label": "Booked"
     }
   ],
   "free_gaps": [
     { "start_time": "06:00:00", "end_time": "18:00:00" },
-    { "start_time": "21:30:00", "end_time": "22:00:00" }
+      { "start_time": "21:00:00", "end_time": "22:00:00" }
   ],
   "is_staff": false
 }
@@ -341,7 +341,7 @@ Parse times with a small helper that accepts `HH:mm:ss` and `HH:mm`.
 ## 6. Client logic rules (must mirror server)
 
 1. **Exclusive overlap:** do not allow UI submit if selected `[start, end)` overlaps any busy `[start, endWithBuffer)` — still submit and trust server (optimistic block reduces friction).
-2. **Half-open:** booking ending at 21:00 may start next at 21:00 **unless** buffer extends end (then next free starts at `end_with_buffer`).
+2. **Half-open:** booking ending at 21:00 may start next at 21:00 (no cleanup grace). `end_with_buffer` == `end_time`.
 3. **Step:** only offer picker values where minutes % step == 0.
 4. **Same day only:** end date = start date; no overnight.
 5. **Pending blocks** like Confirmed on the strip.
@@ -366,7 +366,7 @@ Work in this order:
 ## 8. Acceptance criteria
 
 - [ ] Party Hall (and all amenities) book screen uses **`get_amenity_day_availability`**, not slot chips.  
-- [ ] Busy strip paints booking + buffer (`end_with_buffer`).  
+- [ ] Busy strip paints `start_time`–`end_time` only (no grace gap after end).  
 - [ ] Tap free gap prefills Start/End; pickers snap to step.  
 - [ ] Create with overlap shows **conflict_start–conflict_end**.  
 - [ ] Amenity with `requires_approval=1` → Pending messaging; staff can Approve/Reject.  
@@ -381,10 +381,10 @@ Work in this order:
 
 ## 9. Manual QA script (staging)
 
-1. Staff Desk: set Party Hall `requires_approval=1`, `cleanup_buffer_mins=30`, `booking_time_step_mins=30`, `cancel_before_hours=2`, published.  
+1. Staff Desk: set Party Hall `requires_approval=1`, `booking_time_step_mins=30`, `cancel_before_hours=2`, published.  
 2. Tenant phone: open Book → pick future date → see free gaps → book 14:00–17:00 → Pending.  
 3. Second attempt 15:00–16:00 → overlap error.  
-4. Attempt start 17:00 (inside buffer after 17:00 end if buffer applied on first) → blocked until 17:30.  
+4. Attempt start exactly at 17:00 (previous end) → **allowed** (no grace after end).  
 5. Staff phone: Pending list → Approve → tenant gets push / status Confirmed.  
 6. Tenant cancel far-future OK; near-start fails.  
 7. Staff Reject another Pending with reason → tenant sees Rejected + reason.
@@ -404,4 +404,4 @@ Work in this order:
 
 ## 11. Definition of done
 
-Flutter app lets a tenant reserve an exclusive amenity window with the hybrid day strip + Start/End UX, respects buffer/approval/cancel rules from the API, and lets staff approve/reject Pending bookings with live updates — **without** calling `get_available_slots` for the new flow.
+Flutter app lets a tenant reserve an exclusive amenity window with the hybrid day strip + Start/End UX, respects approval/cancel rules from the API, and lets staff approve/reject Pending bookings with live updates — **without** calling `get_available_slots` for the new flow.
