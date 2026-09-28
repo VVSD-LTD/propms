@@ -140,3 +140,87 @@ def get_available_slots(amenity=None, booking_date=None):
 	except Exception as e:
 		frappe.log_error(frappe.get_traceback(), "get_available_slots")
 		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_amenity_day_availability(amenity=None, booking_date=None):
+	"""Busy intervals + free gaps for exclusive range booking UI."""
+	try:
+		if frappe.session.user == "Guest":
+			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+		if not amenity or not frappe.db.exists("Viva Amenity", amenity):
+			return {"status": "error", "message": "Valid amenity is required"}
+
+		from propms.api.v1.amenities.list import _is_amenity_staff
+		from propms.api.v1.amenities.overlap import compute_free_gaps, expand_end_with_buffer
+
+		doc = frappe.get_doc("Viva Amenity", amenity)
+		if not doc.is_active:
+			return {"status": "error", "message": f"{doc.amenity_name} is currently inactive"}
+
+		target_date = getdate(booking_date or nowdate())
+		today_date = getdate(nowdate())
+		max_advance = cint(doc.max_advance_days or 7)
+		max_date = getdate(add_days(today_date, max_advance))
+		if target_date < today_date:
+			return {"status": "error", "message": "Cannot view availability for a past date"}
+		if target_date > max_date:
+			return {
+				"status": "error",
+				"message": f"Bookings can only be made up to {max_advance} days in advance (until {max_date}).",
+			}
+
+		open_t = _parse_time_str(doc.open_time or "06:00:00").strftime("%H:%M:%S")
+		close_t = _parse_time_str(doc.close_time or "22:00:00").strftime("%H:%M:%S")
+		step = max(1, cint(getattr(doc, "booking_time_step_mins", None) or doc.slot_duration_mins or 30))
+		buffer_mins = max(0, cint(getattr(doc, "cleanup_buffer_mins", None) or 0))
+		is_staff = _is_amenity_staff()
+
+		existing = frappe.get_all(
+			"Viva Amenity Booking",
+			filters={
+				"amenity": doc.name,
+				"booking_date": str(target_date),
+				"status": ["in", ["Pending", "Confirmed"]],
+			},
+			fields=["name", "start_time", "end_time", "status", "tenant_name", "tenant"],
+			order_by="start_time asc",
+			ignore_permissions=True,
+		)
+
+		busy = []
+		for b in existing:
+			s = _parse_time_str(b.start_time).strftime("%H:%M:%S")
+			e = _parse_time_str(b.end_time).strftime("%H:%M:%S")
+			end_buf = expand_end_with_buffer(e, buffer_mins)
+			label = (b.tenant_name or b.tenant or "Booked") if is_staff else "Booked"
+			busy.append({
+				"booking_id": b.name,
+				"start_time": s,
+				"end_time": e,
+				"end_with_buffer": end_buf,
+				"status": b.status,
+				"label": label,
+			})
+
+		free_gaps = compute_free_gaps(open_t, close_t, busy)
+
+		return {
+			"status": "success",
+			"amenity": doc.name,
+			"amenity_name": doc.amenity_name,
+			"booking_date": str(target_date),
+			"open_time": open_t,
+			"close_time": close_t,
+			"booking_time_step_mins": step,
+			"cleanup_buffer_mins": buffer_mins,
+			"requires_approval": cint(getattr(doc, "requires_approval", 0) or 0),
+			"cancel_before_hours": cint(getattr(doc, "cancel_before_hours", None) or 2),
+			"capacity": cint(doc.capacity or 0),
+			"busy": busy,
+			"free_gaps": free_gaps,
+			"is_staff": is_staff,
+		}
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "get_amenity_day_availability")
+		return {"status": "error", "message": str(e)}
