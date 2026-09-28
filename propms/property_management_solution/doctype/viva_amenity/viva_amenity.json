@@ -19,6 +19,10 @@
   "close_time",
   "column_break_hours",
   "slot_duration_mins",
+  "booking_time_step_mins",
+  "cleanup_buffer_mins",
+  "requires_approval",
+  "cancel_before_hours",
   "media_section",
   "cover_image",
   "gallery_images",
@@ -109,10 +113,40 @@
   },
   {
    "default": "60",
+   "description": "Deprecated for booking engine. Prefer Booking Time Step. Kept for backward compatibility.",
    "fieldname": "slot_duration_mins",
    "fieldtype": "Int",
    "label": "Slot Duration (Minutes)",
+   "reqd": 0
+  },
+  {
+   "default": "30",
+   "description": "Start/End times must align to this step (minutes).",
+   "fieldname": "booking_time_step_mins",
+   "fieldtype": "Int",
+   "label": "Booking Time Step (Minutes)",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "description": "Minutes blocked after each booking end before the next can start.",
+   "fieldname": "cleanup_buffer_mins",
+   "fieldtype": "Int",
+   "label": "Cleanup Buffer (Minutes)"
+  },
+  {
+   "default": "0",
+   "description": "If checked, new bookings start as Pending until staff approve.",
+   "fieldname": "requires_approval",
+   "fieldtype": "Check",
+   "label": "Requires Approval"
+  },
+  {
+   "default": "2",
+   "description": "Tenant may cancel until this many hours before start.",
+   "fieldname": "cancel_before_hours",
+   "fieldtype": "Int",
+   "label": "Cancel Before Hours"
   },
   {
    "fieldname": "media_section",
