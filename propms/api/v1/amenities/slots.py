@@ -158,6 +158,10 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 		if not doc.is_active:
 			return {"status": "error", "message": f"{doc.amenity_name} is currently inactive"}
 
+		is_staff = _is_amenity_staff()
+		if not cint(doc.is_published) and not is_staff:
+			return {"status": "error", "message": _("Amenity is not published yet")}
+
 		target_date = getdate(booking_date or nowdate())
 		today_date = getdate(nowdate())
 		max_advance = cint(doc.max_advance_days or 7)
@@ -174,7 +178,6 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 		close_t = _parse_time_str(doc.close_time or "22:00:00").strftime("%H:%M:%S")
 		step = max(1, cint(getattr(doc, "booking_time_step_mins", None) or doc.slot_duration_mins or 30))
 		buffer_mins = max(0, cint(getattr(doc, "cleanup_buffer_mins", None) or 0))
-		is_staff = _is_amenity_staff()
 
 		existing = frappe.get_all(
 			"Viva Amenity Booking",
