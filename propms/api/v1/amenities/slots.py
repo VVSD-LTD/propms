@@ -162,6 +162,9 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 		if not cint(doc.is_published) and not is_staff:
 			return {"status": "error", "message": _("Amenity is not published yet")}
 
+		from propms.api.v1.amenities.lifecycle import reconcile_stale_pending_amenity_bookings
+		reconcile_stale_pending_amenity_bookings()
+
 		target_date = getdate(booking_date or nowdate())
 		today_date = getdate(nowdate())
 		max_advance = cint(doc.max_advance_days or 7)

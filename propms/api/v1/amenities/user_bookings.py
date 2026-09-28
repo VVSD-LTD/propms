@@ -10,7 +10,10 @@ from frappe import _
 from frappe.utils import cint, get_datetime, now_datetime
 from propms.api.v1.gate_pass.gate_pass import _parse_request_payload
 from propms.api.v1.amenities.list import _is_amenity_staff
-from propms.api.v1.amenities.lifecycle import reconcile_completed_amenity_bookings
+from propms.api.v1.amenities.lifecycle import (
+	reconcile_completed_amenity_bookings,
+	reconcile_stale_pending_amenity_bookings,
+)
 
 
 def _apply_status_filter(filters, target_status):
@@ -23,6 +26,10 @@ def _apply_status_filter(filters, target_status):
 		filters["status"] = "Cancelled"
 	elif target_status == "no show":
 		filters["status"] = "No Show"
+	elif target_status == "pending":
+		filters["status"] = "Pending"
+	elif target_status == "rejected":
+		filters["status"] = "Rejected"
 	return filters
 
 
@@ -87,8 +94,9 @@ def get_my_bookings(
 		if frappe.session.user == "Guest":
 			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
 
-		# Past Confirmed slots → Completed (so Upcoming tabs stay correct)
+		# Past Confirmed slots → Completed; stale Pending → Rejected
 		reconcile_completed_amenity_bookings()
+		reconcile_stale_pending_amenity_bookings()
 
 		payload = _parse_request_payload(
 			{
@@ -150,6 +158,9 @@ def get_my_bookings(
 			"lease",
 			"notes",
 			"cancellation_reason",
+			"rejection_reason",
+			"approved_by",
+			"approved_on",
 			"creation",
 		]
 

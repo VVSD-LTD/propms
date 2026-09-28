@@ -67,6 +67,9 @@ def create_booking(
 				"message": f"Bookings can only be made up to {max_advance} days in advance (until {max_date}).",
 			}
 
+		from propms.api.v1.amenities.lifecycle import reconcile_stale_pending_amenity_bookings
+		reconcile_stale_pending_amenity_bookings()
+
 		s_time = (payload.get("start_time") or "").strip()
 		e_time = (payload.get("end_time") or "").strip()
 		if not s_time or not e_time:
@@ -78,6 +81,11 @@ def create_booking(
 
 		if e_time <= s_time:
 			return {"status": "error", "message": "End time must be after start time"}
+
+		if target_date == today_date:
+			start_dt = get_datetime(f"{target_date} {s_time}")
+			if start_dt <= now_datetime():
+				return {"status": "error", "message": "Cannot book a time that has already started"}
 
 		step = max(1, cint(getattr(amenity_doc, "booking_time_step_mins", None) or amenity_doc.slot_duration_mins or 30))
 		buffer_mins = max(0, cint(getattr(amenity_doc, "cleanup_buffer_mins", None) or 0))
