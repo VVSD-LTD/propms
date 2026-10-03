@@ -1,0 +1,294 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:amenity_name",
+ "creation": "2026-09-01 12:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "status_section",
+  "is_active",
+  "is_published",
+  "requires_booking",
+  "details_section",
+  "amenity_name",
+  "category",
+  "floor",
+  "column_break_details",
+  "audience",
+  "capacity",
+  "hours_section",
+  "open_time",
+  "close_time",
+  "column_break_hours",
+  "booking_time_step_mins",
+  "max_advance_days",
+  "slot_duration_mins",
+  "cleanup_buffer_mins",
+  "rules_section",
+  "requires_approval",
+  "cancel_before_hours",
+  "column_break_rules",
+  "allow_recurring",
+  "max_series_days",
+  "content_section",
+  "cover_image",
+  "gallery_images",
+  "description",
+  "facilities",
+  "guidelines"
+ ],
+ "fields": [
+  {
+   "fieldname": "status_section",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "default": "1",
+   "description": "Off = amenity cannot be booked (API rejects). Use for temporary closure.",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Is Active"
+  },
+  {
+   "default": "0",
+   "description": "On = visible to tenants in the mobile app. Keep off while staff review the amenity.",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Published"
+  },
+  {
+   "default": "1",
+   "description": "On = tenants must book a slot. Off = informational only (no booking).",
+   "fieldname": "requires_booking",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Requires Booking"
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Amenity Details"
+  },
+  {
+   "fieldname": "amenity_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Amenity Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "Leisure",
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Category",
+   "options": "\nSports\nLeisure\nEvent Space\nWellness\nBusiness",
+   "reqd": 1
+  },
+  {
+   "description": "Building floor, e.g. 9th Floor",
+   "fieldname": "floor",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Floor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Everyone",
+   "description": "Who can see/book this amenity (matched to unit type: Residential / Commercial).",
+   "fieldname": "audience",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Audience",
+   "options": "Everyone\nResidential\nCommercial",
+   "reqd": 1
+  },
+  {
+   "default": "10",
+   "description": "Max people allowed in one booking slot.",
+   "fieldname": "capacity",
+   "fieldtype": "Int",
+   "label": "Capacity (Persons)"
+  },
+  {
+   "fieldname": "hours_section",
+   "fieldtype": "Section Break",
+   "label": "Operating Hours"
+  },
+  {
+   "default": "06:00:00",
+   "fieldname": "open_time",
+   "fieldtype": "Time",
+   "label": "Open Time",
+   "reqd": 1
+  },
+  {
+   "default": "22:00:00",
+   "fieldname": "close_time",
+   "fieldtype": "Time",
+   "label": "Close Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_hours",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "30",
+   "description": "Start and end times must align to this step (e.g. 30 = :00 or :30 only).",
+   "fieldname": "booking_time_step_mins",
+   "fieldtype": "Int",
+   "label": "Booking Time Step (Minutes)",
+   "reqd": 1
+  },
+  {
+   "default": "7",
+   "description": "How far ahead a tenant may book (calendar days from today).",
+   "fieldname": "max_advance_days",
+   "fieldtype": "Int",
+   "label": "Max Advance Booking Days"
+  },
+  {
+   "default": "60",
+   "description": "Deprecated for booking engine. Prefer Booking Time Step. Kept for backward compatibility.",
+   "fieldname": "slot_duration_mins",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Slot Duration (Minutes)"
+  },
+  {
+   "default": "0",
+   "description": "Unused. Cleanup/grace after booking end is disabled.",
+   "fieldname": "cleanup_buffer_mins",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Cleanup Buffer (Minutes)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rules_section",
+   "fieldtype": "Section Break",
+   "label": "Booking Rules"
+  },
+  {
+   "default": "0",
+   "description": "On = new bookings start as Pending until staff approve.",
+   "fieldname": "requires_approval",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Requires Approval"
+  },
+  {
+   "default": "2",
+   "description": "Tenant may cancel until this many hours before start.",
+   "fieldname": "cancel_before_hours",
+   "fieldtype": "Int",
+   "label": "Cancel Before Hours"
+  },
+  {
+   "fieldname": "column_break_rules",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "description": "On = tenants can create weekday-repeating series bookings.",
+   "fieldname": "allow_recurring",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Allow Recurring"
+  },
+  {
+   "default": "120",
+   "description": "Max calendar days from series start to series end (e.g. 120 \u2248 4 months).",
+   "fieldname": "max_series_days",
+   "fieldtype": "Int",
+   "label": "Max Series Days"
+  },
+  {
+   "fieldname": "content_section",
+   "fieldtype": "Section Break",
+   "label": "App Content"
+  },
+  {
+   "fieldname": "cover_image",
+   "fieldtype": "Attach Image",
+   "label": "Cover Image"
+  },
+  {
+   "fieldname": "gallery_images",
+   "fieldtype": "Table",
+   "label": "Gallery Images (Carousel)",
+   "options": "Amenity Image"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "description": "What is included (equipment, furniture, services).",
+   "fieldname": "facilities",
+   "fieldtype": "Text Editor",
+   "label": "Facilities / What's Included"
+  },
+  {
+   "fieldname": "guidelines",
+   "fieldtype": "Text Editor",
+   "label": "Guidelines"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-02 10:40:00.000000",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Amenity",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All"
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "amenity_name,category,floor,audience",
+ "sort_field": "amenity_name",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "amenity_name",
+ "track_changes": 1
+}

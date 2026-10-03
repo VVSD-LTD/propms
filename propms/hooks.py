@@ -151,6 +151,7 @@ doc_events = {
     "Key Set Detail": {"on_change": "propms.auto_custom.changeStatusKeyset"},
     "Meter Reading": {"on_submit": "propms.auto_custom.make_invoice_meter_reading"},
     "Sales Invoice": {
+        "validate": "propms.api.v1.electricity.manual_pos_topup.on_sales_invoice_validate",
         "before_save": "propms.custom.custom.before_save",
         "on_submit": "propms.api.v1.invoices.invoices.on_sales_invoice_submit",
     },
@@ -178,6 +179,8 @@ scheduler_events = {
         "00 00 * * *": ["propms.lease_invoice_schedule.make_lease_invoice_schedule"],
         "00 12 * * *": ["propms.lease_invoice.enqueue_lease_invoice_auto_create"],
         "*/5 * * * *": ["propms.property_management_solution.doctype.attendance_settings.attendance_settings.send_scheduled_reports"],
+        # Auto-complete amenity bookings whose slot end time has passed
+        "15 * * * *": ["propms.api.v1.amenities.lifecycle.complete_past_confirmed_bookings"],
         # "*/1 * * * *": ["propms.api.v1.payments.services.auto_reconcile_pending_payments"],
     }
 }

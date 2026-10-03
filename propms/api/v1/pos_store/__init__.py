@@ -1,0 +1,1 @@
+# POS Store Services package

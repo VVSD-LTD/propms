@@ -1,0 +1,13 @@
+[
+  {
+    "dt": "Sales Invoice",
+    "fieldname": "meter_number",
+    "fieldtype": "Data",
+    "insert_after": "lease_item",
+    "label": "Meter Number",
+    "options": null,
+    "read_only": 1,
+    "translatable": 0,
+    "description": "Auto-filled prepaid / electricity meter from Property for mobile top-ups"
+  }
+]

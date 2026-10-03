@@ -9,11 +9,11 @@ from frappe import _
 
 
 def get_selcom_settings():
-    """Retrieve Viva Selcom Settings singleton document."""
-    if not frappe.db.exists("DocType", "Viva Selcom Settings"):
-        frappe.throw(_("Viva Selcom Settings DocType is not installed."))
+    """Retrieve Selcom Settings singleton document."""
+    if not frappe.db.exists("DocType", "Selcom Settings"):
+        frappe.throw(_("Selcom Settings DocType is not installed."))
 
-    settings = frappe.get_single("Viva Selcom Settings")
+    settings = frappe.get_single("Selcom Settings")
     return settings
 
 
@@ -40,7 +40,7 @@ class SelcomClient:
             from frappe.utils.password import get_decrypted_password
             raw_secret = (
                 settings.get_password("api_secret")
-                or get_decrypted_password("Viva Selcom Settings", "Viva Selcom Settings", "api_secret", raise_exception=False)
+                or get_decrypted_password("Selcom Settings", "Selcom Settings", "api_secret", raise_exception=False)
                 or settings.get("api_secret")
                 or ""
             )
@@ -56,7 +56,7 @@ class SelcomClient:
     def compute_header(self, dict_data):
         """Compute the 5 mandatory cryptographic authentication headers for Selcom."""
         if not self.api_key or not self.api_secret:
-            frappe.throw(_("Selcom API Key and API Secret must be configured in Viva Selcom Settings."))
+            frappe.throw(_("Selcom API Key and API Secret must be configured in Selcom Settings."))
 
         # 1. Base64 encode API Key
         api_key_bytes = str(self.api_key).encode("ascii")

@@ -101,7 +101,7 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
     if not client.enabled:
         return {"status": "error", "message": "Selcom payments are currently disabled."}
     if not client.vendor_id or not client.api_key or not client.api_secret:
-        return {"status": "error", "message": "Selcom gateway credentials are not configured in Viva Selcom Settings."}
+        return {"status": "error", "message": "Selcom gateway credentials are not configured in Selcom Settings."}
 
     # Generate unique order reference
     rand_suffix = frappe.generate_hash(length=6).upper()
@@ -115,7 +115,7 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
 
     # Create transaction audit record
     txn = frappe.get_doc({
-        "doctype": "Viva Payment Transaction",
+        "doctype": "Selcom Payment Transaction Log",
         "order_id": order_id,
         "sales_invoice": inv.name,
         "customer": inv.customer,
@@ -346,10 +346,10 @@ def get_payment_status(order_id=None, transaction_id=None):
         return {"status": "error", "message": "order_id is required"}
 
     # Look up by order_id or transaction name
-    if frappe.db.exists("Viva Payment Transaction", order_id):
-        txn = frappe.get_doc("Viva Payment Transaction", order_id)
-    elif frappe.db.exists("Viva Payment Transaction", {"order_id": order_id}):
-        txn = frappe.get_doc("Viva Payment Transaction", {"order_id": order_id})
+    if frappe.db.exists("Selcom Payment Transaction Log", order_id):
+        txn = frappe.get_doc("Selcom Payment Transaction Log", order_id)
+    elif frappe.db.exists("Selcom Payment Transaction Log", {"order_id": order_id}):
+        txn = frappe.get_doc("Selcom Payment Transaction Log", {"order_id": order_id})
     else:
         return {"status": "error", "message": "Payment transaction not found"}
 
@@ -359,7 +359,11 @@ def get_payment_status(order_id=None, transaction_id=None):
             "status": "success",
             "order_id": txn.order_id,
             "transaction_status": txn.status,
+            "payment_workflow": getattr(txn, "payment_workflow", None),
+            "reference_doctype": getattr(txn, "reference_doctype", None),
+            "reference_name": getattr(txn, "reference_name", None),
             "invoice_name": txn.sales_invoice,
+            "sales_order": getattr(txn, "sales_order", None),
             "amount": txn.amount,
             "currency": txn.currency,
             "payment_entry": txn.payment_entry,
@@ -392,11 +396,17 @@ def get_payment_status(order_id=None, transaction_id=None):
         "status": "success",
         "order_id": txn.order_id,
         "transaction_status": txn.status,
+        "payment_workflow": getattr(txn, "payment_workflow", None),
+        "reference_doctype": getattr(txn, "reference_doctype", None),
+        "reference_name": getattr(txn, "reference_name", None),
         "invoice_name": txn.sales_invoice,
+        "sales_order": getattr(txn, "sales_order", None),
         "amount": txn.amount,
         "currency": txn.currency,
         "payment_entry": txn.payment_entry,
         "selcom_reference": txn.selcom_reference,
+        "gateway_url": txn.gateway_url,
+        "error_message": txn.error_message,
     }
 
 
@@ -409,10 +419,10 @@ def cancel_payment(order_id=None):
     if not order_id:
         return {"status": "error", "message": "order_id is required"}
 
-    if not frappe.db.exists("Viva Payment Transaction", {"order_id": order_id}):
+    if not frappe.db.exists("Selcom Payment Transaction Log", {"order_id": order_id}):
         return {"status": "error", "message": "Payment transaction not found"}
 
-    txn = frappe.get_doc("Viva Payment Transaction", {"order_id": order_id})
+    txn = frappe.get_doc("Selcom Payment Transaction Log", {"order_id": order_id})
     if txn.status == "Success":
         return {"status": "error", "message": "Cannot cancel an already completed transaction"}
 
@@ -532,78 +542,159 @@ def get_stored_cards():
 
 
 @frappe.whitelist(methods=["POST"])
-def pay_with_stored_card(invoice_name=None, card_token=None, amount=None, cvv=None):
-    """Initiate and process a payment using a previously saved/tokenized card.
-    
-    Args:
-        invoice_name: Sales Invoice docname
-        card_token: Secure card token from get_stored_cards
-        amount: Optional custom amount
-        cvv: Optional CVV/CVC security code
+def pay_with_stored_card(invoice_name=None, card_token=None, amount=None, cvv=None, sales_order=None):
+    """Charge a saved/tokenized card for a Sales Invoice or Water cart Sales Order.
+
+    Invoice (unchanged):
+        { "invoice_name": "ACC-SINV-...", "card_token": "...", "amount": 5000 }
+
+    Water cart:
+        { "sales_order": "SAL-ORD-...", "card_token": "...", "amount": 100 }
+        or invoice_name set to a Water Sales Order name (compat).
+
+    Settlement uses payment_workflow on Selcom Payment Transaction Log
+    (sales_invoice_payment vs sales_order_pos).
     """
     if frappe.session.user == "Guest":
         frappe.throw(_("Authentication required"), frappe.AuthenticationError)
 
     req = getattr(frappe, "form_dict", None) or {}
-    invoice_name = (invoice_name or req.get("invoice_name") or req.get("invoice_id") or "").strip()
+    invoice_name = (
+        invoice_name
+        or req.get("invoice_name")
+        or req.get("invoice_id")
+        or req.get("sales_invoice")
+        or ""
+    ).strip()
+    sales_order = (sales_order or req.get("sales_order") or "").strip()
     card_token = (card_token or req.get("card_token") or req.get("token") or "").strip()
     amount_val = amount if amount is not None else req.get("amount")
-    cvv_val = (cvv or req.get("cvv") or "").strip()
+    cvv_val = (cvv or req.get("cvv") or "").strip()  # reserved for future Selcom CVV support
 
-    if not invoice_name:
-        return {"status": "error", "message": "invoice_name is required"}
     if not card_token:
         return {"status": "error", "message": "card_token is required"}
 
-    inv = _check_invoice_access(invoice_name)
-    outstanding = flt(inv.outstanding_amount)
+    # Resolve payable reference: prefer explicit sales_order, else detect Water SO in invoice_name
+    ref_doctype = None
+    ref_name = None
+    workflow = None
+    customer = None
+    currency = "TZS"
+    pay_amount = 0.0
+    buyer_remarks = ""
+    merchant_remarks = "Viva Towers Card Payment"
+    sales_invoice_link = None
+    sales_order_link = None
+    extra_raw = {}
 
-    if outstanding <= 0:
-        return {"status": "error", "message": f"Invoice {inv.name} is already fully paid."}
+    candidate = sales_order or invoice_name
+    if not candidate:
+        return {
+            "status": "error",
+            "message": "invoice_name or sales_order is required",
+        }
 
-    pay_amount = flt(amount_val) if (amount_val and flt(amount_val) > 0) else outstanding
-    if pay_amount <= 0 or pay_amount > outstanding:
-        return {"status": "error", "message": f"Payment amount must be between 1 and {outstanding:,.2f}"}
+    is_si = frappe.db.exists("Sales Invoice", candidate)
+    is_so = frappe.db.exists("Sales Order", candidate)
+
+    if sales_order or (not is_si and is_so):
+        if not is_so:
+            return {"status": "error", "message": f"Sales Order {candidate} not found"}
+        so_type = frappe.db.get_value("Sales Order", candidate, "mobile_order_type")
+        if so_type != "Water" and not sales_order:
+            return {
+                "status": "error",
+                "message": (
+                    f"{candidate} is a Sales Order, not a Sales Invoice. "
+                    "For water cart pass sales_order=... or use checkout_water_order."
+                ),
+            }
+        so = _check_sales_order_access(candidate)
+        pay_amount = flt(amount_val) if (amount_val and flt(amount_val) > 0) else flt(so.grand_total)
+        if pay_amount <= 0:
+            return {"status": "error", "message": f"Sales Order {so.name} has no payable amount"}
+        if pay_amount > flt(so.grand_total) + 0.01:
+            return {"status": "error", "message": f"Payment amount cannot exceed {flt(so.grand_total):,.2f}"}
+
+        ref_doctype = "Sales Order"
+        ref_name = so.name
+        workflow = WORKFLOW_SALES_ORDER_POS
+        customer = so.customer
+        currency = so.currency or "TZS"
+        buyer_remarks = f"Sales Order {so.name}"
+        merchant_remarks = f"Viva Towers {so_type or 'Order'} Card"
+        sales_order_link = so.name
+        extra_raw = {"sales_order": so.name, "mobile_order_type": so_type}
+        contact_mobile = None
+    elif is_si:
+        inv = _check_invoice_access(candidate)
+        outstanding = flt(inv.outstanding_amount)
+        if outstanding <= 0:
+            return {"status": "error", "message": f"Invoice {inv.name} is already fully paid."}
+        pay_amount = flt(amount_val) if (amount_val and flt(amount_val) > 0) else outstanding
+        if pay_amount <= 0 or pay_amount > outstanding:
+            return {"status": "error", "message": f"Payment amount must be between 1 and {outstanding:,.2f}"}
+
+        ref_doctype = "Sales Invoice"
+        ref_name = inv.name
+        workflow = WORKFLOW_SALES_INVOICE_PAYMENT
+        customer = inv.customer
+        currency = inv.currency or "TZS"
+        buyer_remarks = f"Invoice {inv.name}"
+        sales_invoice_link = inv.name
+        extra_raw = {"invoice": inv.name}
+        contact_mobile = inv.contact_mobile
+    else:
+        return {"status": "error", "message": f"Sales Invoice {candidate} not found."}
 
     client = SelcomClient()
     if not client.enabled:
         return {"status": "error", "message": "Selcom payments are currently disabled."}
 
     rand_suffix = frappe.generate_hash(length=6).upper()
-    clean_inv_id = re.sub(r"[^A-Za-z0-9]", "", inv.name)
-    order_id = f"ORD-{clean_inv_id[:12]}-{rand_suffix}"
+    clean_ref = re.sub(r"[^A-Za-z0-9]", "", ref_name)[:12]
+    order_id = f"ORD-{clean_ref}-{rand_suffix}"
 
-    user_info = frappe.db.get_value("User", frappe.session.user, ["full_name", "email", "mobile_no", "phone"], as_dict=True) or {}
+    user_info = frappe.db.get_value(
+        "User", frappe.session.user, ["full_name", "email", "mobile_no", "phone"], as_dict=True
+    ) or {}
     buyer_email = user_info.get("email") or frappe.session.user
-    buyer_name = user_info.get("full_name") or inv.customer_name or "Viva Tenant"
-    user_phone = user_info.get("mobile_no") or user_info.get("phone") or inv.contact_mobile or "255700000000"
+    buyer_name = user_info.get("full_name") or customer or "Viva Tenant"
+    user_phone = user_info.get("mobile_no") or user_info.get("phone") or contact_mobile or "255700000000"
     buyer_phone = _normalize_phone_number(user_phone) or "255700000000"
-
-    # Fetch stored buyer_uuid if available
     buyer_uuid = frappe.defaults.get_user_default("selcom_gateway_buyer_uuid", buyer_email) or ""
 
-    # Create transaction audit record
-    txn = frappe.get_doc({
-        "doctype": "Viva Payment Transaction",
+    txn_payload = {
+        "doctype": "Selcom Payment Transaction Log",
         "order_id": order_id,
-        "sales_invoice": inv.name,
-        "customer": inv.customer,
+        "payment_workflow": workflow,
+        "reference_doctype": ref_doctype,
+        "reference_name": ref_name,
+        "customer": customer,
         "amount": pay_amount,
-        "currency": inv.currency or "TZS",
+        "currency": currency,
         "payment_channel": "CARD",
         "phone_number": buyer_phone,
         "status": "Pending",
-        "raw_request": json.dumps({
-            "order_id": order_id,
-            "invoice": inv.name,
-            "amount": pay_amount,
-            "card_token": card_token[:6] + "..." if len(card_token) > 6 else card_token,
-        }),
-    })
+        "raw_request": json.dumps(
+            {
+                "order_id": order_id,
+                "amount": pay_amount,
+                "card_token": card_token[:6] + "..." if len(card_token) > 6 else card_token,
+                "cvv_provided": bool(cvv_val),
+                **extra_raw,
+            }
+        ),
+    }
+    if sales_invoice_link:
+        txn_payload["sales_invoice"] = sales_invoice_link
+    if sales_order_link:
+        txn_payload["sales_order"] = sales_order_link
+
+    txn = frappe.get_doc(txn_payload)
     txn.insert(ignore_permissions=True)
     frappe.db.commit()
 
-    # 1. Create full order for card payment
     name_parts = (buyer_name or "Viva Tenant").strip().split(" ", 1)
     first_name = name_parts[0] if name_parts else "Viva"
     last_name = name_parts[1] if len(name_parts) > 1 else "Tenant"
@@ -626,14 +717,14 @@ def pay_with_stored_card(invoice_name=None, card_token=None, amount=None, cvv=No
         "buyer_phone": buyer_phone,
         "gateway_buyer_uuid": buyer_uuid,
         "amount": int(round(pay_amount)),
-        "currency": inv.currency or "TZS",
+        "currency": currency,
         "no_of_items": 1,
         "payment_methods": "CARD",
         "webhook": webhook_b64,
         "redirect_url": redirect_b64,
         "cancel_url": cancel_b64,
-        "buyer_remarks": f"Invoice {inv.name}",
-        "merchant_remarks": "Viva Towers Card Payment",
+        "buyer_remarks": buyer_remarks,
+        "merchant_remarks": merchant_remarks,
         "billing.firstname": first_name,
         "billing.lastname": last_name,
         "billing.address_1": "Viva Towers",
@@ -657,7 +748,6 @@ def pay_with_stored_card(invoice_name=None, card_token=None, amount=None, cvv=No
         frappe.db.commit()
         return {"status": "error", "message": error_msg, "order_id": order_id}
 
-    # 2. Process card payment using token (with vendor, buyer_userid, gateway_buyer_uuid)
     card_payload = {
         "transid": f"TXN-{order_id}",
         "vendor": client.vendor_id,
@@ -673,13 +763,20 @@ def pay_with_stored_card(invoice_name=None, card_token=None, amount=None, cvv=No
     card_result = (card_res.get("result") or "").upper()
     card_code = (card_res.get("resultcode") or "").strip()
 
-    # Extract 3DS challenge URL if required
     gateway_url = None
     data_field = card_res.get("data")
     if isinstance(data_field, list) and len(data_field) > 0:
-        gateway_url = data_field[0].get("payment_gateway_url") or data_field[0].get("form_url") or data_field[0].get("gateway_url")
+        gateway_url = (
+            data_field[0].get("payment_gateway_url")
+            or data_field[0].get("form_url")
+            or data_field[0].get("gateway_url")
+        )
     elif isinstance(data_field, dict):
-        gateway_url = data_field.get("payment_gateway_url") or data_field.get("form_url") or data_field.get("gateway_url")
+        gateway_url = (
+            data_field.get("payment_gateway_url")
+            or data_field.get("form_url")
+            or data_field.get("gateway_url")
+        )
 
     if gateway_url and not str(gateway_url).startswith("http"):
         try:
@@ -691,96 +788,101 @@ def pay_with_stored_card(invoice_name=None, card_token=None, amount=None, cvv=No
 
     txn.gateway_url = gateway_url or ""
 
+    def _success_payload(action, message, **extra):
+        out = {
+            "status": "success",
+            "message": message,
+            "order_id": order_id,
+            "transaction_id": txn.name,
+            "amount": pay_amount,
+            "currency": currency,
+            "payment_method": extra.pop("payment_method", "STORED_CARD"),
+            "payment_workflow": workflow,
+            "reference_doctype": ref_doctype,
+            "reference_name": ref_name,
+            "action": action,
+        }
+        if sales_invoice_link:
+            out["invoice_name"] = sales_invoice_link
+        if sales_order_link:
+            out["sales_order"] = sales_order_link
+        out.update(extra)
+        return out
+
     if card_result in ("SUCCESS", "COMPLETED", "000") or card_code in ("000", "200"):
         if gateway_url:
             txn.save(ignore_permissions=True)
             frappe.db.commit()
-            return {
-                "status": "success",
-                "message": "Please complete 3D-Secure authentication",
-                "order_id": order_id,
-                "transaction_id": txn.name,
-                "invoice_name": inv.name,
-                "amount": pay_amount,
-                "currency": inv.currency or "TZS",
-                "payment_method": "STORED_CARD",
-                "gateway_url": gateway_url,
-                "action": "OPEN_3DS_WEBVIEW",
-            }
-        else:
-            # Reconcile immediately if frictionless success
-            from propms.api.v1.payments.webhook import process_successful_payment
-            process_successful_payment(order_id=order_id, selcom_ref=card_res.get("reference") or order_id, amount=pay_amount, raw_payload=card_res)
-            txn.reload()
-            return {
-                "status": "success",
-                "message": "Card payment processed successfully",
-                "order_id": order_id,
-                "transaction_id": txn.name,
-                "invoice_name": inv.name,
-                "amount": pay_amount,
-                "currency": inv.currency or "TZS",
-                "payment_method": "STORED_CARD",
-                "payment_entry": txn.payment_entry,
-                "action": "PAYMENT_COMPLETED",
-            }
-    else:
-        err = card_res.get("message") or "Failed to charge stored card"
-        card_code = (card_res.get("resultcode") or "").strip()
-        
-        # If token is invalid (801), automatically blacklist it so it won't be listed in get_stored_cards()
-        if card_code == "801":
-            deleted_str = frappe.defaults.get_user_default("selcom_deleted_cards", buyer_email) or ""
-            deleted_tokens = set(t.strip() for t in deleted_str.split(",") if t.strip())
-            deleted_tokens.add(card_token)
-            frappe.defaults.set_user_default("selcom_deleted_cards", ",".join(deleted_tokens), user=buyer_email)
-            frappe.db.commit()
+            return _success_payload(
+                "OPEN_3DS_WEBVIEW",
+                "Please complete 3D-Secure authentication",
+                gateway_url=gateway_url,
+            )
 
-        # Check if order_minimal created a valid checkout gateway_url as fallback
-        order_gateway_url = None
-        data_field = order_res.get("data")
-        if isinstance(data_field, list) and len(data_field) > 0:
-            order_gateway_url = data_field[0].get("payment_gateway_url") or data_field[0].get("gateway_url")
-        elif isinstance(data_field, dict):
-            order_gateway_url = data_field.get("payment_gateway_url") or data_field.get("gateway_url")
+        from propms.api.v1.payments.webhook import process_successful_payment
 
-        if order_gateway_url and not str(order_gateway_url).startswith("http"):
-            try:
-                decoded = base64.b64decode(order_gateway_url).decode("utf-8")
-                if decoded.startswith("http"):
-                    order_gateway_url = decoded
-            except Exception:
-                pass
+        process_successful_payment(
+            order_id=order_id,
+            selcom_ref=card_res.get("reference") or order_id,
+            amount=pay_amount,
+            raw_payload=card_res,
+        )
+        txn.reload()
+        return _success_payload(
+            "PAYMENT_COMPLETED",
+            "Card payment processed successfully",
+            payment_entry=txn.payment_entry,
+            invoice_name=txn.sales_invoice or sales_invoice_link,
+            sales_order=getattr(txn, "sales_order", None) or sales_order_link,
+        )
 
-        if order_gateway_url:
-            txn.gateway_url = order_gateway_url
-            txn.status = "Pending"
-            txn.save(ignore_permissions=True)
-            frappe.db.commit()
+    err = card_res.get("message") or "Failed to charge stored card"
+    card_code = (card_res.get("resultcode") or "").strip()
 
-            return {
-                "status": "success",
-                "message": "Card token is no longer valid. Opening card checkout...",
-                "order_id": order_id,
-                "transaction_id": txn.name,
-                "invoice_name": inv.name,
-                "amount": pay_amount,
-                "currency": inv.currency or "TZS",
-                "payment_method": "CARD",
-                "gateway_url": order_gateway_url,
-                "action": "OPEN_WEBVIEW",
-            }
-        else:
-            txn.status = "Failed"
-            txn.error_message = err
-            txn.save(ignore_permissions=True)
-            frappe.db.commit()
-            return {
-                "status": "error",
-                "message": err,
-                "order_id": order_id,
-                "card_response": card_res,
-            }
+    if card_code == "801":
+        deleted_str = frappe.defaults.get_user_default("selcom_deleted_cards", buyer_email) or ""
+        deleted_tokens = set(t.strip() for t in deleted_str.split(",") if t.strip())
+        deleted_tokens.add(card_token)
+        frappe.defaults.set_user_default("selcom_deleted_cards", ",".join(deleted_tokens), user=buyer_email)
+        frappe.db.commit()
+
+    order_gateway_url = None
+    data_field = order_res.get("data")
+    if isinstance(data_field, list) and len(data_field) > 0:
+        order_gateway_url = data_field[0].get("payment_gateway_url") or data_field[0].get("gateway_url")
+    elif isinstance(data_field, dict):
+        order_gateway_url = data_field.get("payment_gateway_url") or data_field.get("gateway_url")
+
+    if order_gateway_url and not str(order_gateway_url).startswith("http"):
+        try:
+            decoded = base64.b64decode(order_gateway_url).decode("utf-8")
+            if decoded.startswith("http"):
+                order_gateway_url = decoded
+        except Exception:
+            pass
+
+    if order_gateway_url:
+        txn.gateway_url = order_gateway_url
+        txn.status = "Pending"
+        txn.save(ignore_permissions=True)
+        frappe.db.commit()
+        return _success_payload(
+            "OPEN_WEBVIEW",
+            "Card token is no longer valid. Opening card checkout...",
+            payment_method="CARD",
+            gateway_url=order_gateway_url,
+        )
+
+    txn.status = "Failed"
+    txn.error_message = err
+    txn.save(ignore_permissions=True)
+    frappe.db.commit()
+    return {
+        "status": "error",
+        "message": err,
+        "order_id": order_id,
+        "card_response": card_res,
+    }
 
 
 @frappe.whitelist(methods=["POST", "DELETE"])

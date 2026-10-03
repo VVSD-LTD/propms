@@ -1,0 +1,287 @@
+{
+ "actions": [],
+ "autoname": "VABS-.YYYY.-.#####",
+ "creation": "2026-09-30 10:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "series_section",
+  "amenity",
+  "status",
+  "column_break_s1",
+  "series_start_date",
+  "series_end_date",
+  "time_section",
+  "start_time",
+  "column_break_bzcz",
+  "end_time",
+  "weekdays_section",
+  "week_mon",
+  "week_tue",
+  "week_wed",
+  "week_thu",
+  "column_break_hlnz",
+  "week_fri",
+  "week_sat",
+  "week_sun",
+  "tenant_section",
+  "tenant",
+  "tenant_name",
+  "notes",
+  "column_break_t1",
+  "property_unit",
+  "lease",
+  "guests_count",
+  "stats_section",
+  "booked_count",
+  "conflict_count",
+  "column_break_zlbu",
+  "approved_by",
+  "approved_on",
+  "section_break_zbey",
+  "rejection_reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "series_section",
+   "fieldtype": "Section Break",
+   "label": "Series"
+  },
+  {
+   "fieldname": "amenity",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Amenity",
+   "options": "Amenity",
+   "reqd": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nPending\nConfirmed\nCancelled\nRejected",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_s1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "series_start_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Series Start Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "series_end_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Series End Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "time_section",
+   "fieldtype": "Section Break",
+   "label": "Time Window"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Start Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "End Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "weekdays_section",
+   "fieldtype": "Section Break",
+   "label": "Repeat On"
+  },
+  {
+   "default": "0",
+   "fieldname": "week_mon",
+   "fieldtype": "Check",
+   "label": "Monday"
+  },
+  {
+   "default": "0",
+   "fieldname": "week_tue",
+   "fieldtype": "Check",
+   "label": "Tuesday"
+  },
+  {
+   "default": "0",
+   "fieldname": "week_wed",
+   "fieldtype": "Check",
+   "label": "Wednesday"
+  },
+  {
+   "default": "0",
+   "fieldname": "week_thu",
+   "fieldtype": "Check",
+   "label": "Thursday"
+  },
+  {
+   "default": "0",
+   "fieldname": "week_fri",
+   "fieldtype": "Check",
+   "label": "Friday"
+  },
+  {
+   "default": "0",
+   "fieldname": "week_sat",
+   "fieldtype": "Check",
+   "label": "Saturday"
+  },
+  {
+   "default": "0",
+   "fieldname": "week_sun",
+   "fieldtype": "Check",
+   "label": "Sunday"
+  },
+  {
+   "fieldname": "tenant_section",
+   "fieldtype": "Section Break",
+   "label": "Tenant"
+  },
+  {
+   "fieldname": "tenant",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Tenant",
+   "options": "User"
+  },
+  {
+   "fieldname": "tenant_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Tenant Name"
+  },
+  {
+   "fieldname": "column_break_t1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "property_unit",
+   "fieldtype": "Data",
+   "label": "Property Unit"
+  },
+  {
+   "fieldname": "lease",
+   "fieldtype": "Link",
+   "label": "Lease",
+   "options": "Lease"
+  },
+  {
+   "default": "1",
+   "fieldname": "guests_count",
+   "fieldtype": "Int",
+   "label": "Guests Count"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "stats_section",
+   "fieldtype": "Section Break",
+   "label": "Stats / Approval"
+  },
+  {
+   "default": "0",
+   "fieldname": "booked_count",
+   "fieldtype": "Int",
+   "label": "Booked Count",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "conflict_count",
+   "fieldtype": "Int",
+   "label": "Conflict Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_bzcz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_zlbu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_zbey",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_hlnz",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-02 10:45:51.772712",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Amenity Booking Series",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

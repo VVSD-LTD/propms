@@ -1,14 +1,16 @@
 import json
 import frappe
 from frappe import _
-from frappe.utils import flt, today, now
-from propms.api.v1.payments.selcom_client import get_selcom_settings
+from frappe.utils import flt
+from propms.api.v1.payments.workflows import get_success_handler, WORKFLOW_SALES_INVOICE_PAYMENT
 
 
 def process_successful_payment(order_id, selcom_ref=None, amount=None, raw_payload=None):
-    """Atomically create ERPNext Payment Entry, clear invoice balance, and notify tenant.
+    """Dispatch Selcom success to the workflow-specific settlement handler.
 
-    Guarantees strict idempotency so duplicate webhooks or retries never create duplicate entries.
+    Existing invoice payments keep creating a Payment Entry.
+    Cart / Sales Order workflows (Water now, Electricity later) use their own
+    handlers registered in propms.api.v1.payments.handlers.
     """
     if not order_id:
         return {"status": "error", "message": "order_id is required"}
@@ -17,228 +19,45 @@ def process_successful_payment(order_id, selcom_ref=None, amount=None, raw_paylo
     if frappe.session.user == "Guest":
         frappe.set_user("Administrator")
 
-    # Find matching payment transaction
     txn = None
-    if frappe.db.exists("Viva Payment Transaction", {"order_id": order_id}):
-        txn = frappe.get_doc("Viva Payment Transaction", {"order_id": order_id})
-    elif frappe.db.exists("Viva Payment Transaction", order_id):
-        txn = frappe.get_doc("Viva Payment Transaction", order_id)
+    if frappe.db.exists("Selcom Payment Transaction Log", {"order_id": order_id}):
+        txn = frappe.get_doc("Selcom Payment Transaction Log", {"order_id": order_id})
+    elif frappe.db.exists("Selcom Payment Transaction Log", order_id):
+        txn = frappe.get_doc("Selcom Payment Transaction Log", order_id)
 
-    # Idempotency check 1: Transaction already marked Success with payment entry
-    if txn and txn.status == "Success" and txn.payment_entry and frappe.db.exists("Payment Entry", txn.payment_entry):
-        return {
-            "status": "success",
-            "message": "Transaction already processed successfully",
-            "order_id": order_id,
-            "payment_entry": txn.payment_entry,
-            "invoice": txn.sales_invoice,
-        }
-
-    # Identify Sales Invoice
-    invoice_name = txn.sales_invoice if txn else None
-    if not invoice_name and "SINV" in order_id:
-        # Fallback extract from order_id pattern
-        parts = order_id.split("-")
-        for p in parts:
-            if p.startswith("SINV") or frappe.db.exists("Sales Invoice", p):
-                invoice_name = p
-                break
-
-    if not invoice_name or not frappe.db.exists("Sales Invoice", invoice_name):
-        frappe.log_error(f"Cannot resolve Sales Invoice for order: {order_id}", "Selcom Webhook Error")
-        return {"status": "error", "message": "Sales Invoice not found for this order"}
-
-    inv = frappe.get_doc("Sales Invoice", invoice_name)
-    settings = get_selcom_settings()
-
-    # Determine amount
-    paid_amt = flt(amount) if amount else (flt(txn.amount) if txn else flt(inv.outstanding_amount))
-    if paid_amt <= 0:
-        paid_amt = flt(inv.outstanding_amount)
-
-    allocated_amt = min(paid_amt, flt(inv.outstanding_amount)) if flt(inv.outstanding_amount) > 0 else paid_amt
-
-    # Idempotency check 2: Check if Payment Entry already exists for this Selcom reference
-    existing_pe = None
-    ref_query = selcom_ref or order_id
-    if ref_query:
-        existing_pe = frappe.db.get_value("Payment Entry", {"reference_no": ref_query, "docstatus": 1}, "name")
-
-    if existing_pe:
-        if txn:
-            txn.status = "Success"
-            txn.payment_entry = existing_pe
-            txn.selcom_reference = selcom_ref or txn.selcom_reference
-            if raw_payload:
-                txn.ipn_payload = frappe.as_json(raw_payload)
-            txn.save(ignore_permissions=True)
-            frappe.db.commit()
-
-        return {
-            "status": "success",
-            "message": "Payment Entry already exists and linked",
-            "payment_entry": existing_pe,
-            "invoice": inv.name,
-        }
-
-    # Determine Mode of Payment & Accounts
-    mode_of_payment = settings.get("mode_of_payment") or "Selcom"
-    if not frappe.db.exists("Mode of Payment", mode_of_payment):
-        if frappe.db.exists("Mode of Payment", "Bank Draft"):
-            mode_of_payment = "Bank Draft"
-        elif frappe.db.exists("Mode of Payment", "Cash"):
-            mode_of_payment = "Cash"
-        else:
-            first_mop = frappe.db.get_value("Mode of Payment", {}, "name")
-            mode_of_payment = first_mop or "Selcom"
-
-    # Resolve paid_to account (must be active and match currency)
-    paid_to_account = settings.get("default_bank_account")
-    if not paid_to_account and mode_of_payment and frappe.db.exists("Mode of Payment", mode_of_payment):
-        paid_to_account = frappe.db.get_value(
-            "Mode of Payment Account",
-            {"parent": mode_of_payment, "company": inv.company},
-            "default_account",
+    if not txn:
+        # Legacy fallback: treat as invoice payment if we can resolve an SI from order_id
+        frappe.log_error(
+            f"Selcom Payment Transaction Log not found for order_id={order_id}; attempting invoice fallback",
+            "Selcom Webhook Warning",
         )
-    if not paid_to_account:
-        inv_curr = inv.currency or "TZS"
-        paid_to_account = (
-            frappe.db.get_value("Company", inv.company, "default_bank_account")
-            or frappe.db.get_value("Company", inv.company, "default_cash_account")
-            or frappe.db.get_value("Account", {"company": inv.company, "account_type": "Bank", "is_group": 0, "disabled": 0, "account_currency": inv_curr}, "name")
-            or frappe.db.get_value("Account", {"company": inv.company, "account_type": "Bank", "is_group": 0, "disabled": 0}, "name")
-            or frappe.db.get_value("Account", {"company": inv.company, "account_type": "Cash", "is_group": 0, "disabled": 0}, "name")
+        from propms.api.v1.payments.handlers_invoice import settle_sales_invoice_payment
+
+        return settle_sales_invoice_payment(
+            txn=None,
+            order_id=order_id,
+            selcom_ref=selcom_ref,
+            amount=amount,
+            raw_payload=raw_payload,
         )
 
-    # Save current user and set to Administrator for Payment Entry ledger submission
-    original_user = frappe.session.user
-    frappe.set_user("Administrator")
+    # Backfill workflow for older transactions created before this field existed
+    payment_workflow = (txn.payment_workflow or "").strip() or WORKFLOW_SALES_INVOICE_PAYMENT
+    if not txn.payment_workflow:
+        txn.payment_workflow = payment_workflow
+        if not txn.reference_doctype and txn.sales_invoice:
+            txn.reference_doctype = "Sales Invoice"
+            txn.reference_name = txn.sales_invoice
+        txn.db_update()
 
-    try:
-        # Use ERPNext's official get_payment_entry factory to ensure ledger integrity
-        try:
-            from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
-            pe = get_payment_entry("Sales Invoice", inv.name, party_amount=allocated_amt)
-            pe.reference_no = str(selcom_ref or order_id)
-            pe.reference_date = today()
-            pe.mode_of_payment = mode_of_payment
-            if paid_to_account:
-                pe.paid_to = paid_to_account
-        except Exception:
-            # Fallback manual document construction
-            pe = frappe.new_doc("Payment Entry")
-            pe.payment_type = "Receive"
-            pe.party_type = "Customer"
-            pe.party = inv.customer
-            pe.company = inv.company
-            pe.paid_amount = allocated_amt
-            pe.received_amount = allocated_amt
-            pe.paid_to_account_currency = inv.currency or "TZS"
-            pe.reference_no = str(selcom_ref or order_id)
-            pe.reference_date = today()
-            pe.mode_of_payment = mode_of_payment
-            if paid_to_account:
-                pe.paid_to = paid_to_account
-
-            if flt(inv.outstanding_amount) > 0:
-                pe.append("references", {
-                    "reference_doctype": "Sales Invoice",
-                    "reference_name": inv.name,
-                    "total_amount": inv.grand_total,
-                    "outstanding_amount": inv.outstanding_amount,
-                    "allocated_amount": allocated_amt,
-                })
-
-        pe.insert(ignore_permissions=True)
-        pe.submit()
-    finally:
-        if original_user:
-            frappe.set_user(original_user)
-
-    # Update Transaction record
-    if txn:
-        txn.status = "Success"
-        txn.selcom_reference = str(selcom_ref or order_id)
-        txn.payment_entry = pe.name
-        if raw_payload:
-            txn.ipn_payload = frappe.as_json(raw_payload)
-        txn.save(ignore_permissions=True)
-    else:
-        # Create audit transaction if missing
-        txn = frappe.get_doc({
-            "doctype": "Viva Payment Transaction",
-            "order_id": order_id,
-            "sales_invoice": inv.name,
-            "customer": inv.customer,
-            "amount": allocated_amt,
-            "currency": inv.currency or "TZS",
-            "payment_channel": "HOSTED",
-            "status": "Success",
-            "selcom_reference": str(selcom_ref or order_id),
-            "payment_entry": pe.name,
-            "ipn_payload": frappe.as_json(raw_payload) if raw_payload else None,
-        }).insert(ignore_permissions=True)
-
-    frappe.db.commit()
-
-    # Real-time WebSocket Broadcast
-    try:
-        realtime_payload = {
-            "order_id": order_id,
-            "invoice_name": inv.name,
-            "amount": allocated_amt,
-            "currency": inv.currency or "TZS",
-            "status": "PAID",
-            "payment_entry": pe.name,
-            "reference_no": str(selcom_ref or order_id),
-            "timestamp": now(),
-        }
-        frappe.publish_realtime(
-            event="payment_completed",
-            message=realtime_payload,
-            room=f"doc:Sales Invoice/{inv.name}",
-        )
-        # Also broadcast to customer room
-        if inv.contact_email:
-            frappe.publish_realtime(
-                event="payment_completed",
-                message=realtime_payload,
-                room=f"user:{inv.contact_email}",
-            )
-    except Exception as e:
-        frappe.log_error(f"WebSocket publish error on payment: {str(e)}", "Selcom Webhook Realtime")
-
-    # Firebase Cloud Messaging (FCM) Push Notification (Safely wrapped)
-    try:
-        target_user = None
-        if inv.contact_email and frappe.db.exists("User", inv.contact_email):
-            target_user = inv.contact_email
-        else:
-            portal_user = frappe.db.get_value("Portal User", {"parent": inv.customer}, "user")
-            if portal_user:
-                target_user = portal_user
-
-        if target_user:
-            tokens = frappe.db.get_all("Mobile Device Token", {"user": target_user}, pluck="token")
-            if tokens:
-                from propms.utils.fcm import send_to_tokens
-                send_to_tokens(
-                    tokens=tokens,
-                    title="Payment Received",
-                    body=f"Your payment of {inv.currency or 'TZS'} {allocated_amt:,.0f} for invoice {inv.name} was successfully received. Thank you!",
-                    data={"type": "invoice_paid", "invoice": inv.name, "order_id": order_id},
-                )
-    except Exception as e:
-        frappe.log_error(title="Selcom FCM Error", message=f"FCM notification error on payment: {str(e)}")
-
-    return {
-        "status": "success",
-        "result": "SUCCESS",
-        "message": "Payment Entry created and invoice reconciled",
-        "payment_entry": pe.name,
-        "invoice": inv.name,
-        "amount": allocated_amt,
-    }
+    handler = get_success_handler(payment_workflow)
+    return handler(
+        txn=txn,
+        order_id=order_id,
+        selcom_ref=selcom_ref,
+        amount=amount,
+        raw_payload=raw_payload,
+    )
 
 
 @frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
@@ -296,8 +115,8 @@ def selcom_ipn_webhook(*args, **kwargs):
 
         if not is_success:
             # Update transaction to failed if found
-            if frappe.db.exists("Viva Payment Transaction", {"order_id": order_id}):
-                txn = frappe.get_doc("Viva Payment Transaction", {"order_id": order_id})
+            if frappe.db.exists("Selcom Payment Transaction Log", {"order_id": order_id}):
+                txn = frappe.get_doc("Selcom Payment Transaction Log", {"order_id": order_id})
                 txn.status = "Failed"
                 txn.error_message = f"Status: {result_status}, Code: {result_code}"
                 txn.ipn_payload = frappe.as_json(data)
@@ -310,7 +129,7 @@ def selcom_ipn_webhook(*args, **kwargs):
                 "message": f"Payment status {result_status} (Code {result_code}) not successful",
             }
 
-        # 3. Process the successful payment atomically
+        # 3. Process the successful payment atomically via workflow dispatcher
         res = process_successful_payment(
             order_id=order_id,
             selcom_ref=selcom_ref,
