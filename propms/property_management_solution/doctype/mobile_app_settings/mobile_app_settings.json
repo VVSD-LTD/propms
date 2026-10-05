@@ -5,7 +5,6 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_nghh",
   "fcm_settings_tab",
   "fcm_server_key",
   "upload_settings_tab",
@@ -31,21 +30,26 @@
   "livekit_enabled",
   "livekit_url",
   "livekit_api_key",
-  "livekit_api_secret"
+  "livekit_api_secret",
+  "pos_store_services_tab",
+  "pos_store_services",
+  "water_delivery_section",
+  "water_delivery_open_time",
+  "water_delivery_close_time",
+  "column_break_water_del",
+  "water_delivery_min_window_mins",
+  "water_delivery_picker_step_mins"
  ],
  "fields": [
-  {
-   "fieldname": "section_break_nghh",
-   "fieldtype": "Section Break"
-  },
   {
    "fieldname": "fcm_settings_tab",
    "fieldtype": "Tab Break",
    "label": "FCM Settings"
   },
   {
+   "description": "Firebase service account JSON (paste full JSON text)",
    "fieldname": "fcm_server_key",
-   "fieldtype": "JSON",
+   "fieldtype": "Long Text",
    "label": "FCM Server Key"
   },
   {
@@ -69,14 +73,14 @@
   },
   {
    "default": "2",
-   "description": "Recommended chunk size in MB for clients (default: 2MB). Clients should use this for optimal performance.",
+   "description": "Recommended chunk size in MB for clients (default: 2MB).",
    "fieldname": "upload_default_chunk_size_mb",
    "fieldtype": "Int",
    "label": "Default Chunk Size (MB)"
   },
   {
    "default": "24",
-   "description": "Upload session expiry time in hours (default: 24 hours). Sessions expire after this time if not completed.",
+   "description": "Upload session expiry time in hours (default: 24 hours).",
    "fieldname": "upload_session_expiry_hours",
    "fieldtype": "Int",
    "label": "Session Expiry (Hours)"
@@ -88,7 +92,7 @@
   },
   {
    "default": "0",
-   "description": "When enabled, the app is blocked for everyone. Maintenance Message is shown. Use only during planned maintenance or major incidents. Remember to disable when done.",
+   "description": "When enabled, the app is blocked for everyone.",
    "fieldname": "maintenance_mode",
    "fieldtype": "Check",
    "label": "Maintenance Mode"
@@ -98,41 +102,35 @@
    "fieldtype": "Section Break"
   },
   {
-   "description": "Lowest Android version allowed. Users below this will be forced to update (non-dismissible). Use semver format e.g. 1.2.3. Leave empty to allow all versions.",
    "fieldname": "min_android_version",
    "fieldtype": "Data",
    "label": "Min Android Version"
   },
   {
-   "description": "Current latest Android version in stores. Users below this see an optional update prompt (can skip). Use semver format e.g. 1.2.3. Leave empty to skip optional prompts.",
    "fieldname": "latest_android_version",
    "fieldtype": "Data",
    "label": "Latest Android Version"
   },
   {
-   "description": "Play Store URL for update button. e.g. https://play.google.com/store/apps/details?id=com.example.app",
    "fieldname": "android_store_url",
    "fieldtype": "Data",
    "label": "Android Store URL"
-  },
-  {
-   "description": "Lowest iOS version allowed. Users below this will be forced to update (non-dismissible). Use semver format e.g. 1.2.3. Leave empty to allow all versions.",
-   "fieldname": "min_ios_version",
-   "fieldtype": "Data",
-   "label": "Min iOS Version"
   },
   {
    "fieldname": "column_break_zbnk",
    "fieldtype": "Column Break"
   },
   {
-   "description": "Current latest iOS version in stores. Users below this see an optional update prompt (can skip). Use semver format e.g. 1.2.3. Leave empty to skip optional prompts.",
+   "fieldname": "min_ios_version",
+   "fieldtype": "Data",
+   "label": "Min iOS Version"
+  },
+  {
    "fieldname": "latest_ios_version",
    "fieldtype": "Data",
    "label": "Latest iOS Version"
   },
   {
-   "description": "App Store URL for update button. e.g. https://apps.apple.com/app/id123456789",
    "fieldname": "ios_store_url",
    "fieldtype": "Data",
    "label": "iOS Store URL"
@@ -143,7 +141,6 @@
   },
   {
    "default": "A new version is available. Please update to continue.",
-   "description": "Message shown when user is below Min Version. Customize or leave default.",
    "fieldname": "update_message",
    "fieldtype": "Small Text",
    "label": "Update Message"
@@ -154,7 +151,6 @@
   },
   {
    "default": "The app is temporarily unavailable. Please try again later.",
-   "description": "Message shown when Maintenance Mode is enabled. Customize or leave default.",
    "fieldname": "maintenance_message",
    "fieldtype": "Small Text",
    "label": "Maintenance Message"
@@ -162,6 +158,7 @@
   {
    "fieldname": "livekit_settings_tab",
    "fieldtype": "Tab Break",
+   "hidden": 1,
    "label": "LiveKit Calling"
   },
   {
@@ -171,7 +168,6 @@
    "label": "Enable Voice/Video Calling"
   },
   {
-   "description": "LiveKit WebSocket URL (e.g. wss://livekit.vvsdtz.com or wss://viva-towers.livekit.cloud)",
    "fieldname": "livekit_url",
    "fieldtype": "Data",
    "label": "LiveKit Server URL"
@@ -185,13 +181,64 @@
    "fieldname": "livekit_api_secret",
    "fieldtype": "Password",
    "label": "LiveKit API Secret"
+  },
+  {
+   "fieldname": "pos_store_services_tab",
+   "fieldtype": "Tab Break",
+   "label": "POS Store Services"
+  },
+  {
+   "description": "Hub services for the tenant app. Item + qty = catalog buy. Special + amount = value flow (electricity = TANESCO + Generator).",
+   "fieldname": "pos_store_services",
+   "fieldtype": "Table",
+   "label": "POS Store Services",
+   "options": "Mobile POS Store Service"
+  },
+  {
+   "fieldname": "water_delivery_section",
+   "fieldtype": "Section Break",
+   "label": "Drinking Water Delivery Slots"
+  },
+  {
+   "default": "08:00:00",
+   "description": "First 1-hour slot starts at this time (same day). Example: 08:00 → slot 08:00–09:00.",
+   "fieldname": "water_delivery_open_time",
+   "fieldtype": "Time",
+   "label": "Delivery Open Time"
+  },
+  {
+   "default": "18:00:00",
+   "description": "Last slot must end by this time. Example: 18:00 → last slot 17:00–18:00.",
+   "fieldname": "water_delivery_close_time",
+   "fieldtype": "Time",
+   "label": "Delivery Close Time"
+  },
+  {
+   "fieldname": "column_break_water_del",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "60",
+   "description": "Unused — slots are fixed at 1 hour.",
+   "fieldname": "water_delivery_min_window_mins",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Min Window (mins) — unused"
+  },
+  {
+   "default": "60",
+   "description": "Unused — slots are fixed at 1 hour.",
+   "fieldname": "water_delivery_picker_step_mins",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Picker Step (mins) — unused"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-12 12:55:00.000000",
+ "modified": "2026-10-03 11:49:09.600865",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Mobile App Settings",
@@ -201,10 +248,8 @@
    "create": 1,
    "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
-   "report": 1,
    "role": "System Manager",
    "share": 1,
    "write": 1

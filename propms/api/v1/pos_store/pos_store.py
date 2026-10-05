@@ -26,6 +26,11 @@ from propms.api.v1.water.water import (
 	_resolve_tenant_billing,
 	_get_mobile_cart_stock_context,
 	_get_bin_qty,
+	_is_water_item,
+)
+from propms.api.v1.pos_store.delivery_window import (
+	serialize_delivery_window_for_api,
+	validate_delivery_window,
 )
 
 SPECIAL_SERVICE_META = {
@@ -78,7 +83,8 @@ def _serialize_item(item, company, currency, price_list, warehouse, label=None):
 		in_stock = bool(warehouse) and actual_qty > 0
 
 	display = label or item.get("item_name") or item["item_code"]
-	return {
+	requires = bool(_is_water_item(item["item_code"]))
+	out = {
 		"item_code": item["item_code"],
 		"item_name": item.get("item_name") or item["item_code"],
 		"label": display,
@@ -96,7 +102,11 @@ def _serialize_item(item, company, currency, price_list, warehouse, label=None):
 		"warehouse": warehouse or "",
 		"service_type": "Item",
 		"purchase_mode": "qty",
+		"requires_delivery_window": requires,
 	}
+	if requires:
+		out["delivery_window"] = serialize_delivery_window_for_api()
+	return out
 
 
 def _load_item_doc_fields(item_code):
@@ -201,6 +211,16 @@ def get_pos_store_catalog():
 
 
 @frappe.whitelist(methods=["GET", "POST"])
+def get_water_delivery_window():
+	"""Same-day drinking-water delivery rules for the mobile picker."""
+	_require_auth()
+	return {
+		"status": "success",
+		"delivery_window": serialize_delivery_window_for_api(),
+	}
+
+
+@frappe.whitelist(methods=["GET", "POST"])
 def get_pos_store_item(item_code=None):
 	"""Product detail for qty-mode Item services (UI option B)."""
 	_require_auth()
@@ -240,7 +260,16 @@ def get_pos_store_item(item_code=None):
 
 def _prepare_pos_item_intent(item_code=None, qty=None, lease=None):
 	payload = _parse_request_payload(
-		{"item_code": item_code, "qty": qty, "quantity": qty, "lease": lease}
+		{
+			"item_code": item_code,
+			"qty": qty,
+			"quantity": qty,
+			"lease": lease,
+			"delivery_time_start": None,
+			"delivery_time_end": None,
+			"delivery_instructions": None,
+			"delivery_date": None,
+		}
 	)
 	item_code = (payload.get("item_code") or "").strip()
 	qty = flt(payload.get("qty") if payload.get("qty") is not None else payload.get("quantity") or 1)
@@ -271,6 +300,24 @@ def _prepare_pos_item_intent(item_code=None, qty=None, lease=None):
 		frappe.throw(_("Selling rate not configured for {0}").format(item_code))
 
 	line_amount = flt(rate) * flt(qty)
+
+	delivery_date = None
+	delivery_time_start = None
+	delivery_time_end = None
+	delivery_instructions = None
+	if _is_water_item(item_code):
+		window = validate_delivery_window(
+			start=payload.get("delivery_time_start"),
+			end=payload.get("delivery_time_end"),
+			delivery_date=payload.get("delivery_date"),
+		)
+		delivery_date = window["delivery_date"]
+		delivery_time_start = window["delivery_time_start"]
+		delivery_time_end = window["delivery_time_end"]
+		delivery_instructions = (payload.get("delivery_instructions") or "").strip()
+		if len(delivery_instructions) > 500:
+			frappe.throw(_("delivery_instructions is too long (max 500 characters)"))
+
 	return {
 		"billing": billing,
 		"item": item,
@@ -283,6 +330,10 @@ def _prepare_pos_item_intent(item_code=None, qty=None, lease=None):
 		"amount": payload.get("amount"),
 		"card_token": payload.get("card_token") or payload.get("token"),
 		"cvv": payload.get("cvv"),
+		"delivery_date": delivery_date,
+		"delivery_time_start": delivery_time_start,
+		"delivery_time_end": delivery_time_end,
+		"delivery_instructions": delivery_instructions,
 	}
 
 
@@ -295,6 +346,10 @@ def checkout_pos_item(
 	payment_method="MOBILE_MONEY",
 	phone_number=None,
 	amount=None,
+	delivery_time_start=None,
+	delivery_time_end=None,
+	delivery_instructions=None,
+	delivery_date=None,
 ):
 	"""Start Selcom for a Maintenance POS catalog item; Paid POS SI on success."""
 	_require_auth()
@@ -306,6 +361,14 @@ def checkout_pos_item(
 		frappe.form_dict["phone_number"] = phone_number
 	if amount is not None:
 		frappe.form_dict["amount"] = amount
+	if delivery_time_start is not None:
+		frappe.form_dict["delivery_time_start"] = delivery_time_start
+	if delivery_time_end is not None:
+		frappe.form_dict["delivery_time_end"] = delivery_time_end
+	if delivery_instructions is not None:
+		frappe.form_dict["delivery_instructions"] = delivery_instructions
+	if delivery_date is not None:
+		frappe.form_dict["delivery_date"] = delivery_date
 	if quantity is not None and qty is None:
 		qty = quantity
 
@@ -339,6 +402,11 @@ def checkout_pos_item(
 		],
 		"price_list": intent.get("price_list"),
 	}
+	if intent.get("delivery_time_start") and intent.get("delivery_time_end"):
+		extra["delivery_date"] = intent["delivery_date"]
+		extra["delivery_time_start"] = intent["delivery_time_start"]
+		extra["delivery_time_end"] = intent["delivery_time_end"]
+		extra["delivery_instructions"] = intent.get("delivery_instructions") or ""
 
 	return start_selcom_checkout(
 		reference_doctype="Lease" if billing.get("lease") else "Customer",
@@ -364,6 +432,10 @@ def pay_pos_item_with_stored_card(
 	card_token=None,
 	amount=None,
 	cvv=None,
+	delivery_time_start=None,
+	delivery_time_end=None,
+	delivery_instructions=None,
+	delivery_date=None,
 ):
 	"""Charge saved card for Maintenance POS item; settles via maintenance_pos."""
 	_require_auth()
@@ -378,6 +450,14 @@ def pay_pos_item_with_stored_card(
 		frappe.form_dict["amount"] = amount
 	if cvv is not None:
 		frappe.form_dict["cvv"] = cvv
+	if delivery_time_start is not None:
+		frappe.form_dict["delivery_time_start"] = delivery_time_start
+	if delivery_time_end is not None:
+		frappe.form_dict["delivery_time_end"] = delivery_time_end
+	if delivery_instructions is not None:
+		frappe.form_dict["delivery_instructions"] = delivery_instructions
+	if delivery_date is not None:
+		frappe.form_dict["delivery_date"] = delivery_date
 
 	intent = _prepare_pos_item_intent(item_code=item_code, qty=qty, lease=lease)
 	card_token = (intent.get("card_token") or "").strip()
@@ -425,6 +505,11 @@ def pay_pos_item_with_stored_card(
 		],
 		"card_token": card_token[:6] + "..." if len(card_token) > 6 else card_token,
 	}
+	if intent.get("delivery_time_start") and intent.get("delivery_time_end"):
+		extra["delivery_date"] = intent["delivery_date"]
+		extra["delivery_time_start"] = intent["delivery_time_start"]
+		extra["delivery_time_end"] = intent["delivery_time_end"]
+		extra["delivery_instructions"] = intent.get("delivery_instructions") or ""
 
 	txn = frappe.get_doc(
 		{

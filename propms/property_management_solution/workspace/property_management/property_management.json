@@ -1,7 +1,7 @@
 {
  "charts": [],
- "content": "[{\"id\":\"PfLfj_RplK\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Property Management</span>\",\"col\":12}},{\"id\":\"z6eydAo1jd\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"AmH8hNIrDg\",\"type\":\"card\",\"data\":{\"card_name\":\"Documents\",\"col\":4}},{\"id\":\"8PgILHYQkX\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"ivrlP8IHO5\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports and Analytics\",\"col\":4}},{\"id\":\"yLRZ0sNK8g\",\"type\":\"card\",\"data\":{\"card_name\":\"Mobile App\",\"col\":3}}]",
- "creation": "2023-05-12 10:26:01.600970",
+ "content": "[{\"id\":\"PfLfj_RplK\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Property Management</span>\",\"col\":12}},{\"id\":\"z6eydAo1jd\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"AmH8hNIrDg\",\"type\":\"card\",\"data\":{\"card_name\":\"Documents\",\"col\":4}},{\"id\":\"8PgILHYQkX\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}},{\"id\":\"ivrlP8IHO5\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports and Analytics\",\"col\":4}},{\"id\":\"maSetup001\",\"type\":\"card\",\"data\":{\"card_name\":\"Mobile App \u00b7 Setup\",\"col\":4}},{\"id\":\"maBuild002\",\"type\":\"card\",\"data\":{\"card_name\":\"Mobile App \u00b7 Building & Services\",\"col\":4}},{\"id\":\"maPay003\",\"type\":\"card\",\"data\":{\"card_name\":\"Mobile App \u00b7 Payments & Alerts\",\"col\":4}}]",
+ "creation": "2026-10-02 10:12:21.802552",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
@@ -333,45 +333,15 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Mobile App",
-   "link_count": 13,
+   "label": "Mobile App \u00b7 Setup",
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
   },
   {
    "hidden": 0,
-   "is_query_report": 1,
-   "label": "Mobile Notifications",
-   "link_count": 0,
-   "link_to": "Mobile Notifications",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Maintenance Users",
-   "link_count": 0,
-   "link_to": "Maintenance Users",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Sub Contractor User",
-   "link_count": 0,
-   "link_to": "Sub Contractor User",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
+   "is_query_report": 0,
    "label": "Mobile App Settings",
    "link_count": 0,
    "link_to": "Mobile App Settings",
@@ -381,7 +351,7 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 1,
+   "is_query_report": 0,
    "label": "Terms and Conditions",
    "link_count": 0,
    "link_to": "Terms and Conditions",
@@ -391,7 +361,135 @@
   },
   {
    "hidden": 0,
+   "is_query_report": 0,
+   "label": "Selcom Settings",
+   "link_count": 0,
+   "link_to": "Selcom Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Afritrack Settings",
+   "link_count": 0,
+   "link_to": "Afritrack Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Maintenance Users",
+   "link_count": 0,
+   "link_to": "Maintenance Users",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sub Contractor User",
+   "link_count": 0,
+   "link_to": "Sub Contractor User",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mobile App \u00b7 Payments & Alerts",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Selcom Payment Transaction Log",
+   "link_count": 0,
+   "link_to": "Selcom Payment Transaction Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Afritrack Top-up Log",
+   "link_count": 0,
+   "link_to": "Afritrack Top-up Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mobile Notifications",
+   "link_count": 0,
+   "link_to": "Mobile Notifications",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mobile App \u00b7 Building & Services",
+   "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Amenity",
+   "link_count": 0,
+   "link_to": "Amenity",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
    "is_query_report": 1,
+   "label": "Amenity Booking Request",
+   "link_count": 0,
+   "link_to": "Amenity Booking Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Amenity Booking",
+   "link_count": 0,
+   "link_to": "Amenity Booking",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Amenity Booking Series",
+   "link_count": 0,
+   "link_to": "Amenity Booking Series",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Visitor Gate Pass",
    "link_count": 0,
    "link_to": "Visitor Gate Pass",
@@ -401,81 +499,21 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 1,
-   "label": "Viva Amenity",
+   "is_query_report": 0,
+   "label": "Building Contact",
    "link_count": 0,
-   "link_to": "Viva Amenity",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Viva Amenity Booking",
-   "link_count": 0,
-   "link_to": "Viva Amenity Booking",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Viva Emergency Incident",
-   "link_count": 0,
-   "link_to": "Viva Emergency Incident",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Viva Building Contact",
-   "link_count": 0,
-   "link_to": "Viva Building Contact",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Viva Call Log",
-   "link_count": 0,
-   "link_to": "Viva Call Log",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Viva Selcom Settings",
-   "link_count": 0,
-   "link_to": "Viva Selcom Settings",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Viva Payment Transaction",
-   "link_count": 0,
-   "link_to": "Viva Payment Transaction",
+   "link_to": "Building Contact",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2026-09-05 09:21:58.882444",
+ "modified": "2026-10-05 13:58:28.341926",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Property Management",
  "number_cards": [],
- "owner": "vimalrathod@vvsdtz.com",
+ "owner": "Administrator",
  "parent_page": "",
  "public": 1,
  "quick_lists": [],

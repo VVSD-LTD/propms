@@ -8,39 +8,49 @@ import frappe
 
 
 class TestDeliveryWindow(unittest.TestCase):
-	def test_valid_window_passes(self):
+	def _settings(self):
+		return {
+			"open_time": time(8, 0),
+			"close_time": time(18, 0),
+			"slot_duration_mins": 60,
+		}
+
+	def test_valid_one_hour_slot_passes(self):
 		from propms.api.v1.pos_store.delivery_window import validate_delivery_window
 
 		now = datetime(2026, 9, 29, 9, 0, 0)
-		settings = {
-			"open_time": time(8, 0),
-			"close_time": time(18, 0),
-			"min_window_mins": 120,
-			"picker_step_mins": 30,
-		}
-		validate_delivery_window(
+		out = validate_delivery_window(
 			start="10:00:00",
-			end="12:00:00",
-			settings=settings,
+			end="11:00:00",
+			settings=self._settings(),
 			now=now,
 			delivery_date="2026-09-29",
 		)
+		self.assertEqual(out["delivery_time_start"], "10:00:00")
+		self.assertEqual(out["delivery_time_end"], "11:00:00")
 
-	def test_too_short_window_fails(self):
+	def test_start_only_infers_one_hour_end(self):
 		from propms.api.v1.pos_store.delivery_window import validate_delivery_window
 
 		now = datetime(2026, 9, 29, 9, 0, 0)
-		settings = {
-			"open_time": time(8, 0),
-			"close_time": time(18, 0),
-			"min_window_mins": 120,
-			"picker_step_mins": 30,
-		}
+		out = validate_delivery_window(
+			start="14:00:00",
+			end=None,
+			settings=self._settings(),
+			now=now,
+			delivery_date="2026-09-29",
+		)
+		self.assertEqual(out["delivery_time_end"], "15:00:00")
+
+	def test_two_hour_window_fails(self):
+		from propms.api.v1.pos_store.delivery_window import validate_delivery_window
+
+		now = datetime(2026, 9, 29, 9, 0, 0)
 		with self.assertRaises(frappe.ValidationError):
 			validate_delivery_window(
 				start="10:00:00",
-				end="11:00:00",
-				settings=settings,
+				end="12:00:00",
+				settings=self._settings(),
 				now=now,
 				delivery_date="2026-09-29",
 			)
@@ -49,78 +59,62 @@ class TestDeliveryWindow(unittest.TestCase):
 		from propms.api.v1.pos_store.delivery_window import validate_delivery_window
 
 		now = datetime(2026, 9, 29, 9, 0, 0)
-		settings = {
-			"open_time": time(8, 0),
-			"close_time": time(18, 0),
-			"min_window_mins": 120,
-			"picker_step_mins": 30,
-		}
 		with self.assertRaises(frappe.ValidationError):
 			validate_delivery_window(
-				start="17:00:00",
-				end="19:00:00",
-				settings=settings,
+				start="17:30:00",
+				end="18:30:00",
+				settings=self._settings(),
 				now=now,
 				delivery_date="2026-09-29",
 			)
 
-	def test_past_last_feasible_start_fails(self):
+	def test_past_slot_fails(self):
 		from propms.api.v1.pos_store.delivery_window import validate_delivery_window
 
-		# 17:00 with min 120 → last start is 16:00; too late
-		now = datetime(2026, 9, 29, 17, 0, 0)
-		settings = {
-			"open_time": time(8, 0),
-			"close_time": time(18, 0),
-			"min_window_mins": 120,
-			"picker_step_mins": 30,
-		}
-		with self.assertRaises(frappe.ValidationError):
-			validate_delivery_window(
-				start="16:00:00",
-				end="18:00:00",
-				settings=settings,
-				now=now,
-				delivery_date="2026-09-29",
-			)
-
-	def test_start_before_now_ceil_fails(self):
-		from propms.api.v1.pos_store.delivery_window import validate_delivery_window
-
+		# 10:15 → 10:00–11:00 already started
 		now = datetime(2026, 9, 29, 10, 15, 0)
-		settings = {
-			"open_time": time(8, 0),
-			"close_time": time(18, 0),
-			"min_window_mins": 120,
-			"picker_step_mins": 30,
-		}
-		# earliest start should be 10:30; 10:00 invalid
 		with self.assertRaises(frappe.ValidationError):
 			validate_delivery_window(
 				start="10:00:00",
-				end="12:00:00",
-				settings=settings,
+				end="11:00:00",
+				settings=self._settings(),
 				now=now,
 				delivery_date="2026-09-29",
 			)
 
-	def test_ceil_past_midnight_closed(self):
+	def test_slots_hide_past(self):
+		from propms.api.v1.pos_store.delivery_window import (
+			build_delivery_slots,
+			serialize_delivery_window_for_api,
+		)
+
+		now = datetime(2026, 9, 29, 10, 15, 0)
+		slots = build_delivery_slots(
+			settings=self._settings(), now=now, delivery_date="2026-09-29"
+		)
+		by_start = {s["start"]: s["available"] for s in slots}
+		self.assertFalse(by_start["08:00:00"])
+		self.assertFalse(by_start["10:00:00"])
+		self.assertTrue(by_start["11:00:00"])
+		self.assertTrue(by_start["17:00:00"])
+
+		payload = serialize_delivery_window_for_api(
+			settings=self._settings(), now=now, delivery_date="2026-09-29"
+		)
+		self.assertEqual(payload["slot_duration_mins"], 60)
+		self.assertTrue(all(s["available"] for s in payload["slots"]))
+		self.assertNotIn("10:00:00", [s["start"] for s in payload["slots"]])
+		self.assertIn("11:00:00", [s["start"] for s in payload["slots"]])
+
+	def test_same_day_only(self):
 		from propms.api.v1.pos_store.delivery_window import validate_delivery_window
 
-		# 23:45 with step 30 → ceil spills to next day 00:00
-		now = datetime(2026, 9, 29, 23, 45, 0)
-		settings = {
-			"open_time": time(8, 0),
-			"close_time": time(23, 59),
-			"min_window_mins": 120,
-			"picker_step_mins": 30,
-		}
-		with self.assertRaises(frappe.ValidationError) as ctx:
+		now = datetime(2026, 9, 29, 9, 0, 0)
+		with self.assertRaises(frappe.ValidationError):
 			validate_delivery_window(
-				start="08:00:00",
-				end="10:00:00",
-				settings=settings,
+				start="10:00:00",
+				end="11:00:00",
+				settings=self._settings(),
 				now=now,
-				delivery_date="2026-09-29",
+				delivery_date="2026-09-30",
 			)
-		self.assertIn("closed", str(ctx.exception).lower())

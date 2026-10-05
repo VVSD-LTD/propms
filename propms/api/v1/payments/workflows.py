@@ -47,7 +47,11 @@ def get_mobile_cart_pos_profile_name():
 
     Accountants configure and name this profile in Desk — code never hardcodes the name.
     """
-    profile = frappe.db.get_single_value("Selcom Settings", "mobile_cart_pos_profile")
+    profile = None
+    if frappe.db.exists("DocType", "Selcom Settings"):
+        meta = frappe.get_meta("Selcom Settings")
+        if meta.has_field("mobile_cart_pos_profile"):
+            profile = frappe.db.get_single_value("Selcom Settings", "mobile_cart_pos_profile")
     if not profile:
         frappe.throw(
             _(

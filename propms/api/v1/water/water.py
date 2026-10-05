@@ -160,7 +160,11 @@ def _get_mobile_cart_stock_context(company=None):
     Prefers the warehouse on Selcom Settings → Mobile Cart POS Profile.
     Falls back to Stock Settings default only if no POS Profile is linked.
     """
-    profile = frappe.db.get_single_value("Selcom Settings", "mobile_cart_pos_profile")
+    profile = None
+    if frappe.db.exists("DocType", "Selcom Settings"):
+        meta = frappe.get_meta("Selcom Settings")
+        if meta.has_field("mobile_cart_pos_profile"):
+            profile = frappe.db.get_single_value("Selcom Settings", "mobile_cart_pos_profile")
     if profile and frappe.db.exists("POS Profile", profile):
         warehouse = frappe.db.get_value("POS Profile", profile, ["warehouse", "company"], as_dict=True) or {}
         return {

@@ -28,7 +28,7 @@ def get_directory_contacts(department=None):
 		]
 
 		contacts = frappe.get_all(
-			"Viva Building Contact",
+			"Building Contact",
 			filters=filters,
 			fields=fields,
 			order_by="is_emergency desc, priority_order asc, contact_name asc",

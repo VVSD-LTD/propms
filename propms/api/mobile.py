@@ -830,6 +830,172 @@ def checkout_water_order(sales_order=None, payment_method="MOBILE_MONEY", phone_
     )
 
 
+# -------------------------------------------------------------------------
+# POS Store Services (Maintenance POS catalog — pay first → Paid POS SI)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def get_pos_store_catalog():
+    from propms.api.v1.pos_store import pos_store as v1_pos
+    return v1_pos.get_pos_store_catalog()
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_pos_store_item(item_code=None):
+    from propms.api.v1.pos_store import pos_store as v1_pos
+    return v1_pos.get_pos_store_item(item_code=item_code)
+
+
+@frappe.whitelist(methods=["POST"])
+def checkout_pos_item(
+    item_code=None,
+    qty=None,
+    quantity=None,
+    lease=None,
+    payment_method="MOBILE_MONEY",
+    phone_number=None,
+    amount=None,
+    delivery_time_start=None,
+    delivery_time_end=None,
+    delivery_instructions=None,
+    delivery_date=None,
+):
+    """Start Selcom for a Maintenance POS item; Paid POS invoice on payment success."""
+    from propms.api.v1.pos_store import pos_store as v1_pos
+    return v1_pos.checkout_pos_item(
+        item_code=item_code,
+        qty=qty,
+        quantity=quantity,
+        lease=lease,
+        payment_method=payment_method,
+        phone_number=phone_number,
+        amount=amount,
+        delivery_time_start=delivery_time_start,
+        delivery_time_end=delivery_time_end,
+        delivery_instructions=delivery_instructions,
+        delivery_date=delivery_date,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def pay_pos_item_with_stored_card(
+    item_code=None,
+    qty=None,
+    quantity=None,
+    lease=None,
+    card_token=None,
+    amount=None,
+    cvv=None,
+    delivery_time_start=None,
+    delivery_time_end=None,
+    delivery_instructions=None,
+    delivery_date=None,
+):
+    from propms.api.v1.pos_store import pos_store as v1_pos
+    return v1_pos.pay_pos_item_with_stored_card(
+        item_code=item_code,
+        qty=qty,
+        quantity=quantity,
+        lease=lease,
+        card_token=card_token,
+        amount=amount,
+        cvv=cvv,
+        delivery_time_start=delivery_time_start,
+        delivery_time_end=delivery_time_end,
+        delivery_instructions=delivery_instructions,
+        delivery_date=delivery_date,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_water_delivery_window():
+    """Same-day drinking-water delivery rules for the mobile picker."""
+    from propms.api.v1.pos_store import pos_store as v1_pos
+    return v1_pos.get_water_delivery_window()
+
+
+# -------------------------------------------------------------------------
+# Electricity purchase (v1) — pay first, Paid POS SI on success
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def get_electricity_rates(lease=None):
+    from propms.api.v1.electricity import electricity as v1_el
+    return v1_el.get_electricity_rates(lease=lease)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_electricity_meter_status(lease=None, force_refresh=None):
+    """Live TANESCO/Generator balances and power On/Off from TrackSPM (read-only)."""
+    from propms.api.v1.electricity import electricity as v1_el
+    return v1_el.get_electricity_meter_status(lease=lease, force_refresh=force_refresh)
+
+
+@frappe.whitelist(methods=["POST"])
+def preview_electricity_purchase(total_amount=None, tanesco_amount=None, generator_amount=None, lease=None):
+    from propms.api.v1.electricity import electricity as v1_el
+    return v1_el.preview_electricity_purchase(
+        total_amount=total_amount,
+        tanesco_amount=tanesco_amount,
+        generator_amount=generator_amount,
+        lease=lease,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def checkout_electricity(
+    total_amount=None,
+    tanesco_amount=None,
+    generator_amount=None,
+    lease=None,
+    payment_method="MOBILE_MONEY",
+    phone_number=None,
+    amount=None,
+):
+    """Start Selcom for electricity; Paid POS invoice created on payment success."""
+    from propms.api.v1.electricity import electricity as v1_el
+    return v1_el.checkout_electricity(
+        total_amount=total_amount,
+        tanesco_amount=tanesco_amount,
+        generator_amount=generator_amount,
+        lease=lease,
+        payment_method=payment_method,
+        phone_number=phone_number,
+        amount=amount,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def pay_electricity_with_stored_card(
+    total_amount=None,
+    tanesco_amount=None,
+    generator_amount=None,
+    lease=None,
+    card_token=None,
+    amount=None,
+    cvv=None,
+):
+    from propms.api.v1.electricity import electricity as v1_el
+    return v1_el.pay_electricity_with_stored_card(
+        total_amount=total_amount,
+        tanesco_amount=tanesco_amount,
+        generator_amount=generator_amount,
+        lease=lease,
+        card_token=card_token,
+        amount=amount,
+        cvv=cvv,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def create_electricity_invoice(total_amount=None, tanesco_amount=None, generator_amount=None, lease=None):
+    """Deprecated — use checkout_electricity."""
+    from propms.api.v1.electricity import electricity as v1_el
+    return v1_el.create_electricity_invoice(
+        total_amount=total_amount,
+        tanesco_amount=tanesco_amount,
+        generator_amount=generator_amount,
+        lease=lease,
+    )
+
 
 # -------------------------------------------------------------------------
 # Visitor Gate Pass API Wrappers (v1)

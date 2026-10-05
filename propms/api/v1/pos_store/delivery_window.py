@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Same-day drinking-water delivery window helpers for POS Store."""
+"""Same-day drinking-water delivery slots for POS Store.
+
+Tenants pick one fixed 1-hour slot (e.g. 10:00–11:00), not a free-form from–to range.
+Past slots for today are not bookable. Optional delivery notes stay on checkout.
+"""
 
 from __future__ import unicode_literals
 
-from datetime import datetime, time, timedelta
+from datetime import time, timedelta
 
 import frappe
 from frappe import _
@@ -13,9 +17,10 @@ from frappe.utils import cint, get_time, getdate, now_datetime, today
 DEFAULTS = {
 	"open_time": "08:00:00",
 	"close_time": "18:00:00",
-	"min_window_mins": 120,
-	"picker_step_mins": 30,
 }
+
+# Product rule: every bookable slot is exactly one hour.
+SLOT_DURATION_MINS = 60
 
 
 def _time_to_mins(t):
@@ -28,57 +33,98 @@ def _mins_to_time_str(mins):
 	return f"{mins // 60:02d}:{mins % 60:02d}:00"
 
 
-def ceil_to_step(dt, step_mins):
-	"""Ceil datetime to next picker step (same calendar day minutes)."""
-	step = max(1, cint(step_mins))
-	total = dt.hour * 60 + dt.minute
-	if dt.second > 0 or dt.microsecond > 0:
-		total += 1
-	rem = total % step
-	if rem:
-		total += step - rem
-	return dt.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(minutes=total)
+def _fmt_label(start_m, end_m):
+	return f"{_mins_to_time_str(start_m)[:5]} – {_mins_to_time_str(end_m)[:5]}"
 
 
 def get_water_delivery_settings():
-	"""Load settings from Mobile App Settings with defaults."""
+	"""Load open/close from Mobile App Settings with defaults. Slot length is fixed at 60 mins."""
 	open_t = DEFAULTS["open_time"]
 	close_t = DEFAULTS["close_time"]
-	min_m = DEFAULTS["min_window_mins"]
-	step = DEFAULTS["picker_step_mins"]
 	if frappe.db.exists("DocType", "Mobile App Settings"):
 		doc = frappe.get_single("Mobile App Settings")
 		open_t = getattr(doc, "water_delivery_open_time", None) or open_t
 		close_t = getattr(doc, "water_delivery_close_time", None) or close_t
-		min_m = cint(getattr(doc, "water_delivery_min_window_mins", None) or min_m)
-		step = cint(getattr(doc, "water_delivery_picker_step_mins", None) or step)
 	return {
 		"open_time": get_time(open_t),
 		"close_time": get_time(close_t),
-		"min_window_mins": max(1, min_m),
-		"picker_step_mins": max(1, step),
+		"slot_duration_mins": SLOT_DURATION_MINS,
 	}
 
 
-def serialize_delivery_window_for_api(settings=None, delivery_date=None):
+def build_delivery_slots(settings=None, now=None, delivery_date=None):
+	"""Build same-day 1-hour slots; mark past (already started) as unavailable."""
 	settings = settings or get_water_delivery_settings()
+	now = now or now_datetime()
+	if isinstance(now, str):
+		from frappe.utils import get_datetime
+
+		now = get_datetime(now)
+
+	today_d = getdate(now)
+	req_date = getdate(delivery_date) if delivery_date else today_d
+	open_t = settings["open_time"] if isinstance(settings["open_time"], time) else get_time(settings["open_time"])
+	close_t = settings["close_time"] if isinstance(settings["close_time"], time) else get_time(settings["close_time"])
+	slot_mins = cint(settings.get("slot_duration_mins") or SLOT_DURATION_MINS)
+	open_m = _time_to_mins(open_t)
+	close_m = _time_to_mins(close_t)
+
+	slots = []
+	if close_m <= open_m or slot_mins <= 0:
+		return slots
+
+	# Only same-day slots are offered.
+	if req_date != today_d:
+		return slots
+
+	now_m = now.hour * 60 + now.minute
+	if now.second > 0 or now.microsecond > 0:
+		now_m += 1
+
+	start_m = open_m
+	while start_m + slot_mins <= close_m:
+		end_m = start_m + slot_mins
+		# Slot already started (or finished) → not bookable.
+		available = start_m >= now_m
+		slots.append(
+			{
+				"start": _mins_to_time_str(start_m),
+				"end": _mins_to_time_str(end_m),
+				"label": _fmt_label(start_m, end_m),
+				"available": available,
+			}
+		)
+		start_m += slot_mins
+
+	return slots
+
+
+def serialize_delivery_window_for_api(settings=None, delivery_date=None, now=None):
+	"""API payload for mobile: list of 1-hour slots (past ones marked unavailable)."""
+	settings = settings or get_water_delivery_settings()
+	now = now or now_datetime()
 	od = delivery_date or today()
+	all_slots = build_delivery_slots(settings=settings, now=now, delivery_date=od)
+	bookable = [s for s in all_slots if s.get("available")]
 	return {
 		"same_day_only": True,
+		"slot_duration_mins": cint(settings.get("slot_duration_mins") or SLOT_DURATION_MINS),
 		"open_time": settings["open_time"].strftime("%H:%M:%S")
 		if hasattr(settings["open_time"], "strftime")
 		else str(settings["open_time"]),
 		"close_time": settings["close_time"].strftime("%H:%M:%S")
 		if hasattr(settings["close_time"], "strftime")
 		else str(settings["close_time"]),
-		"min_window_mins": settings["min_window_mins"],
-		"picker_step_mins": settings["picker_step_mins"],
 		"delivery_date": str(getdate(od)),
+		# Primary picker list: only slots the tenant can still choose.
+		"slots": bookable,
+		# Full day for UIs that want to show disabled past slots.
+		"all_slots": all_slots,
 	}
 
 
-def validate_delivery_window(start, end, settings=None, now=None, delivery_date=None):
-	"""Raise ValidationError if window is invalid. Returns normalized dict."""
+def validate_delivery_window(start, end=None, settings=None, now=None, delivery_date=None):
+	"""Validate chosen 1-hour slot. If only start is sent, end = start + 60 mins."""
 	settings = settings or get_water_delivery_settings()
 	now = now or now_datetime()
 	if isinstance(now, str):
@@ -91,57 +137,40 @@ def validate_delivery_window(start, end, settings=None, now=None, delivery_date=
 	if req_date != today_d:
 		frappe.throw(_("Delivery is same-day only"), frappe.ValidationError)
 
-	if not start or not end:
-		frappe.throw(_("delivery_time_start and delivery_time_end are required"), frappe.ValidationError)
+	if not start:
+		frappe.throw(_("Please choose a delivery time slot"), frappe.ValidationError)
 
 	start_t = get_time(start)
-	end_t = get_time(end)
-	open_t = settings["open_time"] if isinstance(settings["open_time"], time) else get_time(settings["open_time"])
-	close_t = settings["close_time"] if isinstance(settings["close_time"], time) else get_time(settings["close_time"])
-	min_m = cint(settings["min_window_mins"])
-	step = cint(settings["picker_step_mins"])
+	slot_mins = cint(settings.get("slot_duration_mins") or SLOT_DURATION_MINS)
+	if end:
+		end_t = get_time(end)
+	else:
+		# Client sent start only — compute the fixed 1-hour end.
+		end_m = _time_to_mins(start_t) + slot_mins
+		end_t = get_time(_mins_to_time_str(end_m))
 
 	start_m = _time_to_mins(start_t)
 	end_m = _time_to_mins(end_t)
-	open_m = _time_to_mins(open_t)
-	close_m = _time_to_mins(close_t)
-
-	if end_m <= start_m:
-		frappe.throw(_("Delivery window end must be after start"), frappe.ValidationError)
-	if (end_m - start_m) < min_m:
+	if end_m - start_m != slot_mins:
 		frappe.throw(
-			_("Delivery window must be at least {0} minutes").format(min_m),
-			frappe.ValidationError,
-		)
-	if start_m < open_m or end_m > close_m:
-		frappe.throw(
-			_("Delivery window must be within {0}–{1}").format(
-				_mins_to_time_str(open_m)[:5], _mins_to_time_str(close_m)[:5]
-			),
+			_("Delivery slot must be exactly {0} minutes").format(slot_mins),
 			frappe.ValidationError,
 		)
 
-	earliest = ceil_to_step(now, step)
-	if earliest.date() != now.date():
+	bookable = {
+		(s["start"], s["end"])
+		for s in build_delivery_slots(settings=settings, now=now, delivery_date=req_date)
+		if s.get("available")
+	}
+	chosen = (_mins_to_time_str(start_m), _mins_to_time_str(end_m))
+	if chosen not in bookable:
 		frappe.throw(
-			_("Delivery windows for today are closed; try again tomorrow."),
-			frappe.ValidationError,
-		)
-	earliest_m = max(open_m, earliest.hour * 60 + earliest.minute)
-	last_start_m = close_m - min_m
-	if earliest_m > last_start_m:
-		frappe.throw(
-			_("Delivery windows for today are closed; try again tomorrow."),
-			frappe.ValidationError,
-		)
-	if start_m < earliest_m:
-		frappe.throw(
-			_("Delivery window start must be at or after {0}").format(_mins_to_time_str(earliest_m)[:5]),
+			_("That delivery slot is not available. Please choose another time."),
 			frappe.ValidationError,
 		)
 
 	return {
 		"delivery_date": str(today_d),
-		"delivery_time_start": start_t.strftime("%H:%M:%S"),
-		"delivery_time_end": end_t.strftime("%H:%M:%S"),
+		"delivery_time_start": chosen[0],
+		"delivery_time_end": chosen[1],
 	}
