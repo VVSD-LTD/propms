@@ -70,12 +70,26 @@ def compute_free_gaps(open_time, close_time, busy):
 	return gaps
 
 
-def find_conflicting_booking(amenity, booking_date, start_time, end_time, buffer_mins, exclude_name=None):
-	"""DB helper: return first conflicting Pending/Confirmed booking dict or None."""
+def find_conflicting_booking(
+	amenity,
+	booking_date,
+	start_time,
+	end_time,
+	buffer_mins,
+	exclude_name=None,
+	exclude_request=None,
+):
+	"""DB helper: first conflicting Confirmed/Pending booking or Open request, or None.
+
+	Returned dict includes ``source``: ``"booking"`` or ``"request"``.
+	Pending bookings are still checked during the migration window.
+	"""
 	import frappe
 
-	rows = frappe.get_all(
-		"Viva Amenity Booking",
+	req_end_buf = expand_end_with_buffer(end_time, buffer_mins)
+
+	booking_rows = frappe.get_all(
+		"Amenity Booking",
 		filters={
 			"amenity": amenity,
 			"booking_date": str(booking_date),
@@ -84,11 +98,30 @@ def find_conflicting_booking(amenity, booking_date, start_time, end_time, buffer
 		fields=["name", "start_time", "end_time", "tenant", "tenant_name", "status"],
 		ignore_permissions=True,
 	)
-	req_end_buf = expand_end_with_buffer(end_time, buffer_mins)
-	for r in rows or []:
+	for r in booking_rows or []:
 		if exclude_name and r.name == exclude_name:
 			continue
-		other_end_buf = expand_end_with_buffer(r.end_time, buffer_mins)
-		if ranges_overlap(start_time, req_end_buf, r.start_time, other_end_buf):
+		other_end = expand_end_with_buffer(r.end_time, buffer_mins)
+		if ranges_overlap(start_time, req_end_buf, r.start_time, other_end):
+			r["source"] = "booking"
 			return r
+
+	if frappe.db.exists("DocType", "Amenity Booking Request"):
+		req_rows = frappe.get_all(
+			"Amenity Booking Request",
+			filters={
+				"amenity": amenity,
+				"booking_date": str(booking_date),
+				"status": "Open",
+			},
+			fields=["name", "start_time", "end_time", "tenant", "tenant_name", "status"],
+			ignore_permissions=True,
+		)
+		for r in req_rows or []:
+			if exclude_request and r.name == exclude_request:
+				continue
+			other_end = expand_end_with_buffer(r.end_time, buffer_mins)
+			if ranges_overlap(start_time, req_end_buf, r.start_time, other_end):
+				r["source"] = "request"
+				return r
 	return None

@@ -26,7 +26,7 @@
   "slot_duration_mins",
   "cleanup_buffer_mins",
   "rules_section",
-  "requires_approval",
+  "auto_approval",
   "cancel_before_hours",
   "column_break_rules",
   "allow_recurring",
@@ -187,11 +187,11 @@
   },
   {
    "default": "0",
-   "description": "On = new bookings start as Pending until staff approve.",
-   "fieldname": "requires_approval",
+   "depends_on": "eval:doc.requires_booking",
+   "description": "When checked, tenant Requests are approved automatically and a Confirmed Booking is created. When unchecked, staff must approve the Request before a Booking is created.",
+   "fieldname": "auto_approval",
    "fieldtype": "Check",
-   "in_standard_filter": 1,
-   "label": "Requires Approval"
+   "label": "Auto-Approval"
   },
   {
    "default": "2",

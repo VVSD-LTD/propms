@@ -90,9 +90,9 @@ def _booking_payload(booking_doc, amenity_doc=None, event_type="amenity_booked")
 	amenity_label = amenity_name
 	if amenity_doc:
 		amenity_label = getattr(amenity_doc, "amenity_name", None) or amenity_name
-	elif amenity_name and frappe.db.exists("Viva Amenity", amenity_name):
+	elif amenity_name and frappe.db.exists("Amenity", amenity_name):
 		amenity_label = (
-			frappe.db.get_value("Viva Amenity", amenity_name, "amenity_name") or amenity_name
+			frappe.db.get_value("Amenity", amenity_name, "amenity_name") or amenity_name
 		)
 
 	return {
@@ -199,6 +199,44 @@ def notify_amenity_booked(booking_doc, amenity_doc=None):
 		frappe.log_error(frappe.get_traceback(), "notify_amenity_booked")
 
 
+def notify_amenity_request_pending(request_doc, amenity_doc=None):
+	"""Notify staff when a tenant submits an Open Amenity Booking Request (manual approval)."""
+	try:
+		if not request_doc:
+			return
+
+		tenant = getattr(request_doc, "tenant", None)
+		staff_users = _get_amenity_staff_recipients(exclude_user=tenant)
+		if not staff_users:
+			frappe.logger().warning(
+				f"Amenity request {request_doc.name}: no staff recipients for notification"
+			)
+
+		payload = _booking_payload(
+			request_doc, amenity_doc, event_type="amenity_request_pending"
+		)
+		payload["request_id"] = request_doc.name
+		payload["booking_id"] = getattr(request_doc, "booking", None) or ""
+		payload["route"] = "/amenity_booking_requests"
+		events = ("amenity_request_pending", "new_amenity_booking_request")
+
+		_publish_to_staff(events, payload, staff_users)
+
+		amenity_label = payload.get("amenity_name") or "Amenity"
+		tenant_label = payload.get("tenant_name") or payload.get("tenant") or "Tenant"
+		unit = payload.get("property_unit") or ""
+		unit_bit = f" ({unit})" if unit else ""
+		title = f"Amenity request: {amenity_label}"
+		body = (
+			f"{tenant_label}{unit_bit} requested {amenity_label} on "
+			f"{payload.get('booking_date')} {payload.get('start_time')}-{payload.get('end_time')}"
+		)
+
+		_enqueue_staff_fcm(staff_users, title, body, payload)
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "notify_amenity_request_pending")
+
+
 def notify_amenity_booking_cancelled(booking_doc, cancelled_by=None):
 	"""Notify the other party when a booking is cancelled.
 
@@ -261,8 +299,8 @@ def notify_amenity_booking_cancelled(booking_doc, cancelled_by=None):
 		frappe.log_error(frappe.get_traceback(), "notify_amenity_booking_cancelled")
 
 
-def notify_amenity_booking_approved(booking_doc):
-	"""Notify tenant that Pending booking was approved (WebSocket + FCM)."""
+def notify_amenity_booking_approved(booking_doc, request_id=None):
+	"""Notify tenant that a booking/request was approved (WebSocket + FCM)."""
 	try:
 		if not booking_doc:
 			return
@@ -271,6 +309,8 @@ def notify_amenity_booking_approved(booking_doc):
 			return
 
 		payload = _booking_payload(booking_doc, event_type="amenity_booking_approved")
+		if request_id:
+			payload["request_id"] = request_id
 		events = ("amenity_booking_approved",)
 
 		for ev in events:
@@ -309,8 +349,8 @@ def notify_amenity_booking_approved(booking_doc):
 		frappe.log_error(frappe.get_traceback(), "notify_amenity_booking_approved")
 
 
-def notify_amenity_booking_rejected(booking_doc):
-	"""Notify tenant that Pending booking was rejected (WebSocket + FCM)."""
+def notify_amenity_booking_rejected(booking_doc, request_id=None):
+	"""Notify tenant that a booking/request was rejected (WebSocket + FCM)."""
 	try:
 		if not booking_doc:
 			return
@@ -321,6 +361,11 @@ def notify_amenity_booking_rejected(booking_doc):
 		payload = _booking_payload(booking_doc, event_type="amenity_booking_rejected")
 		reason = getattr(booking_doc, "rejection_reason", None) or ""
 		payload["rejection_reason"] = reason
+		if request_id:
+			payload["request_id"] = request_id
+			# Request reject has no Confirmed Booking yet
+			if getattr(booking_doc, "doctype", None) == "Amenity Booking Request":
+				payload["booking_id"] = getattr(booking_doc, "booking", None) or ""
 		events = ("amenity_booking_rejected",)
 
 		for ev in events:
@@ -411,7 +456,7 @@ def enqueue_amenity_booking_push(user, title=None, body=None, payload=None):
 						"subject": title,
 						"for_user": user,
 						"email_content": body,
-						"document_type": "Viva Amenity Booking",
+						"document_type": "Amenity Booking",
 						"document_name": payload.get("booking_id") or "",
 						"type": "Alert",
 					}

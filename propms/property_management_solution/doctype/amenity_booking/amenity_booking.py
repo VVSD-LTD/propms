@@ -23,3 +23,24 @@ class AmenityBooking(Document):
 					self.status = "Completed"
 			except Exception:
 				pass
+
+	def on_update(self):
+		"""Keep Amenity Booking Series child row in sync on status/time changes."""
+		if not self.series:
+			return
+		if not (
+			self.has_value_changed("status")
+			or self.has_value_changed("booking_date")
+			or self.has_value_changed("start_time")
+			or self.has_value_changed("end_time")
+		):
+			return
+		# Skip when create path already synced immediately after insert
+		if self.flags.get("skip_series_sync"):
+			return
+		try:
+			from propms.api.v1.amenities.series_items import sync_series_booking_row
+
+			sync_series_booking_row(self.name)
+		except Exception:
+			frappe.log_error(frappe.get_traceback(), "AmenityBooking.on_update.sync_series")

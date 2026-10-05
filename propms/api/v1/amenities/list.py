@@ -33,7 +33,7 @@ def _load_amenity_gallery(amenity_name):
 	"""Load child gallery images for a given amenity."""
 	images = frappe.get_all(
 		"Amenity Image",
-		filters={"parent": amenity_name, "parenttype": "Viva Amenity"},
+		filters={"parent": amenity_name, "parenttype": "Amenity"},
 		fields=["image", "caption", "sort_order"],
 		order_by="sort_order asc, idx asc",
 		ignore_permissions=True,
@@ -56,7 +56,7 @@ def _amenity_list_fields():
 		"slot_duration_mins",
 		"booking_time_step_mins",
 		"cleanup_buffer_mins",
-		"requires_approval",
+		"auto_approval",
 		"cancel_before_hours",
 		"requires_booking",
 		"max_advance_days",
@@ -96,7 +96,7 @@ def get_amenities(category=None, published=None):
 			filters["category"] = cat
 
 		amenities = frappe.get_all(
-			"Viva Amenity",
+			"Amenity",
 			filters=filters,
 			fields=_amenity_list_fields(),
 			order_by="is_published desc, category asc, amenity_name asc",
@@ -134,10 +134,10 @@ def get_amenity_detail(amenity=None):
 		payload = _parse_request_payload({"amenity": amenity})
 		target = (payload.get("amenity") or "").strip()
 
-		if not target or not frappe.db.exists("Viva Amenity", target):
+		if not target or not frappe.db.exists("Amenity", target):
 			return {"status": "error", "message": _("Amenity {0} not found").format(target)}
 
-		doc = frappe.get_doc("Viva Amenity", target)
+		doc = frappe.get_doc("Amenity", target)
 		is_staff = _is_amenity_staff()
 
 		if not cint(doc.is_active):
@@ -174,14 +174,14 @@ def set_amenity_published(amenity=None, is_published=None):
 
 	payload = _parse_request_payload({"amenity": amenity, "is_published": is_published})
 	target = (payload.get("amenity") or "").strip()
-	if not target or not frappe.db.exists("Viva Amenity", target):
+	if not target or not frappe.db.exists("Amenity", target):
 		return {"status": "error", "message": _("Amenity {0} not found").format(target)}
 
 	if payload.get("is_published") is None:
 		return {"status": "error", "message": _("is_published is required (0 or 1)")}
 
 	flag = 1 if cint(payload.get("is_published")) else 0
-	doc = frappe.get_doc("Viva Amenity", target)
+	doc = frappe.get_doc("Amenity", target)
 	doc.is_published = flag
 	doc.save(ignore_permissions=True)
 	frappe.db.commit()

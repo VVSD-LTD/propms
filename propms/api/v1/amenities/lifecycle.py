@@ -3,12 +3,15 @@
 
 Best practice: Confirmed bookings whose end datetime has passed → Completed
 via a scheduled reconciler (and on list/read so mobile stays correct).
+Open Requests whose start has passed → Expired.
 """
 
 from __future__ import unicode_literals
 
 import frappe
 from frappe.utils import get_datetime, now_datetime
+
+from propms.api.v1.amenities.doctypes import AMENITY_BOOKING, AMENITY_BOOKING_REQUEST
 
 
 def reconcile_completed_amenity_bookings(limit=500):
@@ -19,7 +22,7 @@ def reconcile_completed_amenity_bookings(limit=500):
 	"""
 	now = now_datetime()
 	rows = frappe.get_all(
-		"Viva Amenity Booking",
+		AMENITY_BOOKING,
 		filters={"status": "Confirmed"},
 		fields=["name", "booking_date", "end_time"],
 		limit_page_length=limit,
@@ -36,12 +39,18 @@ def reconcile_completed_amenity_bookings(limit=500):
 		if end_dt >= now:
 			continue
 		frappe.db.set_value(
-			"Viva Amenity Booking",
+			AMENITY_BOOKING,
 			row.name,
 			"status",
 			"Completed",
 			update_modified=True,
 		)
+		# set_value skips Document.on_update — keep Series child row in sync
+		series = frappe.db.get_value(AMENITY_BOOKING, row.name, "series")
+		if series:
+			from propms.api.v1.amenities.series_items import sync_series_booking_row
+
+			sync_series_booking_row(row.name)
 		updated += 1
 
 	if updated:
@@ -50,10 +59,13 @@ def reconcile_completed_amenity_bookings(limit=500):
 
 
 def reconcile_stale_pending_amenity_bookings(limit=500):
-	"""Cancel Pending bookings whose start datetime has passed."""
+	"""Cancel Pending bookings whose start datetime has passed.
+
+	Kept until Pending→Request migration is complete.
+	"""
 	now = now_datetime()
 	rows = frappe.get_all(
-		"Viva Amenity Booking",
+		AMENITY_BOOKING,
 		filters={"status": "Pending"},
 		fields=["name", "booking_date", "start_time"],
 		limit_page_length=limit,
@@ -70,7 +82,7 @@ def reconcile_stale_pending_amenity_bookings(limit=500):
 		if start_dt >= now:
 			continue
 		frappe.db.set_value(
-			"Viva Amenity Booking",
+			AMENITY_BOOKING,
 			row.name,
 			{
 				"status": "Cancelled",
@@ -85,8 +97,47 @@ def reconcile_stale_pending_amenity_bookings(limit=500):
 	return {"updated": updated}
 
 
+def reconcile_stale_open_amenity_requests(limit=500):
+	"""Expire Open Requests whose start datetime has passed."""
+	now = now_datetime()
+	rows = frappe.get_all(
+		AMENITY_BOOKING_REQUEST,
+		filters={"status": "Open"},
+		fields=["name", "booking_date", "start_time"],
+		limit_page_length=limit,
+		ignore_permissions=True,
+	)
+	updated = 0
+	for row in rows:
+		if not row.booking_date or not row.start_time:
+			continue
+		try:
+			start_dt = get_datetime(f"{row.booking_date} {row.start_time}")
+		except Exception:
+			continue
+		if start_dt >= now:
+			continue
+		frappe.db.set_value(
+			AMENITY_BOOKING_REQUEST,
+			row.name,
+			"status",
+			"Expired",
+			update_modified=True,
+		)
+		updated += 1
+
+	if updated:
+		frappe.db.commit()
+	return {"updated": updated}
+
+
 def complete_past_confirmed_bookings():
 	"""Scheduler entrypoint (hourly)."""
 	done = reconcile_completed_amenity_bookings()
 	pending = reconcile_stale_pending_amenity_bookings()
-	return {"completed": done, "pending_cancelled": pending}
+	expired = reconcile_stale_open_amenity_requests()
+	return {
+		"completed": done,
+		"pending_cancelled": pending,
+		"requests_expired": expired,
+	}

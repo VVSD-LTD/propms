@@ -9,10 +9,19 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, cint, date_diff, get_datetime, getdate, now_datetime, nowdate
 
+from propms.api.v1.amenities.doctypes import AMENITY_BOOKING_REQUEST, AMENITY_BOOKING_SERIES
 from propms.api.v1.amenities.list import _is_amenity_staff
 from propms.api.v1.amenities.overlap import find_conflicting_booking, is_time_on_step
+from propms.api.v1.amenities.request import _create_confirmed_booking_from_request
 from propms.api.v1.amenities.slots import _parse_time_str
 from propms.api.v1.gate_pass.gate_pass import _get_tenant_default_unit, _parse_request_payload
+
+
+def _amenity_requires_approval(amenity_doc):
+	"""Mobile-compat: requires_approval is the inverse of auto_approval."""
+	if hasattr(amenity_doc, "auto_approval"):
+		return 0 if cint(amenity_doc.auto_approval) else 1
+	return cint(getattr(amenity_doc, "requires_approval", 0) or 0)
 
 MAX_OCCURRENCES = 60
 WEEKDAY_KEYS = (
@@ -246,10 +255,10 @@ def preview_recurring_amenity_booking(
 			}
 		)
 		amenity_name = (payload.get("amenity") or "").strip()
-		if not amenity_name or not frappe.db.exists("Viva Amenity", amenity_name):
+		if not amenity_name or not frappe.db.exists("Amenity", amenity_name):
 			return {"status": "error", "message": "Valid amenity is required"}
 
-		amenity_doc = frappe.get_doc("Viva Amenity", amenity_name)
+		amenity_doc = frappe.get_doc("Amenity", amenity_name)
 		is_staff = _is_amenity_staff()
 		if not amenity_doc.is_active:
 			return {"status": "error", "message": f"{amenity_doc.amenity_name} is currently inactive"}
@@ -267,9 +276,13 @@ def preview_recurring_amenity_booking(
 			if denied:
 				return {"status": "error", "message": denied}
 
-		from propms.api.v1.amenities.lifecycle import reconcile_stale_pending_amenity_bookings
+		from propms.api.v1.amenities.lifecycle import (
+			reconcile_stale_open_amenity_requests,
+			reconcile_stale_pending_amenity_bookings,
+		)
 
 		reconcile_stale_pending_amenity_bookings()
+		reconcile_stale_open_amenity_requests()
 
 		weekdays, start_date, end_date, s_time, e_time = _validate_series_inputs(
 			amenity_doc, payload, is_staff=is_staff
@@ -283,7 +296,7 @@ def preview_recurring_amenity_booking(
 			"amenity_name": amenity_doc.amenity_name,
 			"allow_recurring": cint(getattr(amenity_doc, "allow_recurring", 1)),
 			"max_series_days": cint(getattr(amenity_doc, "max_series_days", None) or 120),
-			"requires_approval": cint(getattr(amenity_doc, "requires_approval", 0)),
+			"requires_approval": _amenity_requires_approval(amenity_doc),
 			"series_start_date": str(start_date),
 			"series_end_date": str(end_date),
 			"start_time": s_time,
@@ -321,7 +334,7 @@ def create_recurring_amenity_booking(
 	lease=None,
 	property_unit=None,
 ):
-	"""Create series + free occurrence bookings (skip conflicts)."""
+	"""Create series + Open Requests per free occurrence (auto-approve → Bookings)."""
 	try:
 		if frappe.session.user == "Guest":
 			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
@@ -348,10 +361,10 @@ def create_recurring_amenity_booking(
 			}
 		)
 		amenity_name = (payload.get("amenity") or "").strip()
-		if not amenity_name or not frappe.db.exists("Viva Amenity", amenity_name):
+		if not amenity_name or not frappe.db.exists("Amenity", amenity_name):
 			return {"status": "error", "message": "Valid amenity is required"}
 
-		amenity_doc = frappe.get_doc("Viva Amenity", amenity_name)
+		amenity_doc = frappe.get_doc("Amenity", amenity_name)
 		is_staff = _is_amenity_staff()
 		if not amenity_doc.is_active:
 			return {"status": "error", "message": f"{amenity_doc.amenity_name} is currently inactive"}
@@ -376,9 +389,13 @@ def create_recurring_amenity_booking(
 			if denied:
 				return {"status": "error", "message": denied}
 
-		from propms.api.v1.amenities.lifecycle import reconcile_stale_pending_amenity_bookings
+		from propms.api.v1.amenities.lifecycle import (
+			reconcile_stale_open_amenity_requests,
+			reconcile_stale_pending_amenity_bookings,
+		)
 
 		reconcile_stale_pending_amenity_bookings()
+		reconcile_stale_open_amenity_requests()
 
 		weekdays, start_date, end_date, s_time, e_time = _validate_series_inputs(
 			amenity_doc, payload, is_staff=is_staff
@@ -394,11 +411,12 @@ def create_recurring_amenity_booking(
 				"conflict_count": len(conflicts),
 			}
 
+		auto = cint(getattr(amenity_doc, "auto_approval", 0))
 		checks = _weekdays_to_checks(weekdays)
-		initial_status = "Pending" if cint(getattr(amenity_doc, "requires_approval", 0)) else "Confirmed"
+		initial_status = "Confirmed" if auto else "Pending"
 		series = frappe.get_doc(
 			{
-				"doctype": "Viva Amenity Booking Series",
+				"doctype": AMENITY_BOOKING_SERIES,
 				"amenity": amenity_doc.name,
 				"status": initial_status,
 				"series_start_date": str(start_date),
@@ -421,9 +439,10 @@ def create_recurring_amenity_booking(
 			series.approved_on = now_datetime()
 		series.insert(ignore_permissions=True)
 
+		request_ids = []
 		booking_ids = []
 		for row in free:
-			# Re-check race
+			# Re-check race (Bookings + Open Requests)
 			conflict = find_conflicting_booking(
 				amenity_doc.name, row["booking_date"], s_time, e_time, 0
 			)
@@ -437,32 +456,42 @@ def create_recurring_amenity_booking(
 					}
 				)
 				continue
-			b = frappe.get_doc(
+
+			req = frappe.get_doc(
 				{
-					"doctype": "Viva Amenity Booking",
+					"doctype": AMENITY_BOOKING_REQUEST,
 					"amenity": amenity_doc.name,
 					"booking_date": row["booking_date"],
 					"start_time": s_time,
 					"end_time": e_time,
-					"guests_count": series.guests_count,
+					"status": "Open",
 					"tenant": current_user,
 					"tenant_name": resident_name,
 					"property_unit": prop_unit,
 					"lease": lease_name,
+					"guests_count": series.guests_count,
 					"notes": series.notes,
-					"status": initial_status,
 					"series": series.name,
 				}
 			)
-			if initial_status == "Confirmed":
-				b.approved_by = current_user
-				b.approved_on = now_datetime()
-			b.insert(ignore_permissions=True)
-			booking_ids.append(b.name)
+			req.insert(ignore_permissions=True)
+			request_ids.append(req.name)
 
-		series.booked_count = len(booking_ids)
+			if auto:
+				booking_doc = _create_confirmed_booking_from_request(req)
+				req.status = "Approved"
+				req.booking = booking_doc.name
+				req.approved_by = current_user
+				req.approved_on = now_datetime()
+				req.save(ignore_permissions=True)
+				booking_ids.append(booking_doc.name)
+
+		occurrence_count = len(request_ids)
+		# Child sync during auto-approve saves series; reload before final stats
+		series.reload()
+		series.booked_count = len(booking_ids) if auto else occurrence_count
 		series.conflict_count = len(conflicts)
-		if not booking_ids:
+		if not occurrence_count:
 			series.status = "Cancelled"
 			series.save(ignore_permissions=True)
 			frappe.db.commit()
@@ -483,20 +512,30 @@ def create_recurring_amenity_booking(
 		except Exception:
 			frappe.log_error(frappe.get_traceback(), "create_recurring.notify_series")
 
+		if auto:
+			message = _("Series created with {0} booking(s); {1} conflict(s) skipped.").format(
+				len(booking_ids), len(conflicts)
+			)
+		else:
+			message = _(
+				"Series submitted with {0} request(s); {1} conflict(s) skipped."
+			).format(len(request_ids), len(conflicts))
+
 		return {
 			"status": "success",
-			"message": _("Series created with {0} booking(s); {1} conflict(s) skipped.").format(
-				len(booking_ids), len(conflicts)
-			),
+			"message": message,
 			"series_id": series.name,
 			"series_status": series.status,
+			"request_ids": request_ids,
 			"booking_ids": booking_ids,
-			"booked_count": len(booking_ids),
+			"booked_count": series.booked_count,
 			"conflicts": conflicts,
 			"conflict_count": len(conflicts),
-			"requires_approval": cint(getattr(amenity_doc, "requires_approval", 0)),
+			"requires_approval": _amenity_requires_approval(amenity_doc),
+			"auto_approved": bool(auto),
 		}
 	except Exception as e:
+		frappe.db.rollback()
 		frappe.log_error(frappe.get_traceback(), "create_recurring_amenity_booking")
 		return {"status": "error", "message": str(e)}
 
@@ -506,8 +545,17 @@ def _series_bookings(series_name, statuses=None):
 	if statuses:
 		filters["status"] = ["in", statuses]
 	return frappe.get_all(
-		"Viva Amenity Booking",
+		"Amenity Booking",
 		filters=filters,
+		fields=["name", "booking_date", "start_time", "status", "tenant"],
+		order_by="booking_date asc",
+	)
+
+
+def _series_open_requests(series_name):
+	return frappe.get_all(
+		AMENITY_BOOKING_REQUEST,
+		filters={"series": series_name, "status": "Open"},
 		fields=["name", "booking_date", "start_time", "status", "tenant"],
 		order_by="booking_date asc",
 	)
@@ -515,7 +563,7 @@ def _series_bookings(series_name, statuses=None):
 
 @frappe.whitelist(methods=["POST"])
 def approve_amenity_booking_series(series_id=None):
-	"""Staff: approve all Pending bookings in a series."""
+	"""Staff: approve all Open Requests (and legacy Pending bookings) in a series."""
 	try:
 		if frappe.session.user == "Guest":
 			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
@@ -524,20 +572,53 @@ def approve_amenity_booking_series(series_id=None):
 
 		payload = _parse_request_payload({"series_id": series_id})
 		sid = (payload.get("series_id") or "").strip()
-		if not sid or not frappe.db.exists("Viva Amenity Booking Series", sid):
+		if not sid or not frappe.db.exists(AMENITY_BOOKING_SERIES, sid):
 			return {"status": "error", "message": f"Series {sid} not found"}
 
-		series = frappe.get_doc("Viva Amenity Booking Series", sid)
+		# Lock series row so concurrent approve/reject cannot both proceed
+		series = frappe.get_doc(AMENITY_BOOKING_SERIES, sid, for_update=True)
 		if series.status not in ("Pending",):
 			return {
 				"status": "error",
 				"message": f"Only Pending series can be approved (current: {series.status})",
 			}
 
+		from propms.api.v1.amenities.staff_actions import _fulfill_open_request
+
+		open_rows = _series_open_requests(sid)
+		pending_rows = _series_bookings(sid, statuses=["Pending"])
+		if not open_rows and not pending_rows:
+			return {
+				"status": "error",
+				"message": _("No Open requests or Pending bookings to approve"),
+				"series_id": sid,
+			}
+
 		approved = []
 		failed = []
-		for row in _series_bookings(sid, statuses=["Pending"]):
-			doc = frappe.get_doc("Viva Amenity Booking", row.name)
+		for row in open_rows:
+			result = _fulfill_open_request(row.name, notify=False, commit=False)
+			if result.get("status") == "success":
+				approved.append(result["booking_id"])
+			else:
+				failed.append(
+					{
+						"request_id": row.name,
+						"message": result.get("message") or "approve failed",
+					}
+				)
+
+		# Legacy migration: Pending Amenity Bookings linked to series
+		for row in pending_rows:
+			doc = frappe.get_doc("Amenity Booking", row.name, for_update=True)
+			if doc.status != "Pending":
+				failed.append(
+					{
+						"booking_id": doc.name,
+						"message": f"Only Pending bookings can be approved (current: {doc.status})",
+					}
+				)
+				continue
 			s = _parse_time_str(doc.start_time).strftime("%H:%M:%S")
 			e = _parse_time_str(doc.end_time).strftime("%H:%M:%S")
 			conflict = find_conflicting_booking(
@@ -552,6 +633,20 @@ def approve_amenity_booking_series(series_id=None):
 			doc.save(ignore_permissions=True)
 			approved.append(doc.name)
 
+		# All-or-nothing: any failure rolls back so series stays Pending / re-approvable
+		if failed:
+			frappe.db.rollback()
+			return {
+				"status": "error",
+				"message": _("Series approve aborted; {0} occurrence(s) failed").format(
+					len(failed)
+				),
+				"series_id": sid,
+				"failed": failed,
+			}
+
+		# Fulfill syncs child rows onto series; reload before status update
+		series.reload()
 		series.booked_count = len(approved) or series.booked_count
 		series.status = "Confirmed"
 		series.approved_by = frappe.session.user
@@ -571,16 +666,17 @@ def approve_amenity_booking_series(series_id=None):
 			"message": _("Series approved ({0} booking(s))").format(len(approved)),
 			"series_id": sid,
 			"approved_booking_ids": approved,
-			"failed": failed,
+			"failed": [],
 		}
 	except Exception as e:
+		frappe.db.rollback()
 		frappe.log_error(frappe.get_traceback(), "approve_amenity_booking_series")
 		return {"status": "error", "message": str(e)}
 
 
 @frappe.whitelist(methods=["POST"])
 def reject_amenity_booking_series(series_id=None, rejection_reason=None):
-	"""Staff: reject all Pending bookings in a series."""
+	"""Staff: reject all Open Requests (and legacy Pending bookings) in a series."""
 	try:
 		if frappe.session.user == "Guest":
 			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
@@ -592,26 +688,39 @@ def reject_amenity_booking_series(series_id=None, rejection_reason=None):
 		)
 		sid = (payload.get("series_id") or "").strip()
 		reason = (payload.get("rejection_reason") or "").strip()
-		if not sid or not frappe.db.exists("Viva Amenity Booking Series", sid):
+		if not sid or not frappe.db.exists(AMENITY_BOOKING_SERIES, sid):
 			return {"status": "error", "message": f"Series {sid} not found"}
 		if not reason:
 			return {"status": "error", "message": "rejection_reason is required"}
 
-		series = frappe.get_doc("Viva Amenity Booking Series", sid)
+		series = frappe.get_doc(AMENITY_BOOKING_SERIES, sid, for_update=True)
 		if series.status != "Pending":
 			return {
 				"status": "error",
 				"message": f"Only Pending series can be rejected (current: {series.status})",
 			}
 
-		rejected = []
+		rejected_requests = []
+		for row in _series_open_requests(sid):
+			req = frappe.get_doc(AMENITY_BOOKING_REQUEST, row.name, for_update=True)
+			if req.status != "Open":
+				continue
+			req.status = "Rejected"
+			req.rejection_reason = reason
+			req.save(ignore_permissions=True)
+			rejected_requests.append(req.name)
+
+		rejected_bookings = []
 		for row in _series_bookings(sid, statuses=["Pending"]):
-			doc = frappe.get_doc("Viva Amenity Booking", row.name)
+			doc = frappe.get_doc("Amenity Booking", row.name, for_update=True)
+			if doc.status != "Pending":
+				continue
 			doc.status = "Rejected"
 			doc.rejection_reason = reason
 			doc.save(ignore_permissions=True)
-			rejected.append(doc.name)
+			rejected_bookings.append(doc.name)
 
+		series.reload()
 		series.status = "Rejected"
 		series.rejection_reason = reason
 		series.save(ignore_permissions=True)
@@ -626,10 +735,14 @@ def reject_amenity_booking_series(series_id=None, rejection_reason=None):
 
 		return {
 			"status": "success",
-			"message": _("Series rejected ({0} booking(s))").format(len(rejected)),
+			"message": _("Series rejected ({0} request(s), {1} booking(s))").format(
+				len(rejected_requests), len(rejected_bookings)
+			),
 			"series_id": sid,
-			"rejected_booking_ids": rejected,
+			"rejected_request_ids": rejected_requests,
+			"rejected_booking_ids": rejected_bookings,
 		}
 	except Exception as e:
+		frappe.db.rollback()
 		frappe.log_error(frappe.get_traceback(), "reject_amenity_booking_series")
 		return {"status": "error", "message": str(e)}

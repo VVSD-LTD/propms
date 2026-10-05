@@ -40,10 +40,10 @@ def get_available_slots(amenity=None, booking_date=None):
 		today_date = getdate(nowdate())
 		now_ts = now_datetime()
 
-		if not frappe.db.exists("Viva Amenity", amenity):
+		if not frappe.db.exists("Amenity", amenity):
 			return {"status": "error", "message": f"Amenity {amenity} not found"}
 
-		doc = frappe.get_doc("Viva Amenity", amenity)
+		doc = frappe.get_doc("Amenity", amenity)
 		if not doc.is_active:
 			return {"status": "error", "message": f"Amenity {doc.amenity_name} is currently inactive"}
 
@@ -67,7 +67,7 @@ def get_available_slots(amenity=None, booking_date=None):
 
 		# Query active bookings on target date
 		existing_bookings = frappe.get_all(
-			"Viva Amenity Booking",
+			"Amenity Booking",
 			filters={
 				"amenity": doc.name,
 				"booking_date": str(target_date),
@@ -148,13 +148,13 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 	try:
 		if frappe.session.user == "Guest":
 			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
-		if not amenity or not frappe.db.exists("Viva Amenity", amenity):
+		if not amenity or not frappe.db.exists("Amenity", amenity):
 			return {"status": "error", "message": "Valid amenity is required"}
 
 		from propms.api.v1.amenities.list import _is_amenity_staff
 		from propms.api.v1.amenities.overlap import compute_free_gaps
 
-		doc = frappe.get_doc("Viva Amenity", amenity)
+		doc = frappe.get_doc("Amenity", amenity)
 		if not doc.is_active:
 			return {"status": "error", "message": f"{doc.amenity_name} is currently inactive"}
 
@@ -162,8 +162,12 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 		if not cint(doc.is_published) and not is_staff:
 			return {"status": "error", "message": _("Amenity is not published yet")}
 
-		from propms.api.v1.amenities.lifecycle import reconcile_stale_pending_amenity_bookings
+		from propms.api.v1.amenities.lifecycle import (
+			reconcile_stale_open_amenity_requests,
+			reconcile_stale_pending_amenity_bookings,
+		)
 		reconcile_stale_pending_amenity_bookings()
+		reconcile_stale_open_amenity_requests()
 
 		target_date = getdate(booking_date or nowdate())
 		today_date = getdate(nowdate())
@@ -184,7 +188,7 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 		buffer_mins = 0
 
 		existing = frappe.get_all(
-			"Viva Amenity Booking",
+			"Amenity Booking",
 			filters={
 				"amenity": doc.name,
 				"booking_date": str(target_date),
@@ -207,9 +211,47 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 				"end_with_buffer": e,
 				"status": b.status,
 				"label": label,
+				"source": "booking",
 			})
 
+		# Open requests hold the slot the same way Confirmed/Pending bookings do.
+		if frappe.db.exists("DocType", "Amenity Booking Request"):
+			open_requests = frappe.get_all(
+				"Amenity Booking Request",
+				filters={
+					"amenity": doc.name,
+					"booking_date": str(target_date),
+					"status": "Open",
+				},
+				fields=["name", "start_time", "end_time", "status", "tenant_name", "tenant"],
+				order_by="start_time asc",
+				ignore_permissions=True,
+			)
+			for r in open_requests or []:
+				s = _parse_time_str(r.start_time).strftime("%H:%M:%S")
+				e = _parse_time_str(r.end_time).strftime("%H:%M:%S")
+				label = (r.tenant_name or r.tenant or "Requested") if is_staff else "Requested"
+				busy.append({
+					"booking_id": r.name,
+					"request_id": r.name,
+					"start_time": s,
+					"end_time": e,
+					"end_with_buffer": e,
+					"status": r.status,
+					"label": label,
+					"source": "request",
+				})
+
+		busy.sort(key=lambda x: x["start_time"])
+
 		free_gaps = compute_free_gaps(open_t, close_t, busy)
+
+		# auto_approval is source of truth; requires_approval kept as inverse for mobile compat
+		auto = cint(getattr(doc, "auto_approval", 0) or 0)
+		if hasattr(doc, "auto_approval"):
+			requires_approval = 0 if auto else 1
+		else:
+			requires_approval = cint(getattr(doc, "requires_approval", 0) or 0)
 
 		return {
 			"status": "success",
@@ -220,7 +262,8 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 			"close_time": close_t,
 			"booking_time_step_mins": step,
 			"cleanup_buffer_mins": buffer_mins,
-			"requires_approval": cint(getattr(doc, "requires_approval", 0) or 0),
+			"auto_approval": auto,
+			"requires_approval": requires_approval,
 			"cancel_before_hours": cint(getattr(doc, "cancel_before_hours", None) or 2),
 			"capacity": cint(doc.capacity or 0),
 			"busy": busy,

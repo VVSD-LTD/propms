@@ -39,7 +39,9 @@
   "approved_by",
   "approved_on",
   "section_break_zbey",
-  "rejection_reason"
+  "rejection_reason",
+  "bookings_section",
+  "bookings"
  ],
  "fields": [
   {
@@ -246,6 +248,18 @@
   {
    "fieldname": "column_break_hlnz",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bookings_section",
+   "fieldtype": "Section Break",
+   "label": "Bookings in this Series"
+  },
+  {
+   "fieldname": "bookings",
+   "fieldtype": "Table",
+   "label": "Bookings",
+   "options": "Amenity Booking Series Item",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
