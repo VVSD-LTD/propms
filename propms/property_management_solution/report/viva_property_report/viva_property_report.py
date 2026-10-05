@@ -70,6 +70,25 @@ def get_columns(filters):
             "width": 150
         },
         {
+            "fieldname": "lease_name",
+            "label": "Lease Name",
+            "fieldtype": "Link",
+            "options": "Lease",
+            "width": 160
+        },
+        {
+            "fieldname": "lease_start_date",
+            "label": "Lease Start Date",
+            "fieldtype": "Date",
+            "width": 140
+        },
+        {
+            "fieldname": "lease_end_date",
+            "label": "Lease End Date",
+            "fieldtype": "Date",
+            "width": 140
+        },
+        {
             "fieldname": "cost_center",
             "label": "Cost Center",
             "fieldtype": "Link",
@@ -103,31 +122,44 @@ def get_active_properties_data(filters, property_type):
 
     conditions = []
     if property_type and property_type != "All":
-        conditions.append(f"type = '{property_type}'")
+        conditions.append(f"p.type = '{property_type}'")
 
     if filters.get("property_status"):
         statuses = [f'"{status}"' for status in filters.get('property_status')]
-        conditions.append(f"status IN ({', '.join(statuses)})")
+        conditions.append(f"p.status IN ({', '.join(statuses)})")
 
     where_clause = f"AND {' AND '.join(conditions)}" if conditions else ""
 
     query = f"""
-        SELECT 
-            name AS property,
-            unit_owner,
-            company,
-            cost_center,
-            type,
-            bedroom,
-            remarks,
-            carpet_area,
-            builtup_area,
-            status AS property_status,
-            marketing_status
-        FROM `tabProperty`
-        WHERE name != ''
+        SELECT
+            p.name AS property,
+            p.unit_owner,
+            p.company,
+            p.cost_center,
+            p.type,
+            p.bedroom,
+            p.remarks,
+            p.carpet_area,
+            p.builtup_area,
+            p.status AS property_status,
+            p.marketing_status,
+            l.name AS lease_name,
+            l.start_date AS lease_start_date,
+            l.end_date AS lease_end_date
+        FROM `tabProperty` p
+        LEFT JOIN `tabLease` l ON l.property = p.name
+            AND l.lease_status = 'Active'
+            AND l.name = (
+                SELECT ml.name
+                FROM `tabLease` ml
+                WHERE ml.property = p.name
+                  AND ml.lease_status = 'Active'
+                ORDER BY ml.start_date DESC, ml.creation DESC
+                LIMIT 1
+            )
+        WHERE p.name != ''
         {where_clause}
-        ORDER BY name
+        ORDER BY p.name
     """
 
     return frappe.db.sql(query, {"from_date": from_date, "to_date": to_date}, as_dict=1)
