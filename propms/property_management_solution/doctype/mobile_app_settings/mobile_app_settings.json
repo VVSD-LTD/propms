@@ -30,15 +30,7 @@
   "livekit_enabled",
   "livekit_url",
   "livekit_api_key",
-  "livekit_api_secret",
-  "pos_store_services_tab",
-  "pos_store_services",
-  "water_delivery_section",
-  "water_delivery_open_time",
-  "water_delivery_close_time",
-  "column_break_water_del",
-  "water_delivery_min_window_mins",
-  "water_delivery_picker_step_mins"
+  "livekit_api_secret"
  ],
  "fields": [
   {
@@ -181,64 +173,13 @@
    "fieldname": "livekit_api_secret",
    "fieldtype": "Password",
    "label": "LiveKit API Secret"
-  },
-  {
-   "fieldname": "pos_store_services_tab",
-   "fieldtype": "Tab Break",
-   "label": "POS Store Services"
-  },
-  {
-   "description": "Hub services for the tenant app. Item + qty = catalog buy. Special + amount = value flow (electricity = TANESCO + Generator).",
-   "fieldname": "pos_store_services",
-   "fieldtype": "Table",
-   "label": "POS Store Services",
-   "options": "Mobile POS Store Service"
-  },
-  {
-   "fieldname": "water_delivery_section",
-   "fieldtype": "Section Break",
-   "label": "Drinking Water Delivery Slots"
-  },
-  {
-   "default": "08:00:00",
-   "description": "First 1-hour slot starts at this time (same day). Example: 08:00 → slot 08:00–09:00.",
-   "fieldname": "water_delivery_open_time",
-   "fieldtype": "Time",
-   "label": "Delivery Open Time"
-  },
-  {
-   "default": "18:00:00",
-   "description": "Last slot must end by this time. Example: 18:00 → last slot 17:00–18:00.",
-   "fieldname": "water_delivery_close_time",
-   "fieldtype": "Time",
-   "label": "Delivery Close Time"
-  },
-  {
-   "fieldname": "column_break_water_del",
-   "fieldtype": "Column Break"
-  },
-  {
-   "default": "60",
-   "description": "Unused — slots are fixed at 1 hour.",
-   "fieldname": "water_delivery_min_window_mins",
-   "fieldtype": "Int",
-   "hidden": 1,
-   "label": "Min Window (mins) — unused"
-  },
-  {
-   "default": "60",
-   "description": "Unused — slots are fixed at 1 hour.",
-   "fieldname": "water_delivery_picker_step_mins",
-   "fieldtype": "Int",
-   "hidden": 1,
-   "label": "Picker Step (mins) — unused"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-03 11:49:09.600865",
+ "modified": "2026-10-06 09:30:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Mobile App Settings",

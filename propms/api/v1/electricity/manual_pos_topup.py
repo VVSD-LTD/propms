@@ -14,6 +14,8 @@ from frappe.utils import cint, flt
 from propms.api.v1.electricity.electricity import (
 	_invoice_split_amounts,
 	get_electricity_catalog,
+	invoice_foreign_item_codes,
+	invoice_item_rows,
 	resolve_electricity_meter,
 )
 
@@ -21,7 +23,7 @@ from propms.api.v1.electricity.electricity import (
 def doc_has_electricity_items(doc):
 	"""True if SI items include configured TANESCO and/or Generator lines."""
 	codes = get_electricity_catalog()["item_codes"]
-	for it in getattr(doc, "items", None) or []:
+	for it in invoice_item_rows(doc):
 		if (getattr(it, "item_code", None) or "") in codes:
 			return True
 	return False
@@ -129,10 +131,26 @@ def autofill_electricity_from_lease(doc, throw_on_error=False):
 	return info
 
 
+def stamp_electricity_lease_item_if_needed(doc):
+	"""Soft label: if SI has catalog electricity lines and lease_item is empty, set it.
+
+	Does NOT restrict other item lines — mixed carts are allowed. TrackSPM only
+	uses catalog electricity amounts via _invoice_split_amounts.
+	"""
+	if not doc or not doc.meta.has_field("lease_item"):
+		return
+	if not doc_has_electricity_items(doc):
+		return
+	if (getattr(doc, "lease_item", None) or "").strip():
+		return
+	doc.lease_item = get_electricity_catalog()["lease_item"]
+
+
 def on_sales_invoice_validate(doc, method=None):
-	"""Desk: auto-fill electricity lease_item + meter from Lease before save/submit."""
+	"""Desk: autofill meter/lease_item from Lease; never block non-electricity SI lines."""
 	throw = bool(cint(getattr(doc, "is_pos", 0)) and doc_has_electricity_items(doc))
 	autofill_electricity_from_lease(doc, throw_on_error=throw)
+	stamp_electricity_lease_item_if_needed(doc)
 
 
 @frappe.whitelist()
@@ -145,14 +163,17 @@ def get_electricity_autofill_for_lease(lease=None, lease_name=None):
 
 
 def is_manual_electricity_pos_candidate(doc):
-	"""True when Desk electricity POS SI should attempt Afritrack (not mobile)."""
+	"""True when Desk POS SI has catalog electricity lines + meter (Afritrack path).
+
+	Mixed carts are allowed — only catalog amounts are topped up later.
+	"""
 	if not doc:
 		return False
 	if cint(getattr(doc, "docstatus", 0)) != 1:
 		return False
 	if not cint(getattr(doc, "is_pos", 0)):
 		return False
-	if (getattr(doc, "lease_item", None) or "").strip() != get_electricity_catalog()["lease_item"]:
+	if not doc_has_electricity_items(doc):
 		return False
 	meter = (getattr(doc, "meter_number", None) or "").strip()
 	if not meter:
@@ -231,12 +252,10 @@ def get_electricity_topup_status(sales_invoice):
 		return {"show_retry": False, "reason": "missing"}
 
 	doc = frappe.get_doc("Sales Invoice", sales_invoice)
-	# Show retry UI for any submitted electricity POS with meter (incl. mobile
-	# if load failed) — not only "manual" without selcom_order_id.
+	# Show retry when submitted POS has catalog electricity amounts + meter
 	base_ok = (
 		cint(doc.docstatus) == 1
 		and cint(doc.is_pos)
-		and (doc.lease_item or "").strip() == get_electricity_catalog()["lease_item"]
 		and bool((doc.meter_number or "").strip())
 		and has_electricity_item_amounts(sales_invoice)
 	)
@@ -280,15 +299,16 @@ def retry_manual_electricity_pos_topup(sales_invoice):
 	doc = frappe.get_doc("Sales Invoice", sales_invoice)
 	if cint(doc.docstatus) != 1:
 		frappe.throw(_("Submit the Sales Invoice before topping up the meter"))
-	if (doc.lease_item or "").strip() != get_electricity_catalog()["lease_item"]:
-		frappe.throw(_("Only Electricity Sales Invoices can top up Afritrack"))
 	if not cint(doc.is_pos):
 		frappe.throw(_("Electricity top-up from Desk is only for POS invoices"))
 	if not (doc.meter_number or "").strip():
 		frappe.throw(_("Set Meter Number on the Sales Invoice before topping up"))
 	if not has_electricity_item_amounts(sales_invoice):
+		catalog = get_electricity_catalog()
 		frappe.throw(
-			_("Add {0} and/or {1} amounts before topping up").format(ITEM_TANESCO, ITEM_GENERATOR)
+			_("Add {0} catalog amounts before topping up").format(
+				" / ".join(catalog["item_codes"]) or "electricity"
+			)
 		)
 
 	status = get_electricity_topup_status(sales_invoice)

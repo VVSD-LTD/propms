@@ -146,9 +146,23 @@ def list_meters(property_id=None, tariffs=1):
 
 
 def get_units_list_cached(property_id=None, tariffs=1, force_refresh=False):
-	"""Cached units/list for mobile status (short TTL)."""
+	"""Prefer latest Afritrack Meter Sync JSON; optionally force live TrackSPM fetch.
+
+	Normal mobile traffic should hit stored sync (15-min job), not TrackSPM per tenant.
+	"""
 	settings = get_settings()
 	pid = str(property_id or settings.property_id or "5")
+
+	if not force_refresh and frappe.db.exists("DocType", "Afritrack Meter Sync"):
+		from propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync import (
+			get_latest_units_list_payload,
+		)
+
+		stored = get_latest_units_list_payload(property_id=pid)
+		if stored:
+			return stored
+
+	# Live fetch (+ short redis cache) when no sync yet or force_refresh
 	cache_key = "{0}{1}_{2}".format(UNITS_LIST_CACHE_PREFIX, pid, cint(tariffs))
 	if not force_refresh:
 		cached = frappe.cache().get_value(cache_key)
@@ -257,72 +271,17 @@ def create_utility_bill(meter_id, tariff, amount, wallet_id=None):
 	}
 
 
-def sync_meters_from_trackspm(property_id=None, create_missing=True):
-	"""Pull units/list and write TrackSPM meter_id onto PropMS Meter docs.
+def sync_meters_from_trackspm(property_id=None, create_missing=False, triggered_by="Manual"):
+	"""Fetch /units/list → Afritrack Meter Sync (full JSON) + update Meter IDs.
 
-	Matches on meter_serial / meter_reference. Creates Meter rows when missing
-	so go-live mapping is complete. Does not call create_utility_bill.
+	create_missing=False (default): only update existing PropMS Meter docs.
 	"""
-	from frappe.utils import now_datetime
+	from propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync import (
+		run_afritrack_meter_sync,
+	)
 
-	payload = list_meters(property_id=property_id, tariffs=1)
-	rows = payload.get("data") or []
-	if not isinstance(rows, list):
-		raise TrackSPMError("units/list data is not a list", response=payload)
-
-	updated = 0
-	created = 0
-	skipped = 0
-	now = now_datetime()
-
-	for row in rows:
-		if not isinstance(row, dict):
-			skipped += 1
-			continue
-		serial = (row.get("meter_serial") or row.get("meter_reference") or "").strip()
-		meter_id = row.get("meter_id")
-		if meter_id is not None:
-			meter_id = str(meter_id).strip()
-		if not serial or not meter_id:
-			skipped += 1
-			continue
-
-		if frappe.db.exists("Meter", serial):
-			frappe.db.set_value(
-				"Meter",
-				serial,
-				{
-					"trackspm_meter_id": meter_id,
-					"trackspm_last_synced": now,
-				},
-				update_modified=False,
-			)
-			updated += 1
-		elif create_missing:
-			doc = frappe.get_doc(
-				{
-					"doctype": "Meter",
-					"meter_number": serial,
-					"status": "Active",
-					"trackspm_meter_id": meter_id,
-					"trackspm_last_synced": now,
-				}
-			)
-			doc.insert(ignore_permissions=True)
-			created += 1
-		else:
-			skipped += 1
-
-	settings = get_settings()
-	settings.db_set("last_meter_sync", now, update_modified=False)
-	settings.db_set("meters_synced", updated + created, update_modified=False)
-	frappe.db.commit()
-
-	return {
-		"status": "success",
-		"updated": updated,
-		"created": created,
-		"skipped": skipped,
-		"total_rows": len(rows),
-		"synced_at": str(now),
-	}
+	return run_afritrack_meter_sync(
+		property_id=property_id,
+		create_missing=create_missing,
+		triggered_by=triggered_by or "Manual",
+	)

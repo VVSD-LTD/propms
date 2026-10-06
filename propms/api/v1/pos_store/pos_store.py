@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""POS Store Services — catalog from Mobile App Settings + pay-first checkout.
+"""POS Store Services — catalog from POS Services Settings + pay-first checkout.
 
-Hub rows come from Mobile App Settings → POS Store Services (child table):
-  - Item + purchase_mode=qty → product detail → checkout_pos_item (maintenance_pos)
-  - Special + purchase_mode=amount (e.g. electricity) → existing amount flow (TANESCO + Generator)
-
-No Item checkbox. Not configured on Selcom Settings.
+Hub rows (POS Services Settings → POS Store Services):
+  - Item + qty → Maintenance POS product checkout
+  - Amount + POS Amount Service → amount split catalog
+      · Service type Electricity → electricity APIs / TrackSPM meter top-up
+      · Service type Other → items on that POS Amount Service (e.g. Cooking Gas)
 """
 
 from __future__ import unicode_literals
@@ -33,21 +33,195 @@ from propms.api.v1.pos_store.delivery_window import (
 	validate_delivery_window,
 )
 
-SPECIAL_SERVICE_META = {
-	"electricity": {
-		"default_label": "Electricity",
-		"api": "propms.api.mobile.get_electricity_rates",
-		"checkout_api": "propms.api.mobile.checkout_electricity",
-		"preview_api": "propms.api.mobile.preview_electricity_purchase",
-	},
+ELECTRICITY_HANDLER_META = {
+	"default_label": "Electricity",
+	"api": "propms.api.mobile.get_amount_service_rates",
+	"checkout_api": "propms.api.mobile.checkout_amount_service",
+	"preview_api": "propms.api.mobile.preview_amount_service",
+	# Legacy electricity-only methods (meter status / older app builds)
+	"legacy_api": "propms.api.mobile.get_electricity_rates",
+	"legacy_checkout_api": "propms.api.mobile.checkout_electricity",
+	"legacy_preview_api": "propms.api.mobile.preview_electricity_purchase",
+	"meter_status_api": "propms.api.mobile.get_electricity_meter_status",
 }
+
+OTHER_AMOUNT_HANDLER_META = {
+	"api": "propms.api.mobile.get_amount_service_rates",
+	"checkout_api": "propms.api.mobile.checkout_amount_service",
+	"preview_api": "propms.api.mobile.preview_amount_service",
+}
+
+ALLOCATION_TOLERANCE = 1.0  # TZS
+
+
+def _slug_key(title):
+	raw = re.sub(r"[^a-z0-9]+", "_", (title or "").strip().lower()).strip("_")
+	return raw or "amount"
+
+
+def _amount_items_from_service(svc, company=None, price_list=None):
+	"""Catalog lines for an Amount service, optionally with selling rates."""
+	rows = sorted(
+		[r for r in (svc.get("items") or []) if cint(r.enabled) and (r.item or "").strip()],
+		key=lambda r: (cint(r.sort_order), cint(r.idx)),
+	)
+	if company is None:
+		company = frappe.db.get_single_value("Global Defaults", "default_company") or frappe.db.get_value(
+			"Company", {}, "name"
+		)
+	if price_list is None:
+		price_list = frappe.db.get_single_value("Selling Settings", "selling_price_list") or "Standard Selling"
+
+	out = []
+	for r in rows:
+		item_code = (r.item or "").strip()
+		rate = _selling_rate(item_code, company, price_list)
+		out.append(
+			{
+				"item_code": item_code,
+				"label": (r.label or "").strip() or item_code,
+				"trackspm_tariff": (r.trackspm_tariff or "").strip() or None,
+				"sort_order": cint(r.sort_order),
+				"rate": flt(rate, 4),
+				"uom": "Nos",
+			}
+		)
+	return out
+
+
+def _get_amount_service_doc(amount_service):
+	name = (amount_service or "").strip()
+	if not name or not frappe.db.exists("POS Amount Service", name):
+		frappe.throw(_("POS Amount Service {0} not found").format(name or "—"))
+	svc = frappe.get_doc("POS Amount Service", name)
+	if not cint(svc.enabled):
+		frappe.throw(_("POS Amount Service {0} is disabled").format(name))
+	return svc
+
+
+def _normalize_handler(svc):
+	handler = (svc.handler or "Other").strip()
+	if handler == "Generic":
+		handler = "Other"
+	return handler
+
+
+def _amount_hub_entry(row, company=None, price_list=None):
+	"""Build hub entry for Service Type = Amount (Electricity or Other)."""
+	svc_name = (getattr(row, "amount_service", None) or "").strip()
+	label = (row.label or "").strip() or None
+	sort_order = cint(row.sort_order)
+
+	# Legacy Electricity / Special rows without amount_service yet
+	if not svc_name and _is_legacy_electricity_row(row):
+		svc_name = "Electricity"
+
+	if not svc_name or not frappe.db.exists("POS Amount Service", svc_name):
+		return None
+
+	svc = frappe.get_cached_doc("POS Amount Service", svc_name)
+	if not cint(svc.enabled):
+		return None
+
+	handler = _normalize_handler(svc)
+	title = (svc.title or svc_name).strip()
+	hub_label = label or title
+	amount_items = _amount_items_from_service(svc, company=company, price_list=price_list)
+	if not amount_items and handler != "Electricity":
+		return None
+
+	if handler == "Electricity":
+		from propms.api.v1.electricity.electricity import get_electricity_catalog
+
+		catalog = get_electricity_catalog()
+		meta = ELECTRICITY_HANDLER_META
+		# Prefer live catalog lines (with rates) when available
+		if not amount_items:
+			amount_items = catalog.get("items") or []
+		return {
+			"key": "electricity",
+			"special_key": "electricity",
+			"service_type": "Amount",
+			"ui_mode": "amount_split",
+			"purchase_mode": "amount",
+			"amount_handler": "Electricity",
+			"amount_service": svc_name,
+			"label": hub_label or meta["default_label"],
+			"api": meta["api"],
+			"checkout_api": meta["checkout_api"],
+			"preview_api": meta["preview_api"],
+			"legacy_api": meta["legacy_api"],
+			"legacy_checkout_api": meta["legacy_checkout_api"],
+			"legacy_preview_api": meta["legacy_preview_api"],
+			"meter_status_api": meta["meter_status_api"],
+			"sort_order": sort_order,
+			"lease_item": catalog.get("lease_item") or "Electricity",
+			"amount_items": amount_items,
+			"electricity_items": amount_items,
+			"item_tanesco": catalog.get("item_tanesco"),
+			"item_generator": catalog.get("item_generator"),
+			"catalog_source": catalog.get("source"),
+			"features": {
+				"meter": True,
+				"meter_status": True,
+				"trackspm_topup": True,
+				"requires_lease": True,
+			},
+		}
+
+	meta = OTHER_AMOUNT_HANDLER_META
+	key = _slug_key(title)
+	return {
+		"key": key,
+		"special_key": key,
+		"service_type": "Amount",
+		"ui_mode": "amount_split",
+		"purchase_mode": "amount",
+		"amount_handler": "Other",
+		"amount_service": svc_name,
+		"label": hub_label,
+		"api": meta["api"],
+		"checkout_api": meta["checkout_api"],
+		"preview_api": meta["preview_api"],
+		"sort_order": sort_order,
+		"lease_item": title,
+		"amount_items": amount_items,
+		"features": {
+			"meter": False,
+			"meter_status": False,
+			"trackspm_topup": False,
+			"requires_lease": True,
+		},
+	}
+
+
+def _is_legacy_electricity_row(row):
+	stype = (row.service_type or "").strip()
+	if stype == "Electricity":
+		return True
+	if stype == "Special" and (getattr(row, "special_key", None) or "").strip().lower() == "electricity":
+		return True
+	return False
+
+
+def _is_amount_row(row):
+	stype = (row.service_type or "").strip()
+	if stype == "Amount":
+		return True
+	return _is_legacy_electricity_row(row)
+
 
 
 def _get_pos_store_service_rows(enabled_only=True):
-	"""Enabled hub rows from Mobile App Settings, ordered."""
-	if not frappe.db.exists("DocType", "Mobile App Settings"):
+	"""Enabled hub rows from POS Services Settings (fallback: Mobile App Settings)."""
+	settings = None
+	if frappe.db.exists("DocType", "POS Services Settings"):
+		settings = frappe.get_single("POS Services Settings")
+	elif frappe.db.exists("DocType", "Mobile App Settings"):
+		# Legacy until migrate patch moves rows
+		settings = frappe.get_single("Mobile App Settings")
+	if not settings:
 		return []
-	settings = frappe.get_single("Mobile App Settings")
 	rows = list(settings.get("pos_store_services") or [])
 	if enabled_only:
 		rows = [r for r in rows if cint(r.enabled)]
@@ -133,7 +307,7 @@ def _load_item_doc_fields(item_code):
 
 
 def _get_eligible_item(item_code):
-	"""Item must be enabled on Mobile App Settings (Item + qty) and sellable."""
+	"""Item must be enabled on POS Services Settings (Item + qty) and sellable."""
 	if not item_code or not _is_item_enabled_in_settings(item_code):
 		return None
 	item = _load_item_doc_fields(item_code)
@@ -146,7 +320,7 @@ def _get_eligible_item(item_code):
 
 @frappe.whitelist(methods=["GET", "POST"])
 def get_pos_store_catalog():
-	"""Hub catalog from Mobile App Settings → POS Store Services."""
+	"""Hub catalog from POS Services Settings → POS Store Services."""
 	_require_auth()
 
 	company = frappe.db.get_single_value("Global Defaults", "default_company") or frappe.db.get_value(
@@ -166,36 +340,35 @@ def get_pos_store_catalog():
 		mode = (row.purchase_mode or "qty").strip()
 		label = (row.label or "").strip()
 
+		if _is_amount_row(row):
+			entry = _amount_hub_entry(row, company=company, price_list=price_list)
+			if entry:
+				services.append(entry)
+				special_services.append(entry)
+			continue
+
 		if stype == "Item":
 			item = _load_item_doc_fields(row.item)
 			if not item or cint(item.get("disabled")) or not cint(item.get("is_sales_item")):
 				continue
 			payload = _serialize_item(item, company, currency, price_list, warehouse, label=label or None)
+			payload["service_type"] = "Item"
+			payload["ui_mode"] = "qty"
 			payload["purchase_mode"] = mode or "qty"
 			payload["key"] = f"item:{item['item_code']}"
 			payload["sort_order"] = cint(row.sort_order)
+			payload["detail_api"] = "propms.api.mobile.get_pos_store_item"
+			payload["checkout_api"] = "propms.api.mobile.checkout_pos_item"
+			payload["features"] = {
+				"meter": False,
+				"meter_status": False,
+				"trackspm_topup": False,
+				"requires_lease": True,
+				"delivery_window": bool(_is_water_item(item["item_code"])),
+			}
 			services.append(payload)
 			if (mode or "qty") == "qty":
 				items.append(payload)
-
-		elif stype == "Special":
-			key = (row.special_key or "").strip()
-			if not key:
-				continue
-			meta = SPECIAL_SERVICE_META.get(key) or {}
-			entry = {
-				"key": f"special:{key}",
-				"special_key": key,
-				"service_type": "Special",
-				"purchase_mode": mode or "amount",
-				"label": label or meta.get("default_label") or key.replace("_", " ").title(),
-				"api": meta.get("api"),
-				"checkout_api": meta.get("checkout_api"),
-				"preview_api": meta.get("preview_api"),
-				"sort_order": cint(row.sort_order),
-			}
-			services.append(entry)
-			special_services.append(entry)
 
 	return {
 		"status": "success",
@@ -206,7 +379,9 @@ def get_pos_store_catalog():
 		"services": services,
 		"items": items,
 		"special_services": special_services,
-		"source": "Mobile App Settings",
+		"amount_services": [s for s in services if s.get("service_type") == "Amount"],
+		"item_services": [s for s in services if s.get("service_type") == "Item"],
+		"source": "POS Services Settings",
 	}
 
 
@@ -654,3 +829,361 @@ def pay_pos_item_with_stored_card(
 	txn.save(ignore_permissions=True)
 	frappe.db.commit()
 	return {"status": "error", "message": err, "order_id": order_id, "gateway": card_res}
+
+
+# -------------------------------------------------------------------------
+# Amount services (Electricity / Cooking Gas / …) — pay-by-amount split UI
+# -------------------------------------------------------------------------
+
+
+def _units_from_amount(inclusive_amount, rate):
+	rate = flt(rate)
+	if rate <= 0:
+		frappe.throw(_("Selling rate must be greater than zero"))
+	return flt(inclusive_amount) / rate
+
+
+def _parse_allocations(payload, allowed_codes):
+	"""Parse allocations from list or {item_code: amount} map."""
+	raw = payload.get("allocations") or payload.get("lines") or payload.get("amounts")
+	out = []
+	if isinstance(raw, dict):
+		for code, amt in raw.items():
+			code = (code or "").strip()
+			if not code:
+				continue
+			out.append({"item_code": code, "amount": flt(amt)})
+	elif isinstance(raw, (list, tuple)):
+		for row in raw:
+			if not isinstance(row, dict):
+				continue
+			code = (row.get("item_code") or row.get("item") or "").strip()
+			if not code:
+				continue
+			out.append({"item_code": code, "amount": flt(row.get("amount") or row.get("amount_inclusive"))})
+	else:
+		# Electricity-style convenience keys when amount_service is Electricity
+		for key in ("tanesco_amount", "generator_amount"):
+			if payload.get(key) is None:
+				continue
+			# Resolve via catalog later — handled by caller
+			pass
+
+	filtered = []
+	for row in out:
+		if row["item_code"] not in allowed_codes:
+			frappe.throw(
+				_("Item {0} is not in this amount service catalog").format(row["item_code"])
+			)
+		if flt(row["amount"]) < 0:
+			frappe.throw(_("Allocation amounts cannot be negative"))
+		if flt(row["amount"]) > 0:
+			filtered.append(row)
+	return filtered
+
+
+def _build_amount_service_lines(svc, allocations, company, price_list):
+	allowed = {
+		(r.item or "").strip()
+		for r in (svc.get("items") or [])
+		if cint(r.enabled) and (r.item or "").strip()
+	}
+	lines = []
+	total = 0.0
+	for row in allocations:
+		code = row["item_code"]
+		amt = flt(row["amount"])
+		if amt <= 0:
+			continue
+		rate = _selling_rate(code, company, price_list)
+		if rate <= 0:
+			frappe.throw(_("Selling rate not configured for {0}").format(code))
+		lines.append(
+			{
+				"item_code": code,
+				"amount_inclusive": amt,
+				"rate": rate,
+				"qty": _units_from_amount(amt, rate),
+			}
+		)
+		total += amt
+	if not lines:
+		frappe.throw(_("Add at least one allocation amount greater than zero"))
+	return lines, flt(total, 2)
+
+
+def _prepare_amount_service_intent(amount_service=None, total_amount=None, allocations=None, lease=None):
+	payload = _parse_request_payload(
+		{
+			"amount_service": amount_service,
+			"total_amount": total_amount,
+			"allocations": allocations,
+			"lease": lease,
+			"tanesco_amount": None,
+			"generator_amount": None,
+		}
+	)
+	svc = _get_amount_service_doc(payload.get("amount_service"))
+	handler = _normalize_handler(svc)
+	title = (svc.title or svc.name).strip()
+
+	billing = _resolve_tenant_billing((payload.get("lease") or "").strip() or None)
+	if not billing.get("customer"):
+		frappe.throw(_("No customer/lease found for this user"))
+
+	company = billing.get("company")
+	price_list = frappe.db.get_single_value("Selling Settings", "selling_price_list") or "Standard Selling"
+	allowed = {
+		(r.item or "").strip()
+		for r in (svc.get("items") or [])
+		if cint(r.enabled) and (r.item or "").strip()
+	}
+	if not allowed:
+		frappe.throw(_("POS Amount Service {0} has no enabled items").format(svc.name))
+
+	alloc = _parse_allocations(payload, allowed)
+
+	# Electricity convenience: tanesco_amount / generator_amount
+	if handler == "Electricity" and not alloc:
+		from propms.api.v1.electricity.electricity import get_electricity_catalog
+
+		catalog = get_electricity_catalog()
+		for code, key in (
+			(catalog["item_tanesco"], "tanesco_amount"),
+			(catalog["item_generator"], "generator_amount"),
+		):
+			amt = flt(payload.get(key))
+			if amt > 0:
+				alloc.append({"item_code": code, "amount": amt})
+
+	lines, split_total = _build_amount_service_lines(svc, alloc, company, price_list)
+	total = flt(payload.get("total_amount"))
+	if total <= 0:
+		total = split_total
+	if abs(split_total - total) > ALLOCATION_TOLERANCE:
+		frappe.throw(
+			_("Allocation amounts ({0}) must equal total_amount ({1})").format(split_total, total)
+		)
+
+	meter_number = None
+	if handler == "Electricity":
+		from propms.api.v1.electricity.electricity import resolve_electricity_meter
+
+		try:
+			meter_number = resolve_electricity_meter(billing.get("property"))
+		except Exception:
+			frappe.throw(_("Could not resolve electricity meter for this lease"))
+
+	return {
+		"svc": svc,
+		"handler": handler,
+		"title": title,
+		"billing": billing,
+		"lines": lines,
+		"total": total,
+		"meter_number": meter_number,
+		"price_list": price_list,
+		"payment_method": (payload.get("payment_method") or payload.get("channel") or "MOBILE_MONEY"),
+		"phone_number": payload.get("phone_number") or payload.get("phone") or payload.get("msisdn"),
+		"amount": payload.get("amount"),
+		"card_token": payload.get("card_token") or payload.get("token"),
+		"cvv": payload.get("cvv"),
+	}
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_amount_service_rates(amount_service=None, lease=None):
+	"""Rates + catalog lines for any POS Amount Service (Electricity, Cooking Gas, …)."""
+	_require_auth()
+	payload = _parse_request_payload({"amount_service": amount_service, "lease": lease})
+	svc = _get_amount_service_doc(payload.get("amount_service"))
+	handler = _normalize_handler(svc)
+	title = (svc.title or svc.name).strip()
+
+	billing = _resolve_tenant_billing((payload.get("lease") or "").strip() or None)
+	company = (billing.get("company") if billing else None) or frappe.db.get_single_value(
+		"Global Defaults", "default_company"
+	) or frappe.db.get_value("Company", {}, "name")
+	currency = frappe.db.get_value("Company", company, "default_currency") or "TZS"
+	price_list = frappe.db.get_single_value("Selling Settings", "selling_price_list") or "Standard Selling"
+	items = _amount_items_from_service(svc, company=company, price_list=price_list)
+
+	meter = None
+	meter_error = None
+	if handler == "Electricity" and billing and billing.get("property"):
+		try:
+			from propms.api.v1.electricity.electricity import resolve_electricity_meter
+
+			meter = {
+				"meter_number": resolve_electricity_meter(billing["property"]),
+				"property": billing["property"],
+				"lease": billing.get("lease"),
+			}
+		except Exception as e:
+			meter_error = str(e)
+
+	return {
+		"status": "success",
+		"amount_service": svc.name,
+		"amount_handler": handler,
+		"label": title,
+		"ui_mode": "amount_split",
+		"currency": currency,
+		"price_list": price_list,
+		"lease_item": "Electricity" if handler == "Electricity" else title,
+		"amount_items": items,
+		"items": [
+			{"item_code": i["item_code"], "item_name": i["label"], "rate": i["rate"], "uom": i["uom"]}
+			for i in items
+		],
+		"meter": meter,
+		"meter_warning": meter_error,
+		"features": {
+			"meter": handler == "Electricity",
+			"meter_status": handler == "Electricity",
+			"trackspm_topup": handler == "Electricity",
+			"requires_lease": True,
+		},
+		"meter_status_api": (
+			"propms.api.mobile.get_electricity_meter_status" if handler == "Electricity" else None
+		),
+	}
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def preview_amount_service(
+	amount_service=None, total_amount=None, allocations=None, lease=None
+):
+	"""Preview line split for an amount service purchase (no payment)."""
+	_require_auth()
+	intent = _prepare_amount_service_intent(
+		amount_service=amount_service,
+		total_amount=total_amount,
+		allocations=allocations,
+		lease=lease,
+	)
+	return {
+		"status": "success",
+		"amount_service": intent["svc"].name,
+		"amount_handler": intent["handler"],
+		"label": intent["title"],
+		"total_amount": intent["total"],
+		"meter_number": intent.get("meter_number"),
+		"currency": "TZS",
+		"lines": [
+			{
+				"item_code": ln["item_code"],
+				"qty": flt(ln["qty"], 6),
+				"rate": flt(ln["rate"], 4),
+				"amount": flt(ln["amount_inclusive"], 2),
+			}
+			for ln in intent["lines"]
+		],
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def checkout_amount_service(
+	amount_service=None,
+	total_amount=None,
+	allocations=None,
+	lease=None,
+	payment_method="MOBILE_MONEY",
+	phone_number=None,
+	amount=None,
+	tanesco_amount=None,
+	generator_amount=None,
+):
+	"""Start Selcom for any Amount service; Paid POS SI on success.
+
+	For Electricity, also accepts tanesco_amount / generator_amount (legacy).
+	For Cooking Gas / Other, pass allocations=[{item_code, amount}, ...].
+	"""
+	_require_auth()
+	from propms.api.v1.payments.checkout import start_selcom_checkout
+	from propms.api.v1.payments.workflows import WORKFLOW_AMOUNT_POS, WORKFLOW_ELECTRICITY_POS
+
+	if payment_method:
+		frappe.form_dict["payment_method"] = payment_method
+	if phone_number:
+		frappe.form_dict["phone_number"] = phone_number
+	if amount is not None:
+		frappe.form_dict["amount"] = amount
+	if tanesco_amount is not None:
+		frappe.form_dict["tanesco_amount"] = tanesco_amount
+	if generator_amount is not None:
+		frappe.form_dict["generator_amount"] = generator_amount
+	if allocations is not None:
+		frappe.form_dict["allocations"] = allocations
+
+	intent = _prepare_amount_service_intent(
+		amount_service=amount_service,
+		total_amount=total_amount,
+		allocations=allocations,
+		lease=lease,
+	)
+	# Electricity with TrackSPM: keep dedicated settle path
+	if intent["handler"] == "Electricity":
+		workflow = WORKFLOW_ELECTRICITY_POS
+	else:
+		workflow = WORKFLOW_AMOUNT_POS
+
+	billing = intent["billing"]
+	total = intent["total"]
+	pay_amount = (
+		flt(intent.get("amount")) if intent.get("amount") and flt(intent.get("amount")) > 0 else total
+	)
+	if abs(pay_amount - total) > ALLOCATION_TOLERANCE:
+		return {
+			"status": "error",
+			"message": _("Payment amount must equal total_amount ({0})").format(total),
+		}
+
+	ref_name = billing.get("lease") or billing.get("customer") or intent["title"]
+	extra = {
+		"amount_service_purchase": True,
+		"payment_workflow": workflow,
+		"amount_service": intent["svc"].name,
+		"amount_handler": intent["handler"],
+		"lease": billing.get("lease"),
+		"property": billing.get("property"),
+		"customer": billing.get("customer"),
+		"company": billing.get("company"),
+		"cost_center": billing.get("cost_center"),
+		"meter_number": intent.get("meter_number"),
+		"total_amount": total,
+		"lease_item": "Electricity" if intent["handler"] == "Electricity" else intent["title"],
+		"lines": [
+			{
+				"item_code": ln["item_code"],
+				"qty": flt(ln["qty"]),
+				"rate": flt(ln["rate"]),
+				"amount_inclusive": flt(ln["amount_inclusive"]),
+			}
+			for ln in intent["lines"]
+		],
+		"price_list": intent.get("price_list"),
+	}
+	# Electricity settle still reads these
+	if intent["handler"] == "Electricity":
+		from propms.api.v1.electricity.electricity import get_electricity_catalog
+
+		catalog = get_electricity_catalog()
+		extra["electricity_purchase"] = True
+		by_code = {ln["item_code"]: flt(ln["amount_inclusive"]) for ln in intent["lines"]}
+		extra["tanesco_amount"] = by_code.get(catalog["item_tanesco"], 0)
+		extra["generator_amount"] = by_code.get(catalog["item_generator"], 0)
+
+	return start_selcom_checkout(
+		reference_doctype="Lease" if billing.get("lease") else "Customer",
+		reference_name=ref_name,
+		customer=billing["customer"],
+		amount=pay_amount,
+		currency="TZS",
+		payment_workflow=workflow,
+		payment_method=intent.get("payment_method") or "MOBILE_MONEY",
+		phone_number=intent.get("phone_number"),
+		buyer_remarks="{0} purchase".format(intent["title"]),
+		merchant_remarks="Viva Towers {0}".format(intent["title"]),
+		extra_raw_request=extra,
+	)

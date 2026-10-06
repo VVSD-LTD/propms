@@ -93,23 +93,27 @@
    "reqd": 1
   },
   {
+   "collapsible": 1,
+   "collapsible_depends_on": "",
    "fieldname": "erp_mapping_section",
    "fieldtype": "Section Break",
-   "label": "ERP Item Mapping"
+   "label": "ERP Item Mapping (legacy — use POS Amount Service)"
   },
   {
    "default": "Electricity - TANESCO",
-   "description": "Sales Invoice item used for TANESCO (t1) top-ups. Change here if Viva renames the Item.",
+   "description": "Legacy fallback only. Configure items on POS Amount Service (Electricity).",
    "fieldname": "item_tanesco",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "TANESCO Item",
    "options": "Item"
   },
   {
    "default": "Electricity - Generator",
-   "description": "Sales Invoice item used for Generator (t2) top-ups.",
+   "description": "Legacy fallback only. Configure items on POS Amount Service (Electricity).",
    "fieldname": "item_generator",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Generator Item",
    "options": "Item"
   },
@@ -119,9 +123,10 @@
   },
   {
    "default": "Electricity",
-   "description": "Value written to Sales Invoice Lease Item for electricity invoices.",
+   "description": "Legacy unused. SI category tag is hardcoded as Electricity in code.",
    "fieldname": "lease_item_electricity",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "Lease Item (Electricity)"
   },
   {

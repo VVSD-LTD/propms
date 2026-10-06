@@ -11,8 +11,10 @@ class AfritrackSettings(Document):
 
 @frappe.whitelist()
 def sync_meters_from_trackspm():
-	"""Desk action: sync TrackSPM units/list → Meter.trackspm_meter_id."""
+	"""Desk action: Afritrack Meter Sync — full /units/list JSON + Meter ID update."""
 	frappe.only_for("System Manager")
-	from propms.api.v1.electricity.trackspm import sync_meters_from_trackspm as _sync
+	from propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync import (
+		sync_now,
+	)
 
-	return _sync()
+	return sync_now(create_missing=0)

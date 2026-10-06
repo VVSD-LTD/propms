@@ -21,6 +21,7 @@ from frappe.utils import cint, flt, now_datetime
 from propms.api.v1.electricity.electricity import (
 	_invoice_split_amounts,
 	get_electricity_catalog,
+	invoice_foreign_item_codes,
 )
 from propms.api.v1.electricity.trackspm import TrackSPMError, create_utility_bill, get_settings
 
@@ -38,19 +39,31 @@ def _format_trackspm_response(payload):
 
 
 def purchase_electricity_token(invoice_name, payment_transaction=None, force_all=False):
-	"""Called after successful electricity payment. Loads t1/t2 on TrackSPM."""
+	"""Called after successful electricity payment. Loads t1/t2 on TrackSPM.
+
+	Security: TrackSPM only receives amounts for POS Amount Service (Electricity)
+	catalog items. Other SI lines are ignored (mixed carts allowed).
+	"""
 	if not invoice_name or not frappe.db.exists("Sales Invoice", invoice_name):
 		return {"status": "skipped", "reason": "invoice_not_found"}
 
-	lease_item = frappe.db.get_value("Sales Invoice", invoice_name, "lease_item")
 	meter = None
 	if frappe.get_meta("Sales Invoice").has_field("meter_number"):
 		meter = frappe.db.get_value("Sales Invoice", invoice_name, "meter_number")
 
-	if lease_item != get_electricity_catalog()["lease_item"]:
-		return {"status": "skipped", "reason": "not_electricity_invoice"}
-
+	catalog = get_electricity_catalog()
+	foreign = invoice_foreign_item_codes(invoice_name)
 	tanesco_amount, generator_amount = _invoice_split_amounts(invoice_name)
+
+	# Gate on catalog electricity amounts — not lease_item purity / item exclusivity
+	if flt(tanesco_amount) <= 0 and flt(generator_amount) <= 0:
+		return {
+			"status": "skipped",
+			"reason": "no_catalog_electricity_amounts",
+			"foreign_items_ignored": foreign,
+			"message": "Invoice has no TANESCO/Generator catalog amounts — nothing sent to TrackSPM",
+		}
+
 	log = _get_or_create_log(
 		invoice_name,
 		meter_serial=meter,
@@ -58,6 +71,17 @@ def purchase_electricity_token(invoice_name, payment_transaction=None, force_all
 		generator_amount=generator_amount,
 		payment_transaction=payment_transaction,
 	)
+	if foreign:
+		# Audit only — never top up non-catalog lines
+		note = "Ignored non-electricity SI items (not sent to TrackSPM): {0}".format(
+			", ".join(foreign)
+		)
+		existing = (log.error_message or "").strip()
+		if note not in existing:
+			log.error_message = (existing + "\n" + note).strip() if existing else note
+			log.save(ignore_permissions=True)
+			frappe.db.commit()
+
 
 	# Idempotent: never re-buy when this SI already loaded successfully
 	if (log.status or "") == "Success" and (log.wt_id_t1 or log.wt_id_t2) and not force_all:
@@ -155,10 +179,13 @@ def resolve_trackspm_meter_id(meter_serial, settings=None):
 
 	trackspm_id = None
 	if frappe.db.exists("Meter", meter_serial):
+		# Prefer meta field; fall back to raw column if Custom Field was wiped
 		if frappe.get_meta("Meter").has_field("trackspm_meter_id"):
 			trackspm_id = frappe.db.get_value("Meter", meter_serial, "trackspm_meter_id")
-			if trackspm_id:
-				trackspm_id = str(trackspm_id).strip()
+		elif frappe.db.has_column("Meter", "trackspm_meter_id"):
+			trackspm_id = frappe.db.get_value("Meter", meter_serial, "trackspm_meter_id")
+		if trackspm_id:
+			trackspm_id = str(trackspm_id).strip()
 
 	# Bootstrap: allowlisted test meter may use Settings.allowed_meter_id before sync
 	if not trackspm_id and allowed_serial and meter_serial == allowed_serial and allowed_meter_id:

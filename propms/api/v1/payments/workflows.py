@@ -20,6 +20,7 @@ WORKFLOW_SALES_INVOICE_PAYMENT = "sales_invoice_payment"
 WORKFLOW_SALES_ORDER_POS = "sales_order_pos"
 WORKFLOW_ELECTRICITY_POS = "electricity_pos"
 WORKFLOW_MAINTENANCE_POS = "maintenance_pos"
+WORKFLOW_AMOUNT_POS = "amount_pos"
 
 # Human-friendly labels for Desk
 WORKFLOW_LABELS = {
@@ -27,6 +28,7 @@ WORKFLOW_LABELS = {
     WORKFLOW_SALES_ORDER_POS: "Sales Order POS Checkout",
     WORKFLOW_ELECTRICITY_POS: "Electricity POS Checkout",
     WORKFLOW_MAINTENANCE_POS: "Maintenance POS Checkout",
+    WORKFLOW_AMOUNT_POS: "Amount Service POS Checkout",
 }
 
 

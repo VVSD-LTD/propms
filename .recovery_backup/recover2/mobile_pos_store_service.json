@@ -1,0 +1,91 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-09-24 11:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "sort_order",
+  "label",
+  "service_type",
+  "item",
+  "special_key",
+  "purchase_mode"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled",
+   "columns": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "sort_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Sort Order",
+   "columns": 1
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Label",
+   "columns": 2
+  },
+  {
+   "default": "Item",
+   "fieldname": "service_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Service Type",
+   "options": "Item\nSpecial",
+   "reqd": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item",
+   "columns": 2
+  },
+  {
+   "fieldname": "special_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Special Key",
+   "description": "For Special rows use: electricity",
+   "columns": 1
+  },
+  {
+   "default": "qty",
+   "fieldname": "purchase_mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Purchase Mode",
+   "options": "qty\namount",
+   "reqd": 1,
+   "columns": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-24 11:15:00.000000",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Mobile POS Store Service",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "sort_order",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

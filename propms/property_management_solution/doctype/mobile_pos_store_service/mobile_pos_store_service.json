@@ -11,75 +11,83 @@
   "label",
   "service_type",
   "item",
-  "special_key",
+  "amount_service",
   "purchase_mode"
  ],
  "fields": [
   {
+   "columns": 1,
    "default": "1",
    "fieldname": "enabled",
    "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Enabled",
-   "columns": 1
+   "label": "Enabled"
   },
   {
+   "columns": 1,
    "default": "0",
    "fieldname": "sort_order",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Sort Order",
-   "columns": 1
+   "label": "Sort Order"
   },
   {
+   "columns": 2,
    "fieldname": "label",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Label",
-   "columns": 2
+   "label": "Label"
   },
   {
+   "columns": 1,
    "default": "Item",
+   "description": "Item = buy a Maintenance POS product by qty. Amount = pay an amount split across a POS Amount Service catalog (Electricity, Cooking Gas, …).",
    "fieldname": "service_type",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Service Type",
-   "options": "Item\nSpecial",
-   "reqd": 1,
-   "columns": 1
+   "options": "Item\nAmount",
+   "reqd": 1
   },
   {
+   "columns": 2,
+   "depends_on": "eval:doc.service_type=='Item'",
    "fieldname": "item",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item",
-   "options": "Item",
    "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Maintenance POS\"],[\"Item\",\"disabled\",\"=\",0],[\"Item\",\"is_sales_item\",\"=\",1]]",
-   "columns": 2
+   "mandatory_depends_on": "eval:doc.service_type=='Item'",
+   "options": "Item"
   },
   {
-   "fieldname": "special_key",
-   "fieldtype": "Data",
+   "columns": 2,
+   "depends_on": "eval:doc.service_type=='Amount'",
+   "description": "Catalog for this amount service (create Cooking Gas, Electricity, etc. under POS Amount Service).",
+   "fieldname": "amount_service",
+   "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Special Key",
-   "description": "For Special rows use: electricity",
-   "columns": 1
+   "label": "Amount Service",
+   "mandatory_depends_on": "eval:doc.service_type=='Amount'",
+   "options": "POS Amount Service"
   },
   {
+   "columns": 1,
    "default": "qty",
+   "description": "Forced to qty for Item, amount for Amount.",
    "fieldname": "purchase_mode",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Purchase Mode",
    "options": "qty\namount",
-   "reqd": 1,
-   "columns": 1
+   "read_only": 1,
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 0,
  "istable": 1,
  "links": [],
- "modified": "2026-09-24 11:15:00.000000",
+ "modified": "2026-10-06 10:25:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Mobile POS Store Service",

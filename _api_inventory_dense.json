@@ -1,0 +1,3229 @@
+{
+  "total": 201,
+  "call": "/api/method/<method_path>",
+  "ALL_meaning": "@frappe.whitelist() with no methods= (all HTTP methods allowed)",
+  "guest": [
+    "propms.api.mobile.request_password_reset_otp",
+    "propms.api.mobile.verify_otp",
+    "propms.api.mobile.reset_password_after_otp",
+    "propms.api.mobile.verify_otp_and_reset_password",
+    "propms.api.mobile.get_payment_methods",
+    "propms.api.mobile.selcom_ipn_webhook",
+    "propms.api.v1.invoices.invoices.selcom_payment_webhook",
+    "propms.api.v1.payments.services.get_payment_methods",
+    "propms.api.v1.payments.webhook.selcom_ipn_webhook"
+  ],
+  "domains": {
+    "auth": [
+      {
+        "path": "propms.api.mobile.change_user_password",
+        "methods": "ALL",
+        "fn": "change_user_password",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "old_password",
+          "new_password"
+        ],
+        "doc": "Change the logged-in user's password (compat endpoint for mobile app).",
+        "guest": false,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.mobile.cleanup_expired_otps",
+        "methods": "ALL",
+        "fn": "cleanup_expired_otps",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": "Cleanup expired and old OTP rows.",
+        "guest": false,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.mobile.get_customer_user_info",
+        "methods": "ALL",
+        "fn": "get_customer_user_info",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": "PropMS-compatible replacement for real_estate_support_system.api.mobile.get_customer_user_info.",
+        "guest": false,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.mobile.request_password_reset_otp",
+        "methods": "ALL",
+        "fn": "request_password_reset_otp",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "email=None"
+        ],
+        "doc": "Request OTP for password reset (guest-safe, enumeration-safe).",
+        "guest": true,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.mobile.reset_password_after_otp",
+        "methods": "ALL",
+        "fn": "reset_password_after_otp",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "email=None",
+          "new_password=None"
+        ],
+        "doc": "Reset password after successful OTP verification (3-screen flow).",
+        "guest": true,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.mobile.set_user_profile_image",
+        "methods": "ALL",
+        "fn": "set_user_profile_image",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "file_data=None",
+          "filename=None",
+          "file_url=None"
+        ],
+        "doc": "Set the logged-in user's profile image (compat endpoint for mobile app).",
+        "guest": false,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.mobile.update_user_image",
+        "methods": "ALL",
+        "fn": "update_user_image",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "params"
+        ],
+        "doc": "Update a user's profile image using existing file_url (compat endpoint).",
+        "guest": false,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.mobile.verify_otp",
+        "methods": "ALL",
+        "fn": "verify_otp",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "email=None",
+          "otp=None"
+        ],
+        "doc": "Verify OTP only (for 3-screen flow).",
+        "guest": true,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.mobile.verify_otp_and_reset_password",
+        "methods": "ALL",
+        "fn": "verify_otp_and_reset_password",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "email=None",
+          "otp=None",
+          "new_password=None"
+        ],
+        "doc": "Combined 2-screen flow: verify OTP and reset password in one call.",
+        "guest": true,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.v1.Auth.auth.accept_terms_and_conditions",
+        "methods": "ALL",
+        "fn": "accept_terms_and_conditions",
+        "file": "propms/api/v1/Auth/auth.py",
+        "params": [
+          "user_identifier=None"
+        ],
+        "doc": "Mark mobile app terms accepted. Mobile VIVA Tenant: Tenant Details from Lease (Tenant fallback).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.Auth.auth.check_first_login",
+        "methods": "ALL",
+        "fn": "check_first_login",
+        "file": "propms/api/v1/Auth/auth.py",
+        "params": [],
+        "doc": "Check if the logged-in app user must change password on first login.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.Auth.auth.check_terms_acceptance",
+        "methods": "ALL",
+        "fn": "check_terms_acceptance",
+        "file": "propms/api/v1/Auth/auth.py",
+        "params": [
+          "user_identifier=None"
+        ],
+        "doc": "Check if the user has accepted the mobile app terms & conditions.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.Auth.auth.get_terms_and_conditions",
+        "methods": "ALL",
+        "fn": "get_terms_and_conditions",
+        "file": "propms/api/v1/Auth/auth.py",
+        "params": [
+          "user_identifier=None"
+        ],
+        "doc": "Return latest mobile Terms & Conditions and acceptance state. Mobile VIVA Tenant uses Tenant Details from Lease (Tenant fallback).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.Auth.auth.get_user_roles",
+        "methods": [
+          "POST"
+        ],
+        "fn": "get_user_roles",
+        "file": "propms/api/v1/Auth/auth.py",
+        "params": [
+          "user=None"
+        ],
+        "doc": "Return roles and user_type for a user. POST with user email (defaults to logged-in user).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.Auth.auth.set_initial_password",
+        "methods": "ALL",
+        "fn": "set_initial_password",
+        "file": "propms/api/v1/Auth/auth.py",
+        "params": [
+          "new_password=None"
+        ],
+        "doc": "Set password on first login (admin provided initial credentials).",
+        "guest": false,
+        "layer": "v1"
+      }
+    ],
+    "water": [
+      {
+        "path": "propms.api.mobile.add_to_cart",
+        "methods": [
+          "POST"
+        ],
+        "fn": "add_to_cart",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "item_code=None",
+          "quantity=1",
+          "delivery_instructions=None",
+          "lease=None"
+        ],
+        "doc": "Add a water product to cart as a draft Sales Order (one item per SO).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.water.water.add_to_cart"
+      },
+      {
+        "path": "propms.api.mobile.checkout_water_order",
+        "methods": [
+          "POST"
+        ],
+        "fn": "checkout_water_order",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "sales_order=None",
+          "payment_method='MOBILE_MONEY'",
+          "phone_number=None",
+          "amount=None"
+        ],
+        "doc": "Pay one water cart Sales Order via Selcom (no bulk pay).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.water.water.checkout_water_order"
+      },
+      {
+        "path": "propms.api.mobile.get_cart",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_cart",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "lease=None"
+        ],
+        "doc": "List draft water cart Sales Orders for the authenticated tenant.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.water.water.get_cart"
+      },
+      {
+        "path": "propms.api.mobile.get_drinking_water_products",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_drinking_water_products",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": "Fetch active drinking water items for the mobile catalog.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.water.water.get_drinking_water_products"
+      },
+      {
+        "path": "propms.api.mobile.order_drinking_water",
+        "methods": [
+          "POST"
+        ],
+        "fn": "order_drinking_water",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "item_code=None",
+          "quantity=1",
+          "delivery_instructions=None",
+          "lease=None"
+        ],
+        "doc": "Adds item to water cart (draft Sales Order). Prefer add_to_cart.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.water.water.add_to_cart"
+      },
+      {
+        "path": "propms.api.mobile.remove_from_cart",
+        "methods": [
+          "POST"
+        ],
+        "fn": "remove_from_cart",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "sales_order=None"
+        ],
+        "doc": "Remove a draft water cart item (delete draft Sales Order).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.water.water.remove_from_cart"
+      },
+      {
+        "path": "propms.api.mobile.update_cart_item",
+        "methods": [
+          "POST"
+        ],
+        "fn": "update_cart_item",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "sales_order=None",
+          "quantity=None",
+          "delivery_instructions=None"
+        ],
+        "doc": "Update quantity (and optional notes) on a draft water cart Sales Order.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.water.water.update_cart_item"
+      },
+      {
+        "path": "propms.api.v1.water.water.add_to_cart",
+        "methods": [
+          "POST"
+        ],
+        "fn": "add_to_cart",
+        "file": "propms/api/v1/water/water.py",
+        "params": [
+          "item_code=None",
+          "quantity=1",
+          "delivery_instructions=None",
+          "lease=None"
+        ],
+        "doc": "Add a water product to cart as a draft Sales Order (one item per SO).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.water.water.checkout_water_order",
+        "methods": [
+          "POST"
+        ],
+        "fn": "checkout_water_order",
+        "file": "propms/api/v1/water/water.py",
+        "params": [
+          "sales_order=None",
+          "payment_method='MOBILE_MONEY'",
+          "phone_number=None",
+          "amount=None"
+        ],
+        "doc": "Pay one water cart Sales Order via Selcom (no bulk pay).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.water.water.get_cart",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_cart",
+        "file": "propms/api/v1/water/water.py",
+        "params": [
+          "lease=None"
+        ],
+        "doc": "List draft water cart Sales Orders for the authenticated tenant.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.water.water.get_drinking_water_products",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_drinking_water_products",
+        "file": "propms/api/v1/water/water.py",
+        "params": [],
+        "doc": "Fetch active drinking water items for the mobile catalog.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.water.water.order_drinking_water",
+        "methods": [
+          "POST"
+        ],
+        "fn": "order_drinking_water",
+        "file": "propms/api/v1/water/water.py",
+        "params": [
+          "item_code=None",
+          "quantity=1",
+          "delivery_instructions=None",
+          "lease=None"
+        ],
+        "doc": "Alias for add_to_cart (replaces the old immediate Sales Invoice workflow).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.water.water.remove_from_cart",
+        "methods": [
+          "POST"
+        ],
+        "fn": "remove_from_cart",
+        "file": "propms/api/v1/water/water.py",
+        "params": [
+          "sales_order=None"
+        ],
+        "doc": "Remove a draft water cart item (delete draft Sales Order).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.water.water.update_cart_item",
+        "methods": [
+          "POST"
+        ],
+        "fn": "update_cart_item",
+        "file": "propms/api/v1/water/water.py",
+        "params": [
+          "sales_order=None",
+          "quantity=None",
+          "delivery_instructions=None"
+        ],
+        "doc": "Update quantity (and optional notes) on a draft water cart Sales Order.",
+        "guest": false,
+        "layer": "v1"
+      }
+    ],
+    "payments": [
+      {
+        "path": "propms.api.mobile.cancel_payment",
+        "methods": [
+          "POST"
+        ],
+        "fn": "cancel_payment",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "order_id=None"
+        ],
+        "doc": "Cancel an active pending payment order.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.payments.services.cancel_payment"
+      },
+      {
+        "path": "propms.api.mobile.delete_stored_card",
+        "methods": [
+          "POST",
+          "DELETE"
+        ],
+        "fn": "delete_stored_card",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "card_token=None"
+        ],
+        "doc": "Remove a previously saved card token from Selcom using resource id or token.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.payments.services.delete_stored_card"
+      },
+      {
+        "path": "propms.api.mobile.get_payment_methods",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_payment_methods",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": "Return list of enabled payment methods and configurations for the mobile app.",
+        "guest": true,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.payments.services.get_payment_methods"
+      },
+      {
+        "path": "propms.api.mobile.get_payment_status",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_payment_status",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "order_id=None",
+          "transaction_id=None"
+        ],
+        "doc": "Query current payment status from local DB and Selcom Gateway.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.payments.services.get_payment_status"
+      },
+      {
+        "path": "propms.api.mobile.get_stored_cards",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_stored_cards",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": "Retrieve list of saved card tokens for the authenticated tenant user.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.payments.services.get_stored_cards"
+      },
+      {
+        "path": "propms.api.mobile.initiate_payment",
+        "methods": [
+          "POST"
+        ],
+        "fn": "initiate_payment",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "invoice_name=None",
+          "amount=None",
+          "payment_method='MOBILE_MONEY'",
+          "phone_number=None"
+        ],
+        "doc": "Initiate a Selcom payment for a Sales Invoice (rent / utility path).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.payments.services.initiate_payment"
+      },
+      {
+        "path": "propms.api.mobile.initiate_reference_payment",
+        "methods": [
+          "POST"
+        ],
+        "fn": "initiate_reference_payment",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "reference_doctype=None",
+          "reference_name=None",
+          "payment_workflow=None",
+          "amount=None",
+          "payment_method='MOBILE_MONEY'",
+          "phone_number=None"
+        ],
+        "doc": "Generic Selcom initiate for any supported reference + workflow.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.payments.services.initiate_reference_payment"
+      },
+      {
+        "path": "propms.api.mobile.pay_with_stored_card",
+        "methods": [
+          "POST"
+        ],
+        "fn": "pay_with_stored_card",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "invoice_name=None",
+          "card_token=None",
+          "amount=None",
+          "cvv=None"
+        ],
+        "doc": "Initiate and process a payment using a previously saved/tokenized card.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.payments.services.pay_with_stored_card"
+      },
+      {
+        "path": "propms.api.mobile.selcom_ipn_webhook",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "selcom_ipn_webhook",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "*args",
+          "**kwargs"
+        ],
+        "doc": "Public Webhook / IPN Receiver for Selcom Payment Gateway.",
+        "guest": true,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.payments.webhook.selcom_ipn_webhook"
+      },
+      {
+        "path": "propms.api.v1.payments.services.cancel_payment",
+        "methods": [
+          "POST"
+        ],
+        "fn": "cancel_payment",
+        "file": "propms/api/v1/payments/services.py",
+        "params": [
+          "order_id=None"
+        ],
+        "doc": "Cancel an active pending payment order.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.payments.services.delete_stored_card",
+        "methods": [
+          "POST",
+          "DELETE"
+        ],
+        "fn": "delete_stored_card",
+        "file": "propms/api/v1/payments/services.py",
+        "params": [
+          "card_token=None",
+          "id=None"
+        ],
+        "doc": "Remove a previously saved card token from Selcom using resource id or token.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.payments.services.get_payment_methods",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_payment_methods",
+        "file": "propms/api/v1/payments/services.py",
+        "params": [],
+        "doc": "Return list of enabled payment methods and configurations for the mobile app.",
+        "guest": true,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.payments.services.get_payment_status",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_payment_status",
+        "file": "propms/api/v1/payments/services.py",
+        "params": [
+          "order_id=None",
+          "transaction_id=None"
+        ],
+        "doc": "Query current payment status from local DB and Selcom Gateway.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.payments.services.get_stored_cards",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_stored_cards",
+        "file": "propms/api/v1/payments/services.py",
+        "params": [],
+        "doc": "Retrieve list of saved card tokens for the authenticated tenant user.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.payments.services.initiate_payment",
+        "methods": [
+          "POST"
+        ],
+        "fn": "initiate_payment",
+        "file": "propms/api/v1/payments/services.py",
+        "params": [
+          "invoice_name=None",
+          "amount=None",
+          "payment_method='MOBILE_MONEY'",
+          "phone_number=None"
+        ],
+        "doc": "Initiate a Selcom payment for a Sales Invoice (rent / utility path).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.payments.services.initiate_reference_payment",
+        "methods": [
+          "POST"
+        ],
+        "fn": "initiate_reference_payment",
+        "file": "propms/api/v1/payments/services.py",
+        "params": [
+          "reference_doctype=None",
+          "reference_name=None",
+          "payment_workflow=None",
+          "amount=None",
+          "payment_method='MOBILE_MONEY'",
+          "phone_number=None"
+        ],
+        "doc": "Generic Selcom initiate for any supported reference + workflow.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.payments.services.pay_with_stored_card",
+        "methods": [
+          "POST"
+        ],
+        "fn": "pay_with_stored_card",
+        "file": "propms/api/v1/payments/services.py",
+        "params": [
+          "invoice_name=None",
+          "card_token=None",
+          "amount=None",
+          "cvv=None"
+        ],
+        "doc": "Initiate and process a payment using a previously saved/tokenized card.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.payments.webhook.selcom_ipn_webhook",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "selcom_ipn_webhook",
+        "file": "propms/api/v1/payments/webhook.py",
+        "params": [
+          "*args",
+          "**kwargs"
+        ],
+        "doc": "Public Webhook / IPN Receiver for Selcom Payment Gateway.",
+        "guest": true,
+        "layer": "v1"
+      }
+    ],
+    "invoices": [
+      {
+        "path": "propms.api.mobile.download_invoice_pdf",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "download_invoice_pdf",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "invoice_name=None"
+        ],
+        "doc": "Stream the official PDF representation of the Sales Invoice to the mobile app.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.invoices.invoices.download_invoice_pdf"
+      },
+      {
+        "path": "propms.api.mobile.download_receipt_pdf",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "download_receipt_pdf",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "invoice_name=None",
+          "payment_entry_name=None"
+        ],
+        "doc": "Stream the official PDF representation of the Payment Receipt (Payment Entry) to the mobile app.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.invoices.invoices.download_receipt_pdf"
+      },
+      {
+        "path": "propms.api.mobile.get_invoice_details",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_invoice_details",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "invoice_name=None"
+        ],
+        "doc": "Fetch comprehensive invoice details including line items, taxes, and payment history.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.invoices.invoices.get_invoice_details"
+      },
+      {
+        "path": "propms.api.mobile.get_tenant_invoices",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_tenant_invoices",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "status='all'",
+          "lease=None",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": "Fetch all Sales Invoices for the authenticated tenant mobile user.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.invoices.invoices.get_tenant_invoices"
+      },
+      {
+        "path": "propms.api.mobile.initiate_invoice_payment",
+        "methods": [
+          "POST"
+        ],
+        "fn": "initiate_invoice_payment",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "invoice_name=None",
+          "amount=None",
+          "phone_number=None",
+          "payment_channel='SELCOM_PUSH'"
+        ],
+        "doc": "Prepare and initiate payment for an outstanding invoice with Selcom.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.invoices.invoices.initiate_invoice_payment"
+      },
+      {
+        "path": "propms.api.v1.invoices.invoices.download_invoice_pdf",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "download_invoice_pdf",
+        "file": "propms/api/v1/invoices/invoices.py",
+        "params": [
+          "invoice_name=None"
+        ],
+        "doc": "Stream the official PDF representation of the Sales Invoice to the mobile app.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.invoices.invoices.download_receipt_pdf",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "download_receipt_pdf",
+        "file": "propms/api/v1/invoices/invoices.py",
+        "params": [
+          "invoice_name=None",
+          "payment_entry_name=None"
+        ],
+        "doc": "Stream the official PDF representation of the Payment Receipt (Payment Entry) to the mobile app.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.invoices.invoices.get_invoice_details",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_invoice_details",
+        "file": "propms/api/v1/invoices/invoices.py",
+        "params": [
+          "invoice_name=None"
+        ],
+        "doc": "Fetch comprehensive invoice details including line items, taxes, and payment history.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.invoices.invoices.get_tenant_invoices",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_tenant_invoices",
+        "file": "propms/api/v1/invoices/invoices.py",
+        "params": [
+          "status='all'",
+          "lease=None",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": "Fetch all Sales Invoices for the authenticated tenant mobile user.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.invoices.invoices.initiate_invoice_payment",
+        "methods": [
+          "POST"
+        ],
+        "fn": "initiate_invoice_payment",
+        "file": "propms/api/v1/invoices/invoices.py",
+        "params": [
+          "invoice_name=None",
+          "amount=None",
+          "phone_number=None",
+          "payment_channel='SELCOM_PUSH'"
+        ],
+        "doc": "Prepare and initiate payment for an outstanding invoice with Selcom.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.invoices.invoices.selcom_payment_webhook",
+        "methods": [
+          "POST"
+        ],
+        "fn": "selcom_payment_webhook",
+        "file": "propms/api/v1/invoices/invoices.py",
+        "params": [],
+        "doc": "Webhook receiver for Selcom payment confirmations.",
+        "guest": true,
+        "layer": "v1"
+      }
+    ],
+    "job_card_tickets": [
+      {
+        "path": "propms.api.mobile.assign_subcontractor",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "assign_subcontractor",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None",
+          "assigned_to=None"
+        ],
+        "doc": "Assign a subcontractor to an Issue by setting Issue.sub_contractor (Supplier).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.assign_subcontractor"
+      },
+      {
+        "path": "propms.api.mobile.assign_ticket_to_staff",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "assign_ticket_to_staff",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None",
+          "assigned_to=None"
+        ],
+        "doc": "Assign an Issue to a maintenance staff by setting Issue.person_in_charge (Employee).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.assign_ticket_to_staff"
+      },
+      {
+        "path": "propms.api.mobile.change_ticket_priority",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "change_ticket_priority",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None",
+          "ticket_priority=None"
+        ],
+        "doc": "Change Issue.priority for a ticket.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.change_ticket_priority"
+      },
+      {
+        "path": "propms.api.mobile.change_ticket_status",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "change_ticket_status",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None",
+          "status=None",
+          "reason=None",
+          "defect_found=None",
+          "resolution_details=None"
+        ],
+        "doc": "Universal status transition endpoint supporting all job card statuses.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.change_ticket_status"
+      },
+      {
+        "path": "propms.api.mobile.close_ticket_with_feedback",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "close_ticket_with_feedback",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None",
+          "rating=None",
+          "customer_feedback=None"
+        ],
+        "doc": "Close a ticket and optionally submit customer feedback.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.close_ticket_with_feedback"
+      },
+      {
+        "path": "propms.api.mobile.create_ticket",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "create_ticket",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "subject=None",
+          "description=None",
+          "property_name=None",
+          "issue_type=None"
+        ],
+        "doc": "Create an Issue (jobcard/ticket) from the mobile app.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.create_ticket"
+      },
+      {
+        "path": "propms.api.mobile.edit_ticket_communication",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "edit_ticket_communication",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id",
+          "communication_idx",
+          "new_message_content",
+          "mentioned_emails=None"
+        ],
+        "doc": "Edit a Support Communication message (WhatsApp-style edit).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.edit_ticket_communication"
+      },
+      {
+        "path": "propms.api.mobile.get_issue_types",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_issue_types",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": "Return list of Issue Type options from the Issue Type doctype (for dropdowns/filters).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.get_issue_types"
+      },
+      {
+        "path": "propms.api.mobile.get_mentionable_support_staff",
+        "methods": "ALL",
+        "fn": "get_mentionable_support_staff",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None"
+        ],
+        "doc": "Backward-compatible wrapper for mentionable support staff.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.get_mentionable_support_staff"
+      },
+      {
+        "path": "propms.api.mobile.get_subcontractor_list",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_subcontractor_list",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": "Return list of subcontractor app users for assignment. Maintenance-only.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.get_subcontractor_list"
+      },
+      {
+        "path": "propms.api.mobile.get_support_staff_list",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_support_staff_list",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": "Return list of enabled Mobile Technicians for ticket assignment.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.get_support_staff_list"
+      },
+      {
+        "path": "propms.api.mobile.get_ticket_communications",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_ticket_communications",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id",
+          "limit=20",
+          "offset=0",
+          "channel=None"
+        ],
+        "doc": "Get communications for a specific Issue (mobile-optimised).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.get_ticket_communications"
+      },
+      {
+        "path": "propms.api.mobile.get_ticket_priorities",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_ticket_priorities",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None"
+        ],
+        "doc": "Return all Issue Priority options and current Issue.priority for a ticket.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.get_ticket_priorities"
+      },
+      {
+        "path": "propms.api.mobile.get_user_tickets",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_user_tickets",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "status_filter=None",
+          "limit=50",
+          "offset=0"
+        ],
+        "doc": "Return Issues for the logged-in user (mobile jobcards/tickets).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.get_user_tickets"
+      },
+      {
+        "path": "propms.api.mobile.initialize_app_websocket",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "initialize_app_websocket",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": "Initialize websocket connection and subscribe to relevant rooms for the logged-in user.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.initialize_app_websocket"
+      },
+      {
+        "path": "propms.api.mobile.mark_communications_as_read",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "mark_communications_as_read",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None",
+          "issue_id=None",
+          "communication_indices=None"
+        ],
+        "doc": "Mark specific or all unread communications on a ticket as read.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.mark_communications_as_read"
+      },
+      {
+        "path": "propms.api.mobile.put_ticket_on_hold",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "put_ticket_on_hold",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None",
+          "hold_reason=None"
+        ],
+        "doc": "Put a ticket on hold. Maintenance staff or Admin only.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.put_ticket_on_hold"
+      },
+      {
+        "path": "propms.api.mobile.resolve_ticket",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "resolve_ticket",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None",
+          "defect_found=None",
+          "resolution_details=None"
+        ],
+        "doc": "Mark a ticket as Resolved. Maintenance staff, technician, or Admin.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.resolve_ticket"
+      },
+      {
+        "path": "propms.api.mobile.resume_ticket_from_hold",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "resume_ticket_from_hold",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None"
+        ],
+        "doc": "Resume a ticket from On Hold back to Open. Maintenance staff or Admin only.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.resume_ticket_from_hold"
+      },
+      {
+        "path": "propms.api.mobile.send_ticket_communication",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "send_ticket_communication",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "issue_id=None",
+          "ticket_id=None",
+          "message_content=None",
+          "image_attachment=None",
+          "attachment=None",
+          "file_attachments=None",
+          "video_attachment=None",
+          "video=None",
+          "reply_to_idx=None",
+          "mentioned_emails=None",
+          "channel=None",
+          "communication_channel=None"
+        ],
+        "doc": "Send a message to an Issue using the Support Communication child table.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.send_ticket_communication"
+      },
+      {
+        "path": "propms.api.mobile.send_typing_indicator",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "send_typing_indicator",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id",
+          "is_typing=True"
+        ],
+        "doc": "Send a transient 'user is typing' indicator for a ticket (no DB write).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.send_typing_indicator"
+      },
+      {
+        "path": "propms.api.mobile.submit_tenant_rating_and_feedback",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "submit_tenant_rating_and_feedback",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id=None",
+          "rating=None",
+          "customer_feedback=None"
+        ],
+        "doc": "Allow a tenant to submit a rating and optional feedback for a Resolved ticket.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.submit_tenant_rating_and_feedback"
+      },
+      {
+        "path": "propms.api.mobile.subscribe_to_ticket_room",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "subscribe_to_ticket_room",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id"
+        ],
+        "doc": "Subscribe to a specific Issue room for real-time updates (mobile expects ticket_id).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.subscribe_to_ticket_room"
+      },
+      {
+        "path": "propms.api.mobile.unsubscribe_from_ticket_room",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "unsubscribe_from_ticket_room",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "ticket_id"
+        ],
+        "doc": "Unsubscribe from a specific Issue room (mobile still passes ticket_id).",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.job_card.job_card.unsubscribe_from_ticket_room"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.assign_subcontractor",
+        "methods": [
+          "POST"
+        ],
+        "fn": "assign_subcontractor",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "assigned_to=None"
+        ],
+        "doc": "Assign a subcontractor to an Issue by setting Issue.sub_contractor (Supplier).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.assign_ticket_to_staff",
+        "methods": [
+          "POST"
+        ],
+        "fn": "assign_ticket_to_staff",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "assigned_to=None"
+        ],
+        "doc": "Assign an Issue to a maintenance staff by setting Issue.person_in_charge (Employee).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.change_ticket_priority",
+        "methods": [
+          "POST"
+        ],
+        "fn": "change_ticket_priority",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "ticket_priority=None"
+        ],
+        "doc": "Change Issue.priority for a ticket.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.change_ticket_status",
+        "methods": [
+          "POST"
+        ],
+        "fn": "change_ticket_status",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "status=None",
+          "reason=None",
+          "defect_found=None",
+          "resolution_details=None"
+        ],
+        "doc": "Universal status transition endpoint supporting all job card statuses.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.check_person_in_charge",
+        "methods": [
+          "POST"
+        ],
+        "fn": "check_person_in_charge",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None"
+        ],
+        "doc": "Check whether an Issue has been assigned (person_in_charge set).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.check_subcontractor",
+        "methods": [
+          "POST"
+        ],
+        "fn": "check_subcontractor",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None"
+        ],
+        "doc": "Check whether an Issue has a subcontractor assigned (sub_contractor set). Maintenance-only.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.close_ticket_with_feedback",
+        "methods": [
+          "POST"
+        ],
+        "fn": "close_ticket_with_feedback",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "rating=None",
+          "customer_feedback=None"
+        ],
+        "doc": "Close a ticket and optionally submit customer feedback.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.create_ticket",
+        "methods": "ALL",
+        "fn": "create_ticket",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "subject=None",
+          "description=None",
+          "property_name=None",
+          "issue_type=None"
+        ],
+        "doc": "Create an Issue (jobcard/ticket) from the mobile app.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.edit_ticket_communication",
+        "methods": "ALL",
+        "fn": "edit_ticket_communication",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id",
+          "communication_idx",
+          "new_message_content",
+          "mentioned_emails=None"
+        ],
+        "doc": "Edit a Support Communication message (WhatsApp-style edit).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.get_issue_types",
+        "methods": "ALL",
+        "fn": "get_issue_types",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [],
+        "doc": "Return list of Issue Type options from the Issue Type doctype (for dropdowns/filters).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.get_job_card_statuses",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_job_card_statuses",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [],
+        "doc": "Return list of all valid job card / ticket statuses.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.get_mentionable_support_staff",
+        "methods": "ALL",
+        "fn": "get_mentionable_support_staff",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None"
+        ],
+        "doc": "Return maintenance mentionables for an issue (officer/manager, technician, subcontractor).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.get_property",
+        "methods": "ALL",
+        "fn": "get_property",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [],
+        "doc": "Return properties for the logged-in app user.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.get_subcontractor_list",
+        "methods": "ALL",
+        "fn": "get_subcontractor_list",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [],
+        "doc": "Return list of subcontractor app users for assignment. Maintenance-only.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.get_support_staff_list",
+        "methods": "ALL",
+        "fn": "get_support_staff_list",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [],
+        "doc": "Return list of enabled Mobile Technicians for ticket assignment.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.get_ticket_communications",
+        "methods": "ALL",
+        "fn": "get_ticket_communications",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id",
+          "limit=20",
+          "offset=0",
+          "channel=None"
+        ],
+        "doc": "Get communications for a specific Issue (mobile-optimised).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.get_ticket_priorities",
+        "methods": "ALL",
+        "fn": "get_ticket_priorities",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None"
+        ],
+        "doc": "Return all Issue Priority options and current Issue.priority for a ticket.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.get_user_image",
+        "methods": "ALL",
+        "fn": "get_user_image",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "user=None"
+        ],
+        "doc": "Return the user's profile image URL (defaults to current user).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.get_user_tickets",
+        "methods": "ALL",
+        "fn": "get_user_tickets",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "status_filter=None",
+          "limit=50",
+          "offset=0"
+        ],
+        "doc": "Return Issues for the logged-in user (mobile jobcards/tickets).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.initialize_app_websocket",
+        "methods": "ALL",
+        "fn": "initialize_app_websocket",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [],
+        "doc": "Initialize websocket connection and subscribe to relevant rooms for the logged-in user.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.mark_communications_as_read",
+        "methods": "ALL",
+        "fn": "mark_communications_as_read",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "issue_id=None",
+          "communication_indices=None"
+        ],
+        "doc": "Mark specific or all unread communications on a ticket as read.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.put_ticket_on_hold",
+        "methods": [
+          "POST"
+        ],
+        "fn": "put_ticket_on_hold",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "hold_reason=None"
+        ],
+        "doc": "Put a ticket on hold. Maintenance staff or Admin only.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.resolve_ticket",
+        "methods": [
+          "POST"
+        ],
+        "fn": "resolve_ticket",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "defect_found=None",
+          "resolution_details=None"
+        ],
+        "doc": "Mark a ticket as Resolved. Maintenance staff, technician, or Admin.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.resume_ticket_from_hold",
+        "methods": [
+          "POST"
+        ],
+        "fn": "resume_ticket_from_hold",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None"
+        ],
+        "doc": "Resume a ticket from On Hold back to Open. Maintenance staff or Admin only.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.send_ticket_communication",
+        "methods": "ALL",
+        "fn": "send_ticket_communication",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "issue_id=None",
+          "ticket_id=None",
+          "message_content=None",
+          "image_attachment=None",
+          "attachment=None",
+          "file_attachments=None",
+          "video_attachment=None",
+          "video=None",
+          "reply_to_idx=None",
+          "mentioned_emails=None",
+          "channel=None",
+          "communication_channel=None"
+        ],
+        "doc": "Send a message to an Issue using the Support Communication child table.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.send_typing_indicator",
+        "methods": "ALL",
+        "fn": "send_typing_indicator",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id",
+          "is_typing=True"
+        ],
+        "doc": "Send a transient 'user is typing' indicator for a ticket (no DB write).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.submit_tenant_rating_and_feedback",
+        "methods": [
+          "POST"
+        ],
+        "fn": "submit_tenant_rating_and_feedback",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "rating=None",
+          "customer_feedback=None"
+        ],
+        "doc": "Allow a tenant to submit a rating and optional feedback for a Resolved ticket.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.subscribe_to_ticket_room",
+        "methods": "ALL",
+        "fn": "subscribe_to_ticket_room",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id"
+        ],
+        "doc": "Subscribe to a specific Issue room for real-time updates (mobile expects ticket_id).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.unsubscribe_from_ticket_room",
+        "methods": "ALL",
+        "fn": "unsubscribe_from_ticket_room",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id"
+        ],
+        "doc": "Unsubscribe from a specific Issue room (mobile still passes ticket_id).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.update_job_card_status",
+        "methods": [
+          "POST"
+        ],
+        "fn": "update_job_card_status",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "status=None",
+          "reason=None",
+          "defect_found=None",
+          "resolution_details=None"
+        ],
+        "doc": "Update job card status endpoint for Manager/Officer/Technician.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.job_card.job_card.update_ticket_status",
+        "methods": [
+          "POST"
+        ],
+        "fn": "update_ticket_status",
+        "file": "propms/api/v1/job_card/job_card.py",
+        "params": [
+          "ticket_id=None",
+          "status=None",
+          "reason=None",
+          "defect_found=None",
+          "resolution_details=None"
+        ],
+        "doc": "Alias for change_ticket_status / update_job_card_status.",
+        "guest": false,
+        "layer": "v1"
+      }
+    ],
+    "visitors_gate_pass": [
+      {
+        "path": "propms.api.mobile.cancel_visitor_pass",
+        "methods": [
+          "POST"
+        ],
+        "fn": "cancel_visitor_pass",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "pass_id=None"
+        ],
+        "doc": "Cancel an active visitor pass prior to check-in.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.gate_pass.gate_pass.cancel_visitor_pass"
+      },
+      {
+        "path": "propms.api.mobile.checkout_visitor",
+        "methods": [
+          "POST"
+        ],
+        "fn": "checkout_visitor",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "pass_id=None"
+        ],
+        "doc": "Security / Staff endpoint: Check out visitor leaving premises.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.gate_pass.gate_pass.checkout_visitor"
+      },
+      {
+        "path": "propms.api.mobile.create_visitor_pass",
+        "methods": [
+          "POST"
+        ],
+        "fn": "create_visitor_pass",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "visitor_name=None",
+          "phone_number=None",
+          "visitor_type='Guest'",
+          "expected_arrival_date=None",
+          "expected_arrival_time=None",
+          "vehicle_plate=None",
+          "validity_type='One-Time Entry'",
+          "lease=None",
+          "property_unit=None",
+          "notes=None"
+        ],
+        "doc": "Create a new Visitor Gate Pass for the authenticated tenant resident.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.gate_pass.gate_pass.create_visitor_pass"
+      },
+      {
+        "path": "propms.api.mobile.get_security_gate_passes",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_security_gate_passes",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "date=None",
+          "status=None",
+          "search=None",
+          "page=1",
+          "page_length=50"
+        ],
+        "doc": "Security / Reception endpoint: View and search gate passes.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.gate_pass.gate_pass.get_security_gate_passes"
+      },
+      {
+        "path": "propms.api.mobile.get_tenant_apartments",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_tenant_apartments",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": "Return all apartments and active leases linked to the authenticated Mobile VIVA Tenant.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.gate_pass.gate_pass.get_tenant_apartments"
+      },
+      {
+        "path": "propms.api.mobile.get_tenant_visitor_passes",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_tenant_visitor_passes",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "status='all'",
+          "lease=None",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": "Return list of visitor passes created by the logged-in tenant.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.gate_pass.gate_pass.get_tenant_visitor_passes"
+      },
+      {
+        "path": "propms.api.mobile.get_visitor_pass_details",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_visitor_pass_details",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "pass_id=None"
+        ],
+        "doc": "Get complete details and verification payload for a specific visitor pass.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.gate_pass.gate_pass.get_visitor_pass_details"
+      },
+      {
+        "path": "propms.api.mobile.validate_and_checkin_visitor",
+        "methods": [
+          "POST"
+        ],
+        "fn": "validate_and_checkin_visitor",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "pass_id=None",
+          "notes=None"
+        ],
+        "doc": "Security / Staff endpoint: Validate QR scan & check in visitor with WebSocket & FCM push.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.gate_pass.gate_pass.validate_and_checkin_visitor"
+      },
+      {
+        "path": "propms.api.v1.gate_pass.gate_pass.cancel_visitor_pass",
+        "methods": [
+          "POST"
+        ],
+        "fn": "cancel_visitor_pass",
+        "file": "propms/api/v1/gate_pass/gate_pass.py",
+        "params": [
+          "pass_id=None"
+        ],
+        "doc": "Cancel an active visitor pass prior to check-in.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.gate_pass.gate_pass.checkout_visitor",
+        "methods": [
+          "POST"
+        ],
+        "fn": "checkout_visitor",
+        "file": "propms/api/v1/gate_pass/gate_pass.py",
+        "params": [
+          "pass_id=None"
+        ],
+        "doc": "Security / Staff endpoint: Check out visitor leaving premises.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.gate_pass.gate_pass.create_visitor_pass",
+        "methods": [
+          "POST"
+        ],
+        "fn": "create_visitor_pass",
+        "file": "propms/api/v1/gate_pass/gate_pass.py",
+        "params": [
+          "visitor_name=None",
+          "phone_number=None",
+          "visitor_type='Guest'",
+          "expected_arrival_date=None",
+          "expected_arrival_time=None",
+          "vehicle_plate=None",
+          "validity_type='One-Time Entry'",
+          "lease=None",
+          "property_unit=None",
+          "notes=None"
+        ],
+        "doc": "Create a new Visitor Gate Pass for the authenticated tenant resident.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.gate_pass.gate_pass.enqueue_gate_pass_push",
+        "methods": "ALL",
+        "fn": "enqueue_gate_pass_push",
+        "file": "propms/api/v1/gate_pass/gate_pass.py",
+        "params": [
+          "user",
+          "pass_id",
+          "title",
+          "body",
+          "visitor_name=None",
+          "property_unit=None",
+          "vehicle_plate=None",
+          "event_type='visitor_arrived'"
+        ],
+        "doc": "Send FCM push notification for Gate Pass events with rich data payload.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.gate_pass.gate_pass.get_security_gate_passes",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_security_gate_passes",
+        "file": "propms/api/v1/gate_pass/gate_pass.py",
+        "params": [
+          "date=None",
+          "status=None",
+          "search=None",
+          "page=1",
+          "page_length=50"
+        ],
+        "doc": "Security / Reception endpoint: View and search gate passes.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.gate_pass.gate_pass.get_tenant_apartments",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_tenant_apartments",
+        "file": "propms/api/v1/gate_pass/gate_pass.py",
+        "params": [],
+        "doc": "Return all apartments and active leases linked to the authenticated Mobile VIVA Tenant.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.gate_pass.gate_pass.get_tenant_visitor_passes",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_tenant_visitor_passes",
+        "file": "propms/api/v1/gate_pass/gate_pass.py",
+        "params": [
+          "status='all'",
+          "lease=None",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": "Return list of visitor passes created by the logged-in tenant.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.gate_pass.gate_pass.get_visitor_pass_details",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_visitor_pass_details",
+        "file": "propms/api/v1/gate_pass/gate_pass.py",
+        "params": [
+          "pass_id=None"
+        ],
+        "doc": "Get complete details and verification payload for a specific visitor pass.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.gate_pass.gate_pass.validate_and_checkin_visitor",
+        "methods": [
+          "POST"
+        ],
+        "fn": "validate_and_checkin_visitor",
+        "file": "propms/api/v1/gate_pass/gate_pass.py",
+        "params": [
+          "pass_id=None",
+          "notes=None"
+        ],
+        "doc": "Security / Staff endpoint: Validate QR scan & check in visitor with WebSocket & FCM push.",
+        "guest": false,
+        "layer": "v1"
+      }
+    ],
+    "amenities": [
+      {
+        "path": "propms.api.mobile.cancel_amenity_booking",
+        "methods": [
+          "POST"
+        ],
+        "fn": "cancel_amenity_booking",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "booking_id=None",
+          "cancellation_reason=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.amenities.cancel_booking"
+      },
+      {
+        "path": "propms.api.mobile.create_amenity_booking",
+        "methods": [
+          "POST"
+        ],
+        "fn": "create_amenity_booking",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "amenity=None",
+          "booking_date=None",
+          "start_time=None",
+          "end_time=None",
+          "guests_count=1",
+          "notes=None",
+          "lease=None",
+          "property_unit=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.amenities.create_booking"
+      },
+      {
+        "path": "propms.api.mobile.get_amenities",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_amenities",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "category=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.amenities.get_amenities"
+      },
+      {
+        "path": "propms.api.mobile.get_amenity_detail",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_amenity_detail",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "amenity=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.amenities.get_amenity_detail"
+      },
+      {
+        "path": "propms.api.mobile.get_available_slots",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_available_slots",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "amenity=None",
+          "booking_date=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.amenities.get_available_slots"
+      },
+      {
+        "path": "propms.api.mobile.get_my_amenity_bookings",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_my_amenity_bookings",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "status='all'",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.amenities.get_my_bookings"
+      },
+      {
+        "path": "propms.api.amenities.cancel_booking",
+        "methods": [
+          "POST"
+        ],
+        "fn": "cancel_booking",
+        "file": "propms/api/amenities.py",
+        "params": [
+          "booking_id=None",
+          "cancellation_reason=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.amenities.cancel_booking"
+      },
+      {
+        "path": "propms.api.amenities.create_booking",
+        "methods": [
+          "POST"
+        ],
+        "fn": "create_booking",
+        "file": "propms/api/amenities.py",
+        "params": [
+          "amenity=None",
+          "booking_date=None",
+          "start_time=None",
+          "end_time=None",
+          "guests_count=1",
+          "notes=None",
+          "lease=None",
+          "property_unit=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.amenities.create_booking"
+      },
+      {
+        "path": "propms.api.amenities.get_amenities",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_amenities",
+        "file": "propms/api/amenities.py",
+        "params": [
+          "category=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.amenities.get_amenities"
+      },
+      {
+        "path": "propms.api.amenities.get_amenity_detail",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_amenity_detail",
+        "file": "propms/api/amenities.py",
+        "params": [
+          "amenity=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.amenities.get_amenity_detail"
+      },
+      {
+        "path": "propms.api.amenities.get_available_slots",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_available_slots",
+        "file": "propms/api/amenities.py",
+        "params": [
+          "amenity=None",
+          "booking_date=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.amenities.get_available_slots"
+      },
+      {
+        "path": "propms.api.amenities.get_my_bookings",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_my_bookings",
+        "file": "propms/api/amenities.py",
+        "params": [
+          "status='all'",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.amenities.get_my_bookings"
+      },
+      {
+        "path": "propms.api.v1.amenities.user_bookings.cancel_booking",
+        "methods": [
+          "POST"
+        ],
+        "fn": "cancel_booking",
+        "file": "propms/api/v1/amenities/user_bookings.py",
+        "params": [
+          "booking_id=None",
+          "cancellation_reason=None"
+        ],
+        "doc": "Cancel a confirmed amenity booking.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.amenities.booking.create_booking",
+        "methods": [
+          "POST"
+        ],
+        "fn": "create_booking",
+        "file": "propms/api/v1/amenities/booking.py",
+        "params": [
+          "amenity=None",
+          "booking_date=None",
+          "start_time=None",
+          "end_time=None",
+          "guests_count=1",
+          "notes=None",
+          "lease=None",
+          "property_unit=None"
+        ],
+        "doc": "Create a new confirmed booking for a resident on a Viva Amenity.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.amenities.list.get_amenities",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_amenities",
+        "file": "propms/api/v1/amenities/list.py",
+        "params": [
+          "category=None"
+        ],
+        "doc": "Return all active Viva Amenities with cover and gallery images.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.amenities.list.get_amenity_detail",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_amenity_detail",
+        "file": "propms/api/v1/amenities/list.py",
+        "params": [
+          "amenity=None"
+        ],
+        "doc": "Return full details and gallery images for a specific amenity.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.amenities.slots.get_available_slots",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_available_slots",
+        "file": "propms/api/v1/amenities/slots.py",
+        "params": [
+          "amenity=None",
+          "booking_date=None"
+        ],
+        "doc": "Calculate time slots and real-time availability for an amenity on a given date.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.amenities.user_bookings.get_my_bookings",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_my_bookings",
+        "file": "propms/api/v1/amenities/user_bookings.py",
+        "params": [
+          "status='all'",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": "Return upcoming & past amenity bookings for the logged-in resident.",
+        "guest": false,
+        "layer": "v1"
+      }
+    ],
+    "emergency": [
+      {
+        "path": "propms.api.mobile.get_emergency_incidents",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_emergency_incidents",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "status='all'",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.emergency.get_emergency_incidents"
+      },
+      {
+        "path": "propms.api.mobile.report_emergency",
+        "methods": [
+          "POST"
+        ],
+        "fn": "report_emergency",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "incident_type=None",
+          "property_unit=None",
+          "location_details=None",
+          "details=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.emergency.report_emergency"
+      },
+      {
+        "path": "propms.api.mobile.update_emergency_status",
+        "methods": [
+          "POST"
+        ],
+        "fn": "update_emergency_status",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "incident_id=None",
+          "status=None",
+          "resolution_notes=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.emergency.update_incident_status"
+      },
+      {
+        "path": "propms.api.emergency.get_emergency_incidents",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_emergency_incidents",
+        "file": "propms/api/emergency.py",
+        "params": [
+          "status='all'",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.emergency.get_emergency_incidents"
+      },
+      {
+        "path": "propms.api.emergency.report_emergency",
+        "methods": [
+          "POST"
+        ],
+        "fn": "report_emergency",
+        "file": "propms/api/emergency.py",
+        "params": [
+          "incident_type=None",
+          "property_unit=None",
+          "location_details=None",
+          "details=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.emergency.report_emergency"
+      },
+      {
+        "path": "propms.api.emergency.update_incident_status",
+        "methods": [
+          "POST"
+        ],
+        "fn": "update_incident_status",
+        "file": "propms/api/emergency.py",
+        "params": [
+          "incident_id=None",
+          "status=None",
+          "resolution_notes=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.emergency.update_incident_status"
+      },
+      {
+        "path": "propms.api.v1.emergency.notify.enqueue_emergency_fcm_push",
+        "methods": "ALL",
+        "fn": "enqueue_emergency_fcm_push",
+        "file": "propms/api/v1/emergency/notify.py",
+        "params": [
+          "incident_id",
+          "incident_type",
+          "location",
+          "reporter"
+        ],
+        "doc": "Background job to send high-priority push notification to security & staff devices.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.emergency.status.get_emergency_incidents",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_emergency_incidents",
+        "file": "propms/api/v1/emergency/status.py",
+        "params": [
+          "status='all'",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": "Return emergency incidents list.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.emergency.report.report_emergency",
+        "methods": [
+          "POST"
+        ],
+        "fn": "report_emergency",
+        "file": "propms/api/v1/emergency/report.py",
+        "params": [
+          "incident_type=None",
+          "property_unit=None",
+          "location_details=None",
+          "details=None"
+        ],
+        "doc": "Report a building emergency incident and trigger real-time dispatch.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.emergency.status.update_incident_status",
+        "methods": [
+          "POST"
+        ],
+        "fn": "update_incident_status",
+        "file": "propms/api/v1/emergency/status.py",
+        "params": [
+          "incident_id=None",
+          "status=None",
+          "resolution_notes=None"
+        ],
+        "doc": "Staff endpoint: Update emergency incident status (Dispatched, Responding, Resolved).",
+        "guest": false,
+        "layer": "v1"
+      }
+    ],
+    "directory": [
+      {
+        "path": "propms.api.mobile.get_directory_contacts",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_directory_contacts",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "department=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.directory.get_directory_contacts"
+      },
+      {
+        "path": "propms.api.directory.get_directory_contacts",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_directory_contacts",
+        "file": "propms/api/directory.py",
+        "params": [
+          "department=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.directory.get_directory_contacts"
+      },
+      {
+        "path": "propms.api.v1.directory.contacts.get_directory_contacts",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_directory_contacts",
+        "file": "propms/api/v1/directory/contacts.py",
+        "params": [
+          "department=None"
+        ],
+        "doc": "Return active Viva Building Contacts sorted by emergency priority.",
+        "guest": false,
+        "layer": "v1"
+      }
+    ],
+    "calls": [
+      {
+        "path": "propms.api.mobile.answer_call",
+        "methods": [
+          "POST"
+        ],
+        "fn": "answer_call",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "call_id=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.calls.answer_call"
+      },
+      {
+        "path": "propms.api.mobile.end_call",
+        "methods": [
+          "POST"
+        ],
+        "fn": "end_call",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "call_id=None",
+          "reason='ended'"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.calls.end_call"
+      },
+      {
+        "path": "propms.api.mobile.get_call_config",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_call_config",
+        "file": "propms/api/mobile.py",
+        "params": [],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.calls.get_livekit_config"
+      },
+      {
+        "path": "propms.api.mobile.get_call_history",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_call_history",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "status='all'",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.calls.get_call_history"
+      },
+      {
+        "path": "propms.api.mobile.initiate_call",
+        "methods": [
+          "POST"
+        ],
+        "fn": "initiate_call",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "receiver=None",
+          "call_type='Voice'"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.calls.initiate_call"
+      },
+      {
+        "path": "propms.api.calls.answer_call",
+        "methods": [
+          "POST"
+        ],
+        "fn": "answer_call",
+        "file": "propms/api/calls.py",
+        "params": [
+          "call_id=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.calls.answer_call"
+      },
+      {
+        "path": "propms.api.calls.end_call",
+        "methods": [
+          "POST"
+        ],
+        "fn": "end_call",
+        "file": "propms/api/calls.py",
+        "params": [
+          "call_id=None",
+          "reason='ended'"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.calls.end_call"
+      },
+      {
+        "path": "propms.api.calls.get_call_config",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_call_config",
+        "file": "propms/api/calls.py",
+        "params": [],
+        "doc": "Return public LiveKit server connection configuration.",
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.calls.get_livekit_config"
+      },
+      {
+        "path": "propms.api.calls.get_call_history",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_call_history",
+        "file": "propms/api/calls.py",
+        "params": [
+          "status='all'",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.calls.get_call_history"
+      },
+      {
+        "path": "propms.api.calls.initiate_call",
+        "methods": [
+          "POST"
+        ],
+        "fn": "initiate_call",
+        "file": "propms/api/calls.py",
+        "params": [
+          "receiver=None",
+          "call_type='Voice'"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.calls.initiate_call"
+      },
+      {
+        "path": "propms.api.v1.calls.answer.answer_call",
+        "methods": [
+          "POST"
+        ],
+        "fn": "answer_call",
+        "file": "propms/api/v1/calls/answer.py",
+        "params": [
+          "call_id=None"
+        ],
+        "doc": "Accept and join an active incoming call.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.calls.end.end_call",
+        "methods": [
+          "POST"
+        ],
+        "fn": "end_call",
+        "file": "propms/api/v1/calls/end.py",
+        "params": [
+          "call_id=None",
+          "reason='ended'"
+        ],
+        "doc": "End or decline an active call and calculate total duration.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.calls.initiate.enqueue_incoming_call_push",
+        "methods": "ALL",
+        "fn": "enqueue_incoming_call_push",
+        "file": "propms/api/v1/calls/initiate.py",
+        "params": [
+          "receiver",
+          "call_payload"
+        ],
+        "doc": "Background job to send high-priority FCM push notification for incoming calls.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.calls.history.get_call_history",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "get_call_history",
+        "file": "propms/api/v1/calls/history.py",
+        "params": [
+          "status='all'",
+          "page=1",
+          "page_length=20"
+        ],
+        "doc": "Return call logs for the logged-in user (both incoming and outgoing).",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.calls.initiate.initiate_call",
+        "methods": [
+          "POST"
+        ],
+        "fn": "initiate_call",
+        "file": "propms/api/v1/calls/initiate.py",
+        "params": [
+          "receiver=None",
+          "call_type='Voice'"
+        ],
+        "doc": "Initiate a 1-on-1 audio/video call between residents/staff.",
+        "guest": false,
+        "layer": "v1"
+      }
+    ],
+    "files": [
+      {
+        "path": "propms.api.mobile.abort_upload_session",
+        "methods": "ALL",
+        "fn": "abort_upload_session",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "session_id=None"
+        ],
+        "doc": "Abort upload session and clean up temp chunks.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.files.chunked_upload.abort_upload_session"
+      },
+      {
+        "path": "propms.api.mobile.finalize_upload",
+        "methods": "ALL",
+        "fn": "finalize_upload",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "session_id=None",
+          "doctype=None",
+          "docname=None",
+          "fieldname=None",
+          "is_private=None"
+        ],
+        "doc": "Reassemble all chunks into the final File document in Frappe.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.files.chunked_upload.finalize_upload"
+      },
+      {
+        "path": "propms.api.mobile.get_upload_session_status",
+        "methods": "ALL",
+        "fn": "get_upload_session_status",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "session_id=None"
+        ],
+        "doc": "Check upload session progress and return received chunks.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.files.chunked_upload.get_upload_session_status"
+      },
+      {
+        "path": "propms.api.mobile.start_upload_session",
+        "methods": "ALL",
+        "fn": "start_upload_session",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "filename=None",
+          "total_chunks=1",
+          "total_size=0",
+          "file_type=None",
+          "doctype=None",
+          "docname=None",
+          "fieldname=None",
+          "is_private=0"
+        ],
+        "doc": "Initialize a chunked upload session.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.files.chunked_upload.start_upload_session"
+      },
+      {
+        "path": "propms.api.mobile.upload_attachment",
+        "methods": "ALL",
+        "fn": "upload_attachment",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "file_data=None",
+          "filename=None",
+          "ticket_id=None"
+        ],
+        "doc": "Upload a single file (base64) matching vsd_helpdesk mobile API.",
+        "guest": false,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.mobile.upload_chunk",
+        "methods": "ALL",
+        "fn": "upload_chunk",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "session_id=None",
+          "chunk_index=None"
+        ],
+        "doc": "Receive and save an individual binary chunk.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.files.chunked_upload.upload_chunk"
+      },
+      {
+        "path": "propms.api.mobile.upload_mobile_image",
+        "methods": "ALL",
+        "fn": "upload_mobile_image",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "file_data=None",
+          "filename=None",
+          "ticket_id=None"
+        ],
+        "doc": null,
+        "guest": false,
+        "layer": "mobile"
+      },
+      {
+        "path": "propms.api.v1.files.chunked_upload.abort_upload_session",
+        "methods": "ALL",
+        "fn": "abort_upload_session",
+        "file": "propms/api/v1/files/chunked_upload.py",
+        "params": [
+          "session_id=None",
+          "upload_session_id=None"
+        ],
+        "doc": "Abort upload session and clean up temp chunks.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.files.chunked_upload.finalize_upload",
+        "methods": "ALL",
+        "fn": "finalize_upload",
+        "file": "propms/api/v1/files/chunked_upload.py",
+        "params": [
+          "session_id=None",
+          "upload_session_id=None",
+          "doctype=None",
+          "docname=None",
+          "fieldname=None",
+          "is_private=None"
+        ],
+        "doc": "Reassemble all chunks into the final File document in Frappe.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.files.chunked_upload.get_upload_session_status",
+        "methods": "ALL",
+        "fn": "get_upload_session_status",
+        "file": "propms/api/v1/files/chunked_upload.py",
+        "params": [
+          "session_id=None",
+          "upload_session_id=None"
+        ],
+        "doc": "Check upload session progress and return received chunks.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.files.chunked_upload.start_upload_session",
+        "methods": "ALL",
+        "fn": "start_upload_session",
+        "file": "propms/api/v1/files/chunked_upload.py",
+        "params": [
+          "filename=None",
+          "file_name=None",
+          "total_chunks=1",
+          "chunks_total=None",
+          "total_size=0",
+          "file_size=None",
+          "file_type=None",
+          "doctype=None",
+          "docname=None",
+          "fieldname=None",
+          "is_private=0"
+        ],
+        "doc": "Initialize a chunked upload session.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.files.chunked_upload.upload_chunk",
+        "methods": "ALL",
+        "fn": "upload_chunk",
+        "file": "propms/api/v1/files/chunked_upload.py",
+        "params": [
+          "session_id=None",
+          "upload_session_id=None",
+          "chunk_index=None",
+          "chunk_number=None"
+        ],
+        "doc": "Receive and save an individual binary chunk.",
+        "guest": false,
+        "layer": "v1"
+      }
+    ],
+    "notifications": [
+      {
+        "path": "propms.api.mobile.enqueue_ticket_assigned_push",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "enqueue_ticket_assigned_push",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "user",
+          "ticket_id",
+          "title=None",
+          "body=None",
+          "ticket_title=None",
+          "assigned_by=None",
+          "role_type=None"
+        ],
+        "doc": "Send FCM push notification and Notification Log when a ticket is assigned to a technician/subcontractor.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.notifications.notifications.enqueue_ticket_assigned_push"
+      },
+      {
+        "path": "propms.api.mobile.enqueue_ticket_created_push",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "enqueue_ticket_created_push",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "user",
+          "ticket_id",
+          "title=None",
+          "body=None",
+          "ticket_title=None",
+          "property_name=None",
+          "creator_name=None"
+        ],
+        "doc": "Send FCM push notification and Notification Log to staff when a new ticket is created by a tenant.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.notifications.notifications.enqueue_ticket_created_push"
+      },
+      {
+        "path": "propms.api.mobile.enqueue_ticket_message_push",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "enqueue_ticket_message_push",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "user",
+          "ticket_id",
+          "title",
+          "body",
+          "message_idx=None",
+          "notification_type=None"
+        ],
+        "doc": "Send FCM push notification for ticket messages or mentions.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.notifications.notifications.enqueue_ticket_message_push"
+      },
+      {
+        "path": "propms.api.mobile.enqueue_ticket_status_push",
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "fn": "enqueue_ticket_status_push",
+        "file": "propms/api/mobile.py",
+        "params": [
+          "user",
+          "ticket_id",
+          "new_status",
+          "title=None",
+          "body=None",
+          "ticket_title=None"
+        ],
+        "doc": "Send FCM push notification and Notification Log when a ticket status changes.",
+        "guest": false,
+        "layer": "mobile",
+        "wraps": "propms.api.v1.notifications.notifications.enqueue_ticket_status_push"
+      },
+      {
+        "path": "propms.api.fcm.register_token",
+        "methods": [
+          "POST"
+        ],
+        "fn": "register_token",
+        "file": "propms/api/fcm.py",
+        "params": [
+          "fcm_token"
+        ],
+        "doc": "Register or refresh an FCM token for the logged-in user.",
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.notifications.fcm.register_token"
+      },
+      {
+        "path": "propms.api.fcm.unregister_token",
+        "methods": [
+          "POST"
+        ],
+        "fn": "unregister_token",
+        "file": "propms/api/fcm.py",
+        "params": [
+          "fcm_token"
+        ],
+        "doc": "Unregister an FCM token for the logged-in user.",
+        "guest": false,
+        "layer": "top",
+        "wraps": "propms.api.v1.notifications.fcm.unregister_token"
+      },
+      {
+        "path": "propms.api.v1.notifications.notifications.enqueue_app_notification_push",
+        "methods": "ALL",
+        "fn": "enqueue_app_notification_push",
+        "file": "propms/api/v1/notifications/notifications.py",
+        "params": [
+          "user",
+          "notification_id",
+          "title",
+          "body"
+        ],
+        "doc": "Send FCM push notification for app-level notifications.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.notifications.notifications.enqueue_ticket_assigned_push",
+        "methods": "ALL",
+        "fn": "enqueue_ticket_assigned_push",
+        "file": "propms/api/v1/notifications/notifications.py",
+        "params": [
+          "user",
+          "ticket_id",
+          "title=None",
+          "body=None",
+          "ticket_title=None",
+          "assigned_by=None",
+          "role_type=None"
+        ],
+        "doc": "Send FCM push notification and Notification Log when a ticket is assigned to a technician/subcontractor.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.notifications.notifications.enqueue_ticket_created_push",
+        "methods": "ALL",
+        "fn": "enqueue_ticket_created_push",
+        "file": "propms/api/v1/notifications/notifications.py",
+        "params": [
+          "user",
+          "ticket_id",
+          "title=None",
+          "body=None",
+          "ticket_title=None",
+          "property_name=None",
+          "creator_name=None"
+        ],
+        "doc": "Send FCM push notification and Notification Log to staff when a new ticket is created by a tenant.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.notifications.notifications.enqueue_ticket_message_push",
+        "methods": "ALL",
+        "fn": "enqueue_ticket_message_push",
+        "file": "propms/api/v1/notifications/notifications.py",
+        "params": [
+          "user",
+          "ticket_id",
+          "title",
+          "body",
+          "message_idx=None",
+          "notification_type=None"
+        ],
+        "doc": "Send FCM push notification for ticket messages or mentions.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.notifications.notifications.enqueue_ticket_status_push",
+        "methods": "ALL",
+        "fn": "enqueue_ticket_status_push",
+        "file": "propms/api/v1/notifications/notifications.py",
+        "params": [
+          "user",
+          "ticket_id",
+          "new_status",
+          "title=None",
+          "body=None",
+          "ticket_title=None"
+        ],
+        "doc": "Send FCM push notification and Notification Log when a ticket status changes.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.notifications.fcm.register_token",
+        "methods": [
+          "POST"
+        ],
+        "fn": "register_token",
+        "file": "propms/api/v1/notifications/fcm.py",
+        "params": [
+          "fcm_token"
+        ],
+        "doc": "Register or refresh an FCM token for the logged-in user.",
+        "guest": false,
+        "layer": "v1"
+      },
+      {
+        "path": "propms.api.v1.notifications.fcm.unregister_token",
+        "methods": [
+          "POST"
+        ],
+        "fn": "unregister_token",
+        "file": "propms/api/v1/notifications/fcm.py",
+        "params": [
+          "fcm_token"
+        ],
+        "doc": "Unregister an FCM token for the logged-in user.",
+        "guest": false,
+        "layer": "v1"
+      }
+    ]
+  }
+}

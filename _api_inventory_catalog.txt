@@ -1,0 +1,1960 @@
+TOTAL_WHITELISTED: 201
+CALL_FORM: /api/method/<method_path>
+ALL_MEANING: @frappe.whitelist() with no methods= (all HTTP methods allowed)
+
+ALLOW_GUEST:
+  - propms.api.mobile.request_password_reset_otp
+  - propms.api.mobile.verify_otp
+  - propms.api.mobile.reset_password_after_otp
+  - propms.api.mobile.verify_otp_and_reset_password
+  - propms.api.mobile.get_payment_methods
+  - propms.api.mobile.selcom_ipn_webhook
+  - propms.api.v1.invoices.invoices.selcom_payment_webhook
+  - propms.api.v1.payments.services.get_payment_methods
+  - propms.api.v1.payments.webhook.selcom_ipn_webhook
+
+NOTES:
+  - Prefer layer=mobile (propms.api.mobile.*) for clients when both mobile and v1 exist.
+  - layer=top is propms.api.{amenities,calls,directory,emergency,fcm} thin routers.
+  - layer=v1 is canonical implementation.
+  - methods=ALL means @frappe.whitelist() with no methods= restriction.
+  - __init__.py re-exports do not add new method paths.
+
+========================================================================
+DOMAIN: auth (15)
+========================================================================
+- method_path: propms.api.mobile.change_user_password
+  http_methods: ALL
+  function: change_user_password
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['old_password', 'new_password']
+  description: Change the logged-in user's password (compat endpoint for mobile app).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.mobile.cleanup_expired_otps
+  http_methods: ALL
+  function: cleanup_expired_otps
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: Cleanup expired and old OTP rows.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.mobile.get_customer_user_info
+  http_methods: ALL
+  function: get_customer_user_info
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: PropMS-compatible replacement for real_estate_support_system.api.mobile.get_customer_user_info.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.mobile.request_password_reset_otp
+  http_methods: ALL
+  function: request_password_reset_otp
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['email=None']
+  description: Request OTP for password reset (guest-safe, enumeration-safe).
+  allow_guest: true
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.mobile.reset_password_after_otp
+  http_methods: ALL
+  function: reset_password_after_otp
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['email=None', 'new_password=None']
+  description: Reset password after successful OTP verification (3-screen flow).
+  allow_guest: true
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.mobile.set_user_profile_image
+  http_methods: ALL
+  function: set_user_profile_image
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['file_data=None', 'filename=None', 'file_url=None']
+  description: Set the logged-in user's profile image (compat endpoint for mobile app).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.mobile.update_user_image
+  http_methods: ALL
+  function: update_user_image
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['params']
+  description: Update a user's profile image using existing file_url (compat endpoint).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.mobile.verify_otp
+  http_methods: ALL
+  function: verify_otp
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['email=None', 'otp=None']
+  description: Verify OTP only (for 3-screen flow).
+  allow_guest: true
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.mobile.verify_otp_and_reset_password
+  http_methods: ALL
+  function: verify_otp_and_reset_password
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['email=None', 'otp=None', 'new_password=None']
+  description: Combined 2-screen flow: verify OTP and reset password in one call.
+  allow_guest: true
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.v1.Auth.auth.accept_terms_and_conditions
+  http_methods: ALL
+  function: accept_terms_and_conditions
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/Auth/auth.py
+  parameters: ['user_identifier=None']
+  description: Mark mobile app terms accepted. Mobile VIVA Tenant: Tenant Details from Lease (Tenant fallback).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.Auth.auth.check_first_login
+  http_methods: ALL
+  function: check_first_login
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/Auth/auth.py
+  parameters: []
+  description: Check if the logged-in app user must change password on first login.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.Auth.auth.check_terms_acceptance
+  http_methods: ALL
+  function: check_terms_acceptance
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/Auth/auth.py
+  parameters: ['user_identifier=None']
+  description: Check if the user has accepted the mobile app terms & conditions.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.Auth.auth.get_terms_and_conditions
+  http_methods: ALL
+  function: get_terms_and_conditions
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/Auth/auth.py
+  parameters: ['user_identifier=None']
+  description: Return latest mobile Terms & Conditions and acceptance state. Mobile VIVA Tenant uses Tenant Details from Lease (Tenant fallback).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.Auth.auth.get_user_roles
+  http_methods: POST
+  function: get_user_roles
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/Auth/auth.py
+  parameters: ['user=None']
+  description: Return roles and user_type for a user. POST with user email (defaults to logged-in user).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.Auth.auth.set_initial_password
+  http_methods: ALL
+  function: set_initial_password
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/Auth/auth.py
+  parameters: ['new_password=None']
+  description: Set password on first login (admin provided initial credentials).
+  allow_guest: false
+  layer: V1
+
+========================================================================
+DOMAIN: water (14)
+========================================================================
+- method_path: propms.api.mobile.add_to_cart
+  http_methods: POST
+  function: add_to_cart
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['item_code=None', 'quantity=1', 'delivery_instructions=None', 'lease=None']
+  description: Add a water product to cart as a draft Sales Order (one item per SO).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.water.water.add_to_cart
+
+- method_path: propms.api.mobile.checkout_water_order
+  http_methods: POST
+  function: checkout_water_order
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['sales_order=None', "payment_method='MOBILE_MONEY'", 'phone_number=None', 'amount=None']
+  description: Pay one water cart Sales Order via Selcom (no bulk pay).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.water.water.checkout_water_order
+
+- method_path: propms.api.mobile.get_cart
+  http_methods: GET/POST
+  function: get_cart
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['lease=None']
+  description: List draft water cart Sales Orders for the authenticated tenant.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.water.water.get_cart
+
+- method_path: propms.api.mobile.get_drinking_water_products
+  http_methods: GET/POST
+  function: get_drinking_water_products
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: Fetch active drinking water items for the mobile catalog.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.water.water.get_drinking_water_products
+
+- method_path: propms.api.mobile.order_drinking_water
+  http_methods: POST
+  function: order_drinking_water
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['item_code=None', 'quantity=1', 'delivery_instructions=None', 'lease=None']
+  description: Adds item to water cart (draft Sales Order). Prefer add_to_cart.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.water.water.add_to_cart
+
+- method_path: propms.api.mobile.remove_from_cart
+  http_methods: POST
+  function: remove_from_cart
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['sales_order=None']
+  description: Remove a draft water cart item (delete draft Sales Order).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.water.water.remove_from_cart
+
+- method_path: propms.api.mobile.update_cart_item
+  http_methods: POST
+  function: update_cart_item
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['sales_order=None', 'quantity=None', 'delivery_instructions=None']
+  description: Update quantity (and optional notes) on a draft water cart Sales Order.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.water.water.update_cart_item
+
+- method_path: propms.api.v1.water.water.add_to_cart
+  http_methods: POST
+  function: add_to_cart
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/water/water.py
+  parameters: ['item_code=None', 'quantity=1', 'delivery_instructions=None', 'lease=None']
+  description: Add a water product to cart as a draft Sales Order (one item per SO).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.water.water.checkout_water_order
+  http_methods: POST
+  function: checkout_water_order
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/water/water.py
+  parameters: ['sales_order=None', "payment_method='MOBILE_MONEY'", 'phone_number=None', 'amount=None']
+  description: Pay one water cart Sales Order via Selcom (no bulk pay).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.water.water.get_cart
+  http_methods: GET/POST
+  function: get_cart
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/water/water.py
+  parameters: ['lease=None']
+  description: List draft water cart Sales Orders for the authenticated tenant.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.water.water.get_drinking_water_products
+  http_methods: GET/POST
+  function: get_drinking_water_products
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/water/water.py
+  parameters: []
+  description: Fetch active drinking water items for the mobile catalog.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.water.water.order_drinking_water
+  http_methods: POST
+  function: order_drinking_water
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/water/water.py
+  parameters: ['item_code=None', 'quantity=1', 'delivery_instructions=None', 'lease=None']
+  description: Alias for add_to_cart (replaces the old immediate Sales Invoice workflow).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.water.water.remove_from_cart
+  http_methods: POST
+  function: remove_from_cart
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/water/water.py
+  parameters: ['sales_order=None']
+  description: Remove a draft water cart item (delete draft Sales Order).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.water.water.update_cart_item
+  http_methods: POST
+  function: update_cart_item
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/water/water.py
+  parameters: ['sales_order=None', 'quantity=None', 'delivery_instructions=None']
+  description: Update quantity (and optional notes) on a draft water cart Sales Order.
+  allow_guest: false
+  layer: V1
+
+========================================================================
+DOMAIN: payments (18)
+========================================================================
+- method_path: propms.api.mobile.cancel_payment
+  http_methods: POST
+  function: cancel_payment
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['order_id=None']
+  description: Cancel an active pending payment order.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.payments.services.cancel_payment
+
+- method_path: propms.api.mobile.delete_stored_card
+  http_methods: POST/DELETE
+  function: delete_stored_card
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['card_token=None']
+  description: Remove a previously saved card token from Selcom using resource id or token.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.payments.services.delete_stored_card
+
+- method_path: propms.api.mobile.get_payment_methods
+  http_methods: GET/POST
+  function: get_payment_methods
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: Return list of enabled payment methods and configurations for the mobile app.
+  allow_guest: true
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.payments.services.get_payment_methods
+
+- method_path: propms.api.mobile.get_payment_status
+  http_methods: GET/POST
+  function: get_payment_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['order_id=None', 'transaction_id=None']
+  description: Query current payment status from local DB and Selcom Gateway.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.payments.services.get_payment_status
+
+- method_path: propms.api.mobile.get_stored_cards
+  http_methods: GET/POST
+  function: get_stored_cards
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: Retrieve list of saved card tokens for the authenticated tenant user.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.payments.services.get_stored_cards
+
+- method_path: propms.api.mobile.initiate_payment
+  http_methods: POST
+  function: initiate_payment
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['invoice_name=None', 'amount=None', "payment_method='MOBILE_MONEY'", 'phone_number=None']
+  description: Initiate a Selcom payment for a Sales Invoice (rent / utility path).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.payments.services.initiate_payment
+
+- method_path: propms.api.mobile.initiate_reference_payment
+  http_methods: POST
+  function: initiate_reference_payment
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['reference_doctype=None', 'reference_name=None', 'payment_workflow=None', 'amount=None', "payment_method='MOBILE_MONEY'", 'phone_number=None']
+  description: Generic Selcom initiate for any supported reference + workflow.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.payments.services.initiate_reference_payment
+
+- method_path: propms.api.mobile.pay_with_stored_card
+  http_methods: POST
+  function: pay_with_stored_card
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['invoice_name=None', 'card_token=None', 'amount=None', 'cvv=None']
+  description: Initiate and process a payment using a previously saved/tokenized card.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.payments.services.pay_with_stored_card
+
+- method_path: propms.api.mobile.selcom_ipn_webhook
+  http_methods: GET/POST
+  function: selcom_ipn_webhook
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['*args', '**kwargs']
+  description: Public Webhook / IPN Receiver for Selcom Payment Gateway.
+  allow_guest: true
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.payments.webhook.selcom_ipn_webhook
+
+- method_path: propms.api.v1.payments.services.cancel_payment
+  http_methods: POST
+  function: cancel_payment
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/payments/services.py
+  parameters: ['order_id=None']
+  description: Cancel an active pending payment order.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.payments.services.delete_stored_card
+  http_methods: POST/DELETE
+  function: delete_stored_card
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/payments/services.py
+  parameters: ['card_token=None', 'id=None']
+  description: Remove a previously saved card token from Selcom using resource id or token.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.payments.services.get_payment_methods
+  http_methods: GET/POST
+  function: get_payment_methods
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/payments/services.py
+  parameters: []
+  description: Return list of enabled payment methods and configurations for the mobile app.
+  allow_guest: true
+  layer: V1
+
+- method_path: propms.api.v1.payments.services.get_payment_status
+  http_methods: GET/POST
+  function: get_payment_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/payments/services.py
+  parameters: ['order_id=None', 'transaction_id=None']
+  description: Query current payment status from local DB and Selcom Gateway.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.payments.services.get_stored_cards
+  http_methods: GET/POST
+  function: get_stored_cards
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/payments/services.py
+  parameters: []
+  description: Retrieve list of saved card tokens for the authenticated tenant user.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.payments.services.initiate_payment
+  http_methods: POST
+  function: initiate_payment
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/payments/services.py
+  parameters: ['invoice_name=None', 'amount=None', "payment_method='MOBILE_MONEY'", 'phone_number=None']
+  description: Initiate a Selcom payment for a Sales Invoice (rent / utility path).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.payments.services.initiate_reference_payment
+  http_methods: POST
+  function: initiate_reference_payment
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/payments/services.py
+  parameters: ['reference_doctype=None', 'reference_name=None', 'payment_workflow=None', 'amount=None', "payment_method='MOBILE_MONEY'", 'phone_number=None']
+  description: Generic Selcom initiate for any supported reference + workflow.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.payments.services.pay_with_stored_card
+  http_methods: POST
+  function: pay_with_stored_card
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/payments/services.py
+  parameters: ['invoice_name=None', 'card_token=None', 'amount=None', 'cvv=None']
+  description: Initiate and process a payment using a previously saved/tokenized card.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.payments.webhook.selcom_ipn_webhook
+  http_methods: GET/POST
+  function: selcom_ipn_webhook
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/payments/webhook.py
+  parameters: ['*args', '**kwargs']
+  description: Public Webhook / IPN Receiver for Selcom Payment Gateway.
+  allow_guest: true
+  layer: V1
+
+========================================================================
+DOMAIN: invoices (11)
+========================================================================
+- method_path: propms.api.mobile.download_invoice_pdf
+  http_methods: GET/POST
+  function: download_invoice_pdf
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['invoice_name=None']
+  description: Stream the official PDF representation of the Sales Invoice to the mobile app.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.invoices.invoices.download_invoice_pdf
+
+- method_path: propms.api.mobile.download_receipt_pdf
+  http_methods: GET/POST
+  function: download_receipt_pdf
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['invoice_name=None', 'payment_entry_name=None']
+  description: Stream the official PDF representation of the Payment Receipt (Payment Entry) to the mobile app.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.invoices.invoices.download_receipt_pdf
+
+- method_path: propms.api.mobile.get_invoice_details
+  http_methods: GET/POST
+  function: get_invoice_details
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['invoice_name=None']
+  description: Fetch comprehensive invoice details including line items, taxes, and payment history.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.invoices.invoices.get_invoice_details
+
+- method_path: propms.api.mobile.get_tenant_invoices
+  http_methods: GET/POST
+  function: get_tenant_invoices
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ["status='all'", 'lease=None', 'page=1', 'page_length=20']
+  description: Fetch all Sales Invoices for the authenticated tenant mobile user.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.invoices.invoices.get_tenant_invoices
+
+- method_path: propms.api.mobile.initiate_invoice_payment
+  http_methods: POST
+  function: initiate_invoice_payment
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['invoice_name=None', 'amount=None', 'phone_number=None', "payment_channel='SELCOM_PUSH'"]
+  description: Prepare and initiate payment for an outstanding invoice with Selcom.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.invoices.invoices.initiate_invoice_payment
+
+- method_path: propms.api.v1.invoices.invoices.download_invoice_pdf
+  http_methods: GET/POST
+  function: download_invoice_pdf
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/invoices/invoices.py
+  parameters: ['invoice_name=None']
+  description: Stream the official PDF representation of the Sales Invoice to the mobile app.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.invoices.invoices.download_receipt_pdf
+  http_methods: GET/POST
+  function: download_receipt_pdf
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/invoices/invoices.py
+  parameters: ['invoice_name=None', 'payment_entry_name=None']
+  description: Stream the official PDF representation of the Payment Receipt (Payment Entry) to the mobile app.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.invoices.invoices.get_invoice_details
+  http_methods: GET/POST
+  function: get_invoice_details
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/invoices/invoices.py
+  parameters: ['invoice_name=None']
+  description: Fetch comprehensive invoice details including line items, taxes, and payment history.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.invoices.invoices.get_tenant_invoices
+  http_methods: GET/POST
+  function: get_tenant_invoices
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/invoices/invoices.py
+  parameters: ["status='all'", 'lease=None', 'page=1', 'page_length=20']
+  description: Fetch all Sales Invoices for the authenticated tenant mobile user.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.invoices.invoices.initiate_invoice_payment
+  http_methods: POST
+  function: initiate_invoice_payment
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/invoices/invoices.py
+  parameters: ['invoice_name=None', 'amount=None', 'phone_number=None', "payment_channel='SELCOM_PUSH'"]
+  description: Prepare and initiate payment for an outstanding invoice with Selcom.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.invoices.invoices.selcom_payment_webhook
+  http_methods: POST
+  function: selcom_payment_webhook
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/invoices/invoices.py
+  parameters: []
+  description: Webhook receiver for Selcom payment confirmations.
+  allow_guest: true
+  layer: V1
+
+========================================================================
+DOMAIN: job_card_tickets (55)
+========================================================================
+- method_path: propms.api.mobile.assign_subcontractor
+  http_methods: GET/POST
+  function: assign_subcontractor
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None', 'assigned_to=None']
+  description: Assign a subcontractor to an Issue by setting Issue.sub_contractor (Supplier).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.assign_subcontractor
+
+- method_path: propms.api.mobile.assign_ticket_to_staff
+  http_methods: GET/POST
+  function: assign_ticket_to_staff
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None', 'assigned_to=None']
+  description: Assign an Issue to a maintenance staff by setting Issue.person_in_charge (Employee).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.assign_ticket_to_staff
+
+- method_path: propms.api.mobile.change_ticket_priority
+  http_methods: GET/POST
+  function: change_ticket_priority
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None', 'ticket_priority=None']
+  description: Change Issue.priority for a ticket.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.change_ticket_priority
+
+- method_path: propms.api.mobile.change_ticket_status
+  http_methods: GET/POST
+  function: change_ticket_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None', 'status=None', 'reason=None', 'defect_found=None', 'resolution_details=None']
+  description: Universal status transition endpoint supporting all job card statuses.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.change_ticket_status
+
+- method_path: propms.api.mobile.close_ticket_with_feedback
+  http_methods: GET/POST
+  function: close_ticket_with_feedback
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None', 'rating=None', 'customer_feedback=None']
+  description: Close a ticket and optionally submit customer feedback.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.close_ticket_with_feedback
+
+- method_path: propms.api.mobile.create_ticket
+  http_methods: GET/POST
+  function: create_ticket
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['subject=None', 'description=None', 'property_name=None', 'issue_type=None']
+  description: Create an Issue (jobcard/ticket) from the mobile app.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.create_ticket
+
+- method_path: propms.api.mobile.edit_ticket_communication
+  http_methods: GET/POST
+  function: edit_ticket_communication
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id', 'communication_idx', 'new_message_content', 'mentioned_emails=None']
+  description: Edit a Support Communication message (WhatsApp-style edit).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.edit_ticket_communication
+
+- method_path: propms.api.mobile.get_issue_types
+  http_methods: GET/POST
+  function: get_issue_types
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: Return list of Issue Type options from the Issue Type doctype (for dropdowns/filters).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.get_issue_types
+
+- method_path: propms.api.mobile.get_mentionable_support_staff
+  http_methods: ALL
+  function: get_mentionable_support_staff
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None']
+  description: Backward-compatible wrapper for mentionable support staff.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.get_mentionable_support_staff
+
+- method_path: propms.api.mobile.get_subcontractor_list
+  http_methods: GET/POST
+  function: get_subcontractor_list
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: Return list of subcontractor app users for assignment. Maintenance-only.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.get_subcontractor_list
+
+- method_path: propms.api.mobile.get_support_staff_list
+  http_methods: GET/POST
+  function: get_support_staff_list
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: Return list of enabled Mobile Technicians for ticket assignment.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.get_support_staff_list
+
+- method_path: propms.api.mobile.get_ticket_communications
+  http_methods: GET/POST
+  function: get_ticket_communications
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id', 'limit=20', 'offset=0', 'channel=None']
+  description: Get communications for a specific Issue (mobile-optimised).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.get_ticket_communications
+
+- method_path: propms.api.mobile.get_ticket_priorities
+  http_methods: GET/POST
+  function: get_ticket_priorities
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None']
+  description: Return all Issue Priority options and current Issue.priority for a ticket.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.get_ticket_priorities
+
+- method_path: propms.api.mobile.get_user_tickets
+  http_methods: GET/POST
+  function: get_user_tickets
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['status_filter=None', 'limit=50', 'offset=0']
+  description: Return Issues for the logged-in user (mobile jobcards/tickets).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.get_user_tickets
+
+- method_path: propms.api.mobile.initialize_app_websocket
+  http_methods: GET/POST
+  function: initialize_app_websocket
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: Initialize websocket connection and subscribe to relevant rooms for the logged-in user.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.initialize_app_websocket
+
+- method_path: propms.api.mobile.mark_communications_as_read
+  http_methods: GET/POST
+  function: mark_communications_as_read
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None', 'issue_id=None', 'communication_indices=None']
+  description: Mark specific or all unread communications on a ticket as read.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.mark_communications_as_read
+
+- method_path: propms.api.mobile.put_ticket_on_hold
+  http_methods: GET/POST
+  function: put_ticket_on_hold
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None', 'hold_reason=None']
+  description: Put a ticket on hold. Maintenance staff or Admin only.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.put_ticket_on_hold
+
+- method_path: propms.api.mobile.resolve_ticket
+  http_methods: GET/POST
+  function: resolve_ticket
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None', 'defect_found=None', 'resolution_details=None']
+  description: Mark a ticket as Resolved. Maintenance staff, technician, or Admin.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.resolve_ticket
+
+- method_path: propms.api.mobile.resume_ticket_from_hold
+  http_methods: GET/POST
+  function: resume_ticket_from_hold
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None']
+  description: Resume a ticket from On Hold back to Open. Maintenance staff or Admin only.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.resume_ticket_from_hold
+
+- method_path: propms.api.mobile.send_ticket_communication
+  http_methods: GET/POST
+  function: send_ticket_communication
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['issue_id=None', 'ticket_id=None', 'message_content=None', 'image_attachment=None', 'attachment=None', 'file_attachments=None', 'video_attachment=None', 'video=None', 'reply_to_idx=None', 'mentioned_emails=None', 'channel=None', 'communication_channel=None']
+  description: Send a message to an Issue using the Support Communication child table.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.send_ticket_communication
+
+- method_path: propms.api.mobile.send_typing_indicator
+  http_methods: GET/POST
+  function: send_typing_indicator
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id', 'is_typing=True']
+  description: Send a transient 'user is typing' indicator for a ticket (no DB write).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.send_typing_indicator
+
+- method_path: propms.api.mobile.submit_tenant_rating_and_feedback
+  http_methods: GET/POST
+  function: submit_tenant_rating_and_feedback
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id=None', 'rating=None', 'customer_feedback=None']
+  description: Allow a tenant to submit a rating and optional feedback for a Resolved ticket.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.submit_tenant_rating_and_feedback
+
+- method_path: propms.api.mobile.subscribe_to_ticket_room
+  http_methods: GET/POST
+  function: subscribe_to_ticket_room
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id']
+  description: Subscribe to a specific Issue room for real-time updates (mobile expects ticket_id).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.subscribe_to_ticket_room
+
+- method_path: propms.api.mobile.unsubscribe_from_ticket_room
+  http_methods: GET/POST
+  function: unsubscribe_from_ticket_room
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['ticket_id']
+  description: Unsubscribe from a specific Issue room (mobile still passes ticket_id).
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.job_card.job_card.unsubscribe_from_ticket_room
+
+- method_path: propms.api.v1.job_card.job_card.assign_subcontractor
+  http_methods: POST
+  function: assign_subcontractor
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'assigned_to=None']
+  description: Assign a subcontractor to an Issue by setting Issue.sub_contractor (Supplier).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.assign_ticket_to_staff
+  http_methods: POST
+  function: assign_ticket_to_staff
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'assigned_to=None']
+  description: Assign an Issue to a maintenance staff by setting Issue.person_in_charge (Employee).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.change_ticket_priority
+  http_methods: POST
+  function: change_ticket_priority
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'ticket_priority=None']
+  description: Change Issue.priority for a ticket.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.change_ticket_status
+  http_methods: POST
+  function: change_ticket_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'status=None', 'reason=None', 'defect_found=None', 'resolution_details=None']
+  description: Universal status transition endpoint supporting all job card statuses.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.check_person_in_charge
+  http_methods: POST
+  function: check_person_in_charge
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None']
+  description: Check whether an Issue has been assigned (person_in_charge set).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.check_subcontractor
+  http_methods: POST
+  function: check_subcontractor
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None']
+  description: Check whether an Issue has a subcontractor assigned (sub_contractor set). Maintenance-only.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.close_ticket_with_feedback
+  http_methods: POST
+  function: close_ticket_with_feedback
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'rating=None', 'customer_feedback=None']
+  description: Close a ticket and optionally submit customer feedback.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.create_ticket
+  http_methods: ALL
+  function: create_ticket
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['subject=None', 'description=None', 'property_name=None', 'issue_type=None']
+  description: Create an Issue (jobcard/ticket) from the mobile app.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.edit_ticket_communication
+  http_methods: ALL
+  function: edit_ticket_communication
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id', 'communication_idx', 'new_message_content', 'mentioned_emails=None']
+  description: Edit a Support Communication message (WhatsApp-style edit).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.get_issue_types
+  http_methods: ALL
+  function: get_issue_types
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: []
+  description: Return list of Issue Type options from the Issue Type doctype (for dropdowns/filters).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.get_job_card_statuses
+  http_methods: GET/POST
+  function: get_job_card_statuses
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: []
+  description: Return list of all valid job card / ticket statuses.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.get_mentionable_support_staff
+  http_methods: ALL
+  function: get_mentionable_support_staff
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None']
+  description: Return maintenance mentionables for an issue (officer/manager, technician, subcontractor).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.get_property
+  http_methods: ALL
+  function: get_property
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: []
+  description: Return properties for the logged-in app user.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.get_subcontractor_list
+  http_methods: ALL
+  function: get_subcontractor_list
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: []
+  description: Return list of subcontractor app users for assignment. Maintenance-only.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.get_support_staff_list
+  http_methods: ALL
+  function: get_support_staff_list
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: []
+  description: Return list of enabled Mobile Technicians for ticket assignment.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.get_ticket_communications
+  http_methods: ALL
+  function: get_ticket_communications
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id', 'limit=20', 'offset=0', 'channel=None']
+  description: Get communications for a specific Issue (mobile-optimised).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.get_ticket_priorities
+  http_methods: ALL
+  function: get_ticket_priorities
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None']
+  description: Return all Issue Priority options and current Issue.priority for a ticket.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.get_user_image
+  http_methods: ALL
+  function: get_user_image
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['user=None']
+  description: Return the user's profile image URL (defaults to current user).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.get_user_tickets
+  http_methods: ALL
+  function: get_user_tickets
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['status_filter=None', 'limit=50', 'offset=0']
+  description: Return Issues for the logged-in user (mobile jobcards/tickets).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.initialize_app_websocket
+  http_methods: ALL
+  function: initialize_app_websocket
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: []
+  description: Initialize websocket connection and subscribe to relevant rooms for the logged-in user.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.mark_communications_as_read
+  http_methods: ALL
+  function: mark_communications_as_read
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'issue_id=None', 'communication_indices=None']
+  description: Mark specific or all unread communications on a ticket as read.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.put_ticket_on_hold
+  http_methods: POST
+  function: put_ticket_on_hold
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'hold_reason=None']
+  description: Put a ticket on hold. Maintenance staff or Admin only.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.resolve_ticket
+  http_methods: POST
+  function: resolve_ticket
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'defect_found=None', 'resolution_details=None']
+  description: Mark a ticket as Resolved. Maintenance staff, technician, or Admin.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.resume_ticket_from_hold
+  http_methods: POST
+  function: resume_ticket_from_hold
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None']
+  description: Resume a ticket from On Hold back to Open. Maintenance staff or Admin only.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.send_ticket_communication
+  http_methods: ALL
+  function: send_ticket_communication
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['issue_id=None', 'ticket_id=None', 'message_content=None', 'image_attachment=None', 'attachment=None', 'file_attachments=None', 'video_attachment=None', 'video=None', 'reply_to_idx=None', 'mentioned_emails=None', 'channel=None', 'communication_channel=None']
+  description: Send a message to an Issue using the Support Communication child table.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.send_typing_indicator
+  http_methods: ALL
+  function: send_typing_indicator
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id', 'is_typing=True']
+  description: Send a transient 'user is typing' indicator for a ticket (no DB write).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.submit_tenant_rating_and_feedback
+  http_methods: POST
+  function: submit_tenant_rating_and_feedback
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'rating=None', 'customer_feedback=None']
+  description: Allow a tenant to submit a rating and optional feedback for a Resolved ticket.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.subscribe_to_ticket_room
+  http_methods: ALL
+  function: subscribe_to_ticket_room
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id']
+  description: Subscribe to a specific Issue room for real-time updates (mobile expects ticket_id).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.unsubscribe_from_ticket_room
+  http_methods: ALL
+  function: unsubscribe_from_ticket_room
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id']
+  description: Unsubscribe from a specific Issue room (mobile still passes ticket_id).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.update_job_card_status
+  http_methods: POST
+  function: update_job_card_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'status=None', 'reason=None', 'defect_found=None', 'resolution_details=None']
+  description: Update job card status endpoint for Manager/Officer/Technician.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.job_card.job_card.update_ticket_status
+  http_methods: POST
+  function: update_ticket_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/job_card/job_card.py
+  parameters: ['ticket_id=None', 'status=None', 'reason=None', 'defect_found=None', 'resolution_details=None']
+  description: Alias for change_ticket_status / update_job_card_status.
+  allow_guest: false
+  layer: V1
+
+========================================================================
+DOMAIN: visitors_gate_pass (17)
+========================================================================
+- method_path: propms.api.mobile.cancel_visitor_pass
+  http_methods: POST
+  function: cancel_visitor_pass
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['pass_id=None']
+  description: Cancel an active visitor pass prior to check-in.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.gate_pass.gate_pass.cancel_visitor_pass
+
+- method_path: propms.api.mobile.checkout_visitor
+  http_methods: POST
+  function: checkout_visitor
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['pass_id=None']
+  description: Security / Staff endpoint: Check out visitor leaving premises.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.gate_pass.gate_pass.checkout_visitor
+
+- method_path: propms.api.mobile.create_visitor_pass
+  http_methods: POST
+  function: create_visitor_pass
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['visitor_name=None', 'phone_number=None', "visitor_type='Guest'", 'expected_arrival_date=None', 'expected_arrival_time=None', 'vehicle_plate=None', "validity_type='One-Time Entry'", 'lease=None', 'property_unit=None', 'notes=None']
+  description: Create a new Visitor Gate Pass for the authenticated tenant resident.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.gate_pass.gate_pass.create_visitor_pass
+
+- method_path: propms.api.mobile.get_security_gate_passes
+  http_methods: GET/POST
+  function: get_security_gate_passes
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['date=None', 'status=None', 'search=None', 'page=1', 'page_length=50']
+  description: Security / Reception endpoint: View and search gate passes.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.gate_pass.gate_pass.get_security_gate_passes
+
+- method_path: propms.api.mobile.get_tenant_apartments
+  http_methods: GET/POST
+  function: get_tenant_apartments
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: Return all apartments and active leases linked to the authenticated Mobile VIVA Tenant.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.gate_pass.gate_pass.get_tenant_apartments
+
+- method_path: propms.api.mobile.get_tenant_visitor_passes
+  http_methods: GET/POST
+  function: get_tenant_visitor_passes
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ["status='all'", 'lease=None', 'page=1', 'page_length=20']
+  description: Return list of visitor passes created by the logged-in tenant.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.gate_pass.gate_pass.get_tenant_visitor_passes
+
+- method_path: propms.api.mobile.get_visitor_pass_details
+  http_methods: GET/POST
+  function: get_visitor_pass_details
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['pass_id=None']
+  description: Get complete details and verification payload for a specific visitor pass.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.gate_pass.gate_pass.get_visitor_pass_details
+
+- method_path: propms.api.mobile.validate_and_checkin_visitor
+  http_methods: POST
+  function: validate_and_checkin_visitor
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['pass_id=None', 'notes=None']
+  description: Security / Staff endpoint: Validate QR scan & check in visitor with WebSocket & FCM push.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.gate_pass.gate_pass.validate_and_checkin_visitor
+
+- method_path: propms.api.v1.gate_pass.gate_pass.cancel_visitor_pass
+  http_methods: POST
+  function: cancel_visitor_pass
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/gate_pass/gate_pass.py
+  parameters: ['pass_id=None']
+  description: Cancel an active visitor pass prior to check-in.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.gate_pass.gate_pass.checkout_visitor
+  http_methods: POST
+  function: checkout_visitor
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/gate_pass/gate_pass.py
+  parameters: ['pass_id=None']
+  description: Security / Staff endpoint: Check out visitor leaving premises.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.gate_pass.gate_pass.create_visitor_pass
+  http_methods: POST
+  function: create_visitor_pass
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/gate_pass/gate_pass.py
+  parameters: ['visitor_name=None', 'phone_number=None', "visitor_type='Guest'", 'expected_arrival_date=None', 'expected_arrival_time=None', 'vehicle_plate=None', "validity_type='One-Time Entry'", 'lease=None', 'property_unit=None', 'notes=None']
+  description: Create a new Visitor Gate Pass for the authenticated tenant resident.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.gate_pass.gate_pass.enqueue_gate_pass_push
+  http_methods: ALL
+  function: enqueue_gate_pass_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/gate_pass/gate_pass.py
+  parameters: ['user', 'pass_id', 'title', 'body', 'visitor_name=None', 'property_unit=None', 'vehicle_plate=None', "event_type='visitor_arrived'"]
+  description: Send FCM push notification for Gate Pass events with rich data payload.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.gate_pass.gate_pass.get_security_gate_passes
+  http_methods: GET/POST
+  function: get_security_gate_passes
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/gate_pass/gate_pass.py
+  parameters: ['date=None', 'status=None', 'search=None', 'page=1', 'page_length=50']
+  description: Security / Reception endpoint: View and search gate passes.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.gate_pass.gate_pass.get_tenant_apartments
+  http_methods: GET/POST
+  function: get_tenant_apartments
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/gate_pass/gate_pass.py
+  parameters: []
+  description: Return all apartments and active leases linked to the authenticated Mobile VIVA Tenant.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.gate_pass.gate_pass.get_tenant_visitor_passes
+  http_methods: GET/POST
+  function: get_tenant_visitor_passes
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/gate_pass/gate_pass.py
+  parameters: ["status='all'", 'lease=None', 'page=1', 'page_length=20']
+  description: Return list of visitor passes created by the logged-in tenant.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.gate_pass.gate_pass.get_visitor_pass_details
+  http_methods: GET/POST
+  function: get_visitor_pass_details
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/gate_pass/gate_pass.py
+  parameters: ['pass_id=None']
+  description: Get complete details and verification payload for a specific visitor pass.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.gate_pass.gate_pass.validate_and_checkin_visitor
+  http_methods: POST
+  function: validate_and_checkin_visitor
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/gate_pass/gate_pass.py
+  parameters: ['pass_id=None', 'notes=None']
+  description: Security / Staff endpoint: Validate QR scan & check in visitor with WebSocket & FCM push.
+  allow_guest: false
+  layer: V1
+
+========================================================================
+DOMAIN: amenities (18)
+========================================================================
+- method_path: propms.api.mobile.cancel_amenity_booking
+  http_methods: POST
+  function: cancel_amenity_booking
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['booking_id=None', 'cancellation_reason=None']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.amenities.cancel_booking
+
+- method_path: propms.api.mobile.create_amenity_booking
+  http_methods: POST
+  function: create_amenity_booking
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['amenity=None', 'booking_date=None', 'start_time=None', 'end_time=None', 'guests_count=1', 'notes=None', 'lease=None', 'property_unit=None']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.amenities.create_booking
+
+- method_path: propms.api.mobile.get_amenities
+  http_methods: GET/POST
+  function: get_amenities
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['category=None']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.amenities.get_amenities
+
+- method_path: propms.api.mobile.get_amenity_detail
+  http_methods: GET/POST
+  function: get_amenity_detail
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['amenity=None']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.amenities.get_amenity_detail
+
+- method_path: propms.api.mobile.get_available_slots
+  http_methods: GET/POST
+  function: get_available_slots
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['amenity=None', 'booking_date=None']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.amenities.get_available_slots
+
+- method_path: propms.api.mobile.get_my_amenity_bookings
+  http_methods: GET/POST
+  function: get_my_amenity_bookings
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ["status='all'", 'page=1', 'page_length=20']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.amenities.get_my_bookings
+
+- method_path: propms.api.amenities.cancel_booking
+  http_methods: POST
+  function: cancel_booking
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/amenities.py
+  parameters: ['booking_id=None', 'cancellation_reason=None']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.amenities.cancel_booking
+
+- method_path: propms.api.amenities.create_booking
+  http_methods: POST
+  function: create_booking
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/amenities.py
+  parameters: ['amenity=None', 'booking_date=None', 'start_time=None', 'end_time=None', 'guests_count=1', 'notes=None', 'lease=None', 'property_unit=None']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.amenities.create_booking
+
+- method_path: propms.api.amenities.get_amenities
+  http_methods: GET/POST
+  function: get_amenities
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/amenities.py
+  parameters: ['category=None']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.amenities.get_amenities
+
+- method_path: propms.api.amenities.get_amenity_detail
+  http_methods: GET/POST
+  function: get_amenity_detail
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/amenities.py
+  parameters: ['amenity=None']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.amenities.get_amenity_detail
+
+- method_path: propms.api.amenities.get_available_slots
+  http_methods: GET/POST
+  function: get_available_slots
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/amenities.py
+  parameters: ['amenity=None', 'booking_date=None']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.amenities.get_available_slots
+
+- method_path: propms.api.amenities.get_my_bookings
+  http_methods: GET/POST
+  function: get_my_bookings
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/amenities.py
+  parameters: ["status='all'", 'page=1', 'page_length=20']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.amenities.get_my_bookings
+
+- method_path: propms.api.v1.amenities.user_bookings.cancel_booking
+  http_methods: POST
+  function: cancel_booking
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/amenities/user_bookings.py
+  parameters: ['booking_id=None', 'cancellation_reason=None']
+  description: Cancel a confirmed amenity booking.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.amenities.booking.create_booking
+  http_methods: POST
+  function: create_booking
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/amenities/booking.py
+  parameters: ['amenity=None', 'booking_date=None', 'start_time=None', 'end_time=None', 'guests_count=1', 'notes=None', 'lease=None', 'property_unit=None']
+  description: Create a new confirmed booking for a resident on a Viva Amenity.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.amenities.list.get_amenities
+  http_methods: GET/POST
+  function: get_amenities
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/amenities/list.py
+  parameters: ['category=None']
+  description: Return all active Viva Amenities with cover and gallery images.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.amenities.list.get_amenity_detail
+  http_methods: GET/POST
+  function: get_amenity_detail
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/amenities/list.py
+  parameters: ['amenity=None']
+  description: Return full details and gallery images for a specific amenity.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.amenities.slots.get_available_slots
+  http_methods: GET/POST
+  function: get_available_slots
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/amenities/slots.py
+  parameters: ['amenity=None', 'booking_date=None']
+  description: Calculate time slots and real-time availability for an amenity on a given date.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.amenities.user_bookings.get_my_bookings
+  http_methods: GET/POST
+  function: get_my_bookings
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/amenities/user_bookings.py
+  parameters: ["status='all'", 'page=1', 'page_length=20']
+  description: Return upcoming & past amenity bookings for the logged-in resident.
+  allow_guest: false
+  layer: V1
+
+========================================================================
+DOMAIN: emergency (10)
+========================================================================
+- method_path: propms.api.mobile.get_emergency_incidents
+  http_methods: GET/POST
+  function: get_emergency_incidents
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ["status='all'", 'page=1', 'page_length=20']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.emergency.get_emergency_incidents
+
+- method_path: propms.api.mobile.report_emergency
+  http_methods: POST
+  function: report_emergency
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['incident_type=None', 'property_unit=None', 'location_details=None', 'details=None']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.emergency.report_emergency
+
+- method_path: propms.api.mobile.update_emergency_status
+  http_methods: POST
+  function: update_emergency_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['incident_id=None', 'status=None', 'resolution_notes=None']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.emergency.update_incident_status
+
+- method_path: propms.api.emergency.get_emergency_incidents
+  http_methods: GET/POST
+  function: get_emergency_incidents
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/emergency.py
+  parameters: ["status='all'", 'page=1', 'page_length=20']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.emergency.get_emergency_incidents
+
+- method_path: propms.api.emergency.report_emergency
+  http_methods: POST
+  function: report_emergency
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/emergency.py
+  parameters: ['incident_type=None', 'property_unit=None', 'location_details=None', 'details=None']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.emergency.report_emergency
+
+- method_path: propms.api.emergency.update_incident_status
+  http_methods: POST
+  function: update_incident_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/emergency.py
+  parameters: ['incident_id=None', 'status=None', 'resolution_notes=None']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.emergency.update_incident_status
+
+- method_path: propms.api.v1.emergency.notify.enqueue_emergency_fcm_push
+  http_methods: ALL
+  function: enqueue_emergency_fcm_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/emergency/notify.py
+  parameters: ['incident_id', 'incident_type', 'location', 'reporter']
+  description: Background job to send high-priority push notification to security & staff devices.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.emergency.status.get_emergency_incidents
+  http_methods: GET/POST
+  function: get_emergency_incidents
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/emergency/status.py
+  parameters: ["status='all'", 'page=1', 'page_length=20']
+  description: Return emergency incidents list.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.emergency.report.report_emergency
+  http_methods: POST
+  function: report_emergency
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/emergency/report.py
+  parameters: ['incident_type=None', 'property_unit=None', 'location_details=None', 'details=None']
+  description: Report a building emergency incident and trigger real-time dispatch.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.emergency.status.update_incident_status
+  http_methods: POST
+  function: update_incident_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/emergency/status.py
+  parameters: ['incident_id=None', 'status=None', 'resolution_notes=None']
+  description: Staff endpoint: Update emergency incident status (Dispatched, Responding, Resolved).
+  allow_guest: false
+  layer: V1
+
+========================================================================
+DOMAIN: directory (3)
+========================================================================
+- method_path: propms.api.mobile.get_directory_contacts
+  http_methods: GET/POST
+  function: get_directory_contacts
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['department=None']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.directory.get_directory_contacts
+
+- method_path: propms.api.directory.get_directory_contacts
+  http_methods: GET/POST
+  function: get_directory_contacts
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/directory.py
+  parameters: ['department=None']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.directory.get_directory_contacts
+
+- method_path: propms.api.v1.directory.contacts.get_directory_contacts
+  http_methods: GET/POST
+  function: get_directory_contacts
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/directory/contacts.py
+  parameters: ['department=None']
+  description: Return active Viva Building Contacts sorted by emergency priority.
+  allow_guest: false
+  layer: V1
+
+========================================================================
+DOMAIN: calls (15)
+========================================================================
+- method_path: propms.api.mobile.answer_call
+  http_methods: POST
+  function: answer_call
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['call_id=None']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.calls.answer_call
+
+- method_path: propms.api.mobile.end_call
+  http_methods: POST
+  function: end_call
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['call_id=None', "reason='ended'"]
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.calls.end_call
+
+- method_path: propms.api.mobile.get_call_config
+  http_methods: GET/POST
+  function: get_call_config
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: []
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.calls.get_livekit_config
+
+- method_path: propms.api.mobile.get_call_history
+  http_methods: GET/POST
+  function: get_call_history
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ["status='all'", 'page=1', 'page_length=20']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.calls.get_call_history
+
+- method_path: propms.api.mobile.initiate_call
+  http_methods: POST
+  function: initiate_call
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['receiver=None', "call_type='Voice'"]
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.calls.initiate_call
+
+- method_path: propms.api.calls.answer_call
+  http_methods: POST
+  function: answer_call
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/calls.py
+  parameters: ['call_id=None']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.calls.answer_call
+
+- method_path: propms.api.calls.end_call
+  http_methods: POST
+  function: end_call
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/calls.py
+  parameters: ['call_id=None', "reason='ended'"]
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.calls.end_call
+
+- method_path: propms.api.calls.get_call_config
+  http_methods: GET/POST
+  function: get_call_config
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/calls.py
+  parameters: []
+  description: Return public LiveKit server connection configuration.
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.calls.get_livekit_config
+
+- method_path: propms.api.calls.get_call_history
+  http_methods: GET/POST
+  function: get_call_history
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/calls.py
+  parameters: ["status='all'", 'page=1', 'page_length=20']
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.calls.get_call_history
+
+- method_path: propms.api.calls.initiate_call
+  http_methods: POST
+  function: initiate_call
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/calls.py
+  parameters: ['receiver=None', "call_type='Voice'"]
+  description: None
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.calls.initiate_call
+
+- method_path: propms.api.v1.calls.answer.answer_call
+  http_methods: POST
+  function: answer_call
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/calls/answer.py
+  parameters: ['call_id=None']
+  description: Accept and join an active incoming call.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.calls.end.end_call
+  http_methods: POST
+  function: end_call
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/calls/end.py
+  parameters: ['call_id=None', "reason='ended'"]
+  description: End or decline an active call and calculate total duration.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.calls.initiate.enqueue_incoming_call_push
+  http_methods: ALL
+  function: enqueue_incoming_call_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/calls/initiate.py
+  parameters: ['receiver', 'call_payload']
+  description: Background job to send high-priority FCM push notification for incoming calls.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.calls.history.get_call_history
+  http_methods: GET/POST
+  function: get_call_history
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/calls/history.py
+  parameters: ["status='all'", 'page=1', 'page_length=20']
+  description: Return call logs for the logged-in user (both incoming and outgoing).
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.calls.initiate.initiate_call
+  http_methods: POST
+  function: initiate_call
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/calls/initiate.py
+  parameters: ['receiver=None', "call_type='Voice'"]
+  description: Initiate a 1-on-1 audio/video call between residents/staff.
+  allow_guest: false
+  layer: V1
+
+========================================================================
+DOMAIN: files (12)
+========================================================================
+- method_path: propms.api.mobile.abort_upload_session
+  http_methods: ALL
+  function: abort_upload_session
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['session_id=None']
+  description: Abort upload session and clean up temp chunks.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.files.chunked_upload.abort_upload_session
+
+- method_path: propms.api.mobile.finalize_upload
+  http_methods: ALL
+  function: finalize_upload
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['session_id=None', 'doctype=None', 'docname=None', 'fieldname=None', 'is_private=None']
+  description: Reassemble all chunks into the final File document in Frappe.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.files.chunked_upload.finalize_upload
+
+- method_path: propms.api.mobile.get_upload_session_status
+  http_methods: ALL
+  function: get_upload_session_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['session_id=None']
+  description: Check upload session progress and return received chunks.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.files.chunked_upload.get_upload_session_status
+
+- method_path: propms.api.mobile.start_upload_session
+  http_methods: ALL
+  function: start_upload_session
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['filename=None', 'total_chunks=1', 'total_size=0', 'file_type=None', 'doctype=None', 'docname=None', 'fieldname=None', 'is_private=0']
+  description: Initialize a chunked upload session.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.files.chunked_upload.start_upload_session
+
+- method_path: propms.api.mobile.upload_attachment
+  http_methods: ALL
+  function: upload_attachment
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['file_data=None', 'filename=None', 'ticket_id=None']
+  description: Upload a single file (base64) matching vsd_helpdesk mobile API.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.mobile.upload_chunk
+  http_methods: ALL
+  function: upload_chunk
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['session_id=None', 'chunk_index=None']
+  description: Receive and save an individual binary chunk.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.files.chunked_upload.upload_chunk
+
+- method_path: propms.api.mobile.upload_mobile_image
+  http_methods: ALL
+  function: upload_mobile_image
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['file_data=None', 'filename=None', 'ticket_id=None']
+  description: None
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+
+- method_path: propms.api.v1.files.chunked_upload.abort_upload_session
+  http_methods: ALL
+  function: abort_upload_session
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/files/chunked_upload.py
+  parameters: ['session_id=None', 'upload_session_id=None']
+  description: Abort upload session and clean up temp chunks.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.files.chunked_upload.finalize_upload
+  http_methods: ALL
+  function: finalize_upload
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/files/chunked_upload.py
+  parameters: ['session_id=None', 'upload_session_id=None', 'doctype=None', 'docname=None', 'fieldname=None', 'is_private=None']
+  description: Reassemble all chunks into the final File document in Frappe.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.files.chunked_upload.get_upload_session_status
+  http_methods: ALL
+  function: get_upload_session_status
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/files/chunked_upload.py
+  parameters: ['session_id=None', 'upload_session_id=None']
+  description: Check upload session progress and return received chunks.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.files.chunked_upload.start_upload_session
+  http_methods: ALL
+  function: start_upload_session
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/files/chunked_upload.py
+  parameters: ['filename=None', 'file_name=None', 'total_chunks=1', 'chunks_total=None', 'total_size=0', 'file_size=None', 'file_type=None', 'doctype=None', 'docname=None', 'fieldname=None', 'is_private=0']
+  description: Initialize a chunked upload session.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.files.chunked_upload.upload_chunk
+  http_methods: ALL
+  function: upload_chunk
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/files/chunked_upload.py
+  parameters: ['session_id=None', 'upload_session_id=None', 'chunk_index=None', 'chunk_number=None']
+  description: Receive and save an individual binary chunk.
+  allow_guest: false
+  layer: V1
+
+========================================================================
+DOMAIN: notifications (13)
+========================================================================
+- method_path: propms.api.mobile.enqueue_ticket_assigned_push
+  http_methods: GET/POST
+  function: enqueue_ticket_assigned_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['user', 'ticket_id', 'title=None', 'body=None', 'ticket_title=None', 'assigned_by=None', 'role_type=None']
+  description: Send FCM push notification and Notification Log when a ticket is assigned to a technician/subcontractor.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.notifications.notifications.enqueue_ticket_assigned_push
+
+- method_path: propms.api.mobile.enqueue_ticket_created_push
+  http_methods: GET/POST
+  function: enqueue_ticket_created_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['user', 'ticket_id', 'title=None', 'body=None', 'ticket_title=None', 'property_name=None', 'creator_name=None']
+  description: Send FCM push notification and Notification Log to staff when a new ticket is created by a tenant.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.notifications.notifications.enqueue_ticket_created_push
+
+- method_path: propms.api.mobile.enqueue_ticket_message_push
+  http_methods: GET/POST
+  function: enqueue_ticket_message_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['user', 'ticket_id', 'title', 'body', 'message_idx=None', 'notification_type=None']
+  description: Send FCM push notification for ticket messages or mentions.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.notifications.notifications.enqueue_ticket_message_push
+
+- method_path: propms.api.mobile.enqueue_ticket_status_push
+  http_methods: GET/POST
+  function: enqueue_ticket_status_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/mobile.py
+  parameters: ['user', 'ticket_id', 'new_status', 'title=None', 'body=None', 'ticket_title=None']
+  description: Send FCM push notification and Notification Log when a ticket status changes.
+  allow_guest: false
+  layer: MOBILE_WRAPPER
+  wraps: propms.api.v1.notifications.notifications.enqueue_ticket_status_push
+
+- method_path: propms.api.fcm.register_token
+  http_methods: POST
+  function: register_token
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/fcm.py
+  parameters: ['fcm_token']
+  description: Register or refresh an FCM token for the logged-in user.
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.notifications.fcm.register_token
+
+- method_path: propms.api.fcm.unregister_token
+  http_methods: POST
+  function: unregister_token
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/fcm.py
+  parameters: ['fcm_token']
+  description: Unregister an FCM token for the logged-in user.
+  allow_guest: false
+  layer: TOP_LEVEL_WRAPPER
+  wraps: propms.api.v1.notifications.fcm.unregister_token
+
+- method_path: propms.api.v1.notifications.notifications.enqueue_app_notification_push
+  http_methods: ALL
+  function: enqueue_app_notification_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/notifications/notifications.py
+  parameters: ['user', 'notification_id', 'title', 'body']
+  description: Send FCM push notification for app-level notifications.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.notifications.notifications.enqueue_ticket_assigned_push
+  http_methods: ALL
+  function: enqueue_ticket_assigned_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/notifications/notifications.py
+  parameters: ['user', 'ticket_id', 'title=None', 'body=None', 'ticket_title=None', 'assigned_by=None', 'role_type=None']
+  description: Send FCM push notification and Notification Log when a ticket is assigned to a technician/subcontractor.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.notifications.notifications.enqueue_ticket_created_push
+  http_methods: ALL
+  function: enqueue_ticket_created_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/notifications/notifications.py
+  parameters: ['user', 'ticket_id', 'title=None', 'body=None', 'ticket_title=None', 'property_name=None', 'creator_name=None']
+  description: Send FCM push notification and Notification Log to staff when a new ticket is created by a tenant.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.notifications.notifications.enqueue_ticket_message_push
+  http_methods: ALL
+  function: enqueue_ticket_message_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/notifications/notifications.py
+  parameters: ['user', 'ticket_id', 'title', 'body', 'message_idx=None', 'notification_type=None']
+  description: Send FCM push notification for ticket messages or mentions.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.notifications.notifications.enqueue_ticket_status_push
+  http_methods: ALL
+  function: enqueue_ticket_status_push
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/notifications/notifications.py
+  parameters: ['user', 'ticket_id', 'new_status', 'title=None', 'body=None', 'ticket_title=None']
+  description: Send FCM push notification and Notification Log when a ticket status changes.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.notifications.fcm.register_token
+  http_methods: POST
+  function: register_token
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/notifications/fcm.py
+  parameters: ['fcm_token']
+  description: Register or refresh an FCM token for the logged-in user.
+  allow_guest: false
+  layer: V1
+
+- method_path: propms.api.v1.notifications.fcm.unregister_token
+  http_methods: POST
+  function: unregister_token
+  file: /home/vvsd/dev2_version15_bench/apps/propms/propms/api/v1/notifications/fcm.py
+  parameters: ['fcm_token']
+  description: Unregister an FCM token for the logged-in user.
+  allow_guest: false
+  layer: V1

@@ -2,35 +2,39 @@ frappe.ui.form.on("Afritrack Settings", {
 	refresh: function (frm) {
 		frm.set_intro(
 			__(
-				"Complete flow: Sync Meters stores TrackSPM meter_id on each Meter. Purchases resolve SI meter serial → Meter.trackspm_meter_id. Keep Restrict Purchases on while testing with Afritrack’s test meter only."
+				"Complete flow: Sync Meters fetches TrackSPM /units/list, stores the full JSON on Afritrack Meter Sync, and updates TrackSPM Meter ID on existing Meter docs (does not create meters). Mobile meter status reads the latest sync (every 15 minutes). Keep Restrict Purchases on while testing with Afritrack’s test meter only."
 			)
 		);
 		if (!frm.is_new()) {
 			frm.add_custom_button(__("Sync Meters from TrackSPM"), function () {
 				frappe.confirm(
 					__(
-						"This calls the live TrackSPM units/list API (read-only). It does not purchase power. Continue?"
+						"This calls TrackSPM /units/list, saves the full JSON to Afritrack Meter Sync, and updates TrackSPM Meter ID on existing meters only. Continue?"
 					),
 					function () {
 						frappe.call({
 							method:
-								"propms.property_management_solution.doctype.afritrack_settings.afritrack_settings.sync_meters_from_trackspm",
+								"propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync.sync_now",
 							freeze: true,
 							freeze_message: __("Syncing meters from TrackSPM…"),
 							callback: function (r) {
 								if (!r.exc && r.message) {
+									var m = r.message;
 									frappe.msgprint({
-										title: __("Meter Sync"),
-										message: __(
-											"Updated: {0}, Created: {1}, Skipped: {2} (rows: {3})",
-											[
-												r.message.updated,
-												r.message.created,
-												r.message.skipped,
-												r.message.total_rows,
-											]
-										),
-										indicator: "green",
+										title: __("Afritrack Meter Sync"),
+										message:
+											m.status === "success"
+												? __(
+														"Sync {0}: Updated {1}, Skipped {2}, API rows {3}",
+														[
+															m.sync_name,
+															m.updated,
+															m.skipped,
+															m.total_rows,
+														]
+												  )
+												: __(m.message || "Sync failed"),
+										indicator: m.status === "success" ? "green" : "red",
 									});
 									frm.reload_doc();
 								}

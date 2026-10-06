@@ -5,3 +5,9 @@ propms.patches.data_population.populate_data
 propms.patches.v15_0.migrate_amenity_auto_approval
 propms.patches.v15_0.migrate_pending_bookings_to_requests
 propms.patches.v15_0.backfill_series_booking_items
+propms.patches.v15_0.migrate_pos_and_electricity_settings
+propms.patches.v15_0.migrate_pos_service_type_electricity
+propms.patches.v15_0.migrate_pos_amount_service_type
+propms.patches.v15_0.merge_electricity_settings_into_pos_amount_service
+propms.patches.v15_0.hide_sales_invoice_lease_item
+propms.patches.v15_0.rename_pos_amount_service_handler_other

@@ -914,6 +914,56 @@ def get_water_delivery_window():
 
 
 # -------------------------------------------------------------------------
+# Amount services (Electricity / Cooking Gas / …) — shared amount_split UI
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def get_amount_service_rates(amount_service=None, lease=None):
+    """Catalog + rates for a POS Amount Service (reuse electricity-style UI)."""
+    from propms.api.v1.pos_store import pos_store as v1_pos
+    return v1_pos.get_amount_service_rates(amount_service=amount_service, lease=lease)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def preview_amount_service(
+    amount_service=None, total_amount=None, allocations=None, lease=None
+):
+    from propms.api.v1.pos_store import pos_store as v1_pos
+    return v1_pos.preview_amount_service(
+        amount_service=amount_service,
+        total_amount=total_amount,
+        allocations=allocations,
+        lease=lease,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def checkout_amount_service(
+    amount_service=None,
+    total_amount=None,
+    allocations=None,
+    lease=None,
+    payment_method="MOBILE_MONEY",
+    phone_number=None,
+    amount=None,
+    tanesco_amount=None,
+    generator_amount=None,
+):
+    """Pay-first checkout for any Amount service (Electricity or Other)."""
+    from propms.api.v1.pos_store import pos_store as v1_pos
+    return v1_pos.checkout_amount_service(
+        amount_service=amount_service,
+        total_amount=total_amount,
+        allocations=allocations,
+        lease=lease,
+        payment_method=payment_method,
+        phone_number=phone_number,
+        amount=amount,
+        tanesco_amount=tanesco_amount,
+        generator_amount=generator_amount,
+    )
+
+
+# -------------------------------------------------------------------------
 # Electricity purchase (v1) — pay first, Paid POS SI on success
 # -------------------------------------------------------------------------
 @frappe.whitelist(methods=["GET", "POST"])
@@ -924,7 +974,10 @@ def get_electricity_rates(lease=None):
 
 @frappe.whitelist(methods=["GET", "POST"])
 def get_electricity_meter_status(lease=None, force_refresh=None):
-    """Live TANESCO/Generator balances and power On/Off from TrackSPM (read-only)."""
+    """Meter balances/power for tenant — prefers Afritrack Meter Sync (15-min).
+
+    force_refresh=1 hits TrackSPM live (ops/debug only).
+    """
     from propms.api.v1.electricity import electricity as v1_el
     return v1_el.get_electricity_meter_status(lease=lease, force_refresh=force_refresh)
 

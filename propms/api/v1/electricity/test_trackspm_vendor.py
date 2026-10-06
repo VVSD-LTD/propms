@@ -40,6 +40,7 @@ class TestTrackSPMClient(unittest.TestCase):
 
 		with patch("propms.api.v1.electricity.trackspm.get_settings") as gs:
 			settings = MagicMock()
+			settings.property_id = "5"
 			settings.db_set = MagicMock()
 			gs.return_value = settings
 			result = sync_meters_from_trackspm(create_missing=False)
@@ -67,6 +68,44 @@ class TestVendorAllowlist(unittest.TestCase):
 		s.base_url = "https://v1.api.trackspm.com"
 		s.username = "vivatowers"
 		return s
+
+	@patch("propms.api.v1.electricity.vendor.create_utility_bill")
+	@patch("propms.api.v1.electricity.vendor.resolve_trackspm_meter_id")
+	@patch("propms.api.v1.electricity.vendor.get_settings")
+	@patch("propms.api.v1.electricity.vendor.invoice_foreign_item_codes")
+	@patch("propms.api.v1.electricity.vendor._invoice_split_amounts")
+	def test_mixed_foreign_items_still_tops_up_catalog(self, mock_split, mock_foreign, mock_settings, mock_resolve, mock_create):
+		"""Mixed SI allowed — only catalog electricity amounts go to TrackSPM."""
+		from propms.api.v1.electricity.vendor import purchase_electricity_token
+
+		mock_settings.return_value = self._mock_settings()
+		mock_foreign.return_value = ["DRINKING WATER"]
+		mock_split.return_value = (660.0, 0.0)
+		mock_resolve.return_value = ("312", None, None)
+		mock_create.return_value = {"wt_id": 1001, "error": False}
+
+		with patch("frappe.db.exists", return_value=True), patch(
+			"frappe.db.get_value",
+			side_effect=lambda *a, **k: _fake_get_value(*a, **k, meter="TEST-SERIAL-ONLY"),
+		), patch("frappe.get_meta") as meta, patch(
+			"propms.api.v1.electricity.vendor._get_or_create_log"
+		) as mock_log, patch("propms.api.v1.electricity.vendor._finalize_log"):
+			meta.return_value.has_field.return_value = True
+			log = MagicMock()
+			log.name = "AFL-TEST-MIXED"
+			log.status = "Pending"
+			log.wt_id_t1 = None
+			log.wt_id_t2 = None
+			log.error_message = None
+			mock_log.return_value = log
+
+			result = purchase_electricity_token("SI-FAKE-MIXED")
+
+		self.assertEqual(result["status"], "success")
+		mock_create.assert_called_once()
+		self.assertEqual(mock_create.call_args.args[1], "t1")
+		self.assertEqual(mock_create.call_args.args[2], 660.0)
+		self.assertIn("DRINKING WATER", log.error_message or "")
 
 	@patch("propms.api.v1.electricity.vendor.create_utility_bill")
 	@patch("propms.api.v1.electricity.vendor.get_settings")

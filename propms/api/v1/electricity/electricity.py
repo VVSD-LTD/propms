@@ -15,33 +15,169 @@ LEASE_ITEM_ELECTRICITY = "Electricity"
 DEFAULT_PRICE_LIST = "Standard Selling"
 DEFAULT_TAX_TEMPLATE = "Incl VAT TZ - VPL"
 ALLOCATION_TOLERANCE = 1.0  # TZS
+ELECTRICITY_AMOUNT_SERVICE = "Electricity"
+
+
+def get_electricity_amount_service_name():
+	"""POS Amount Service doc used for electricity invoices + TrackSPM."""
+	if not frappe.db.exists("DocType", "POS Amount Service"):
+		return None
+	# Prefer titled Electricity with handler Electricity
+	name = frappe.db.get_value(
+		"POS Amount Service",
+		{"handler": "Electricity", "enabled": 1, "title": ELECTRICITY_AMOUNT_SERVICE},
+		"name",
+	)
+	if name:
+		return name
+	return frappe.db.get_value(
+		"POS Amount Service",
+		{"handler": "Electricity", "enabled": 1},
+		"name",
+	)
+
 
 
 def get_electricity_catalog():
-    """ERP item / lease labels from Afritrack Settings (with safe defaults).
+	"""ERP electricity items from POS Amount Service (handler=Electricity).
 
-    Prefer this over module constants so Viva can rename Items without code changes.
-    """
-    tanesco = ITEM_TANESCO
-    generator = ITEM_GENERATOR
-    lease_item = LEASE_ITEM_ELECTRICITY
-    try:
-        if frappe.db.exists("DocType", "Afritrack Settings"):
-            s = frappe.get_cached_doc("Afritrack Settings")
-            if (getattr(s, "item_tanesco", None) or "").strip():
-                tanesco = s.item_tanesco.strip()
-            if (getattr(s, "item_generator", None) or "").strip():
-                generator = s.item_generator.strip()
-            if (getattr(s, "lease_item_electricity", None) or "").strip():
-                lease_item = s.lease_item_electricity.strip()
-    except Exception:
-        pass
-    return {
-        "item_tanesco": tanesco,
-        "item_generator": generator,
-        "lease_item": lease_item,
-        "item_codes": (tanesco, generator),
-    }
+	Afritrack Settings is TrackSPM credentials / meter sync only — never item config.
+	Only catalog item_codes are eligible for TrackSPM top-up amounts.
+	SI.lease_item tag is fixed to LEASE_ITEM_ELECTRICITY (not user-configurable).
+	"""
+	tanesco = ITEM_TANESCO
+	generator = ITEM_GENERATOR
+	lease_item = LEASE_ITEM_ELECTRICITY
+	items = []
+	source = "defaults"
+
+	try:
+		svc_name = get_electricity_amount_service_name()
+		if svc_name:
+			s = frappe.get_cached_doc("POS Amount Service", svc_name)
+			rows = sorted(
+				[r for r in (s.get("items") or []) if cint(r.enabled) and (r.item or "").strip()],
+				key=lambda r: (cint(r.sort_order), cint(r.idx)),
+			)
+			t1 = None
+			t2 = None
+			for row in rows:
+				item_code = (row.item or "").strip()
+				tariff = (row.trackspm_tariff or "").strip()
+				if tariff not in ("t1", "t2"):
+					# Electricity catalog ignores untariffed rows (never send to TrackSPM)
+					continue
+				label = (row.label or "").strip() or item_code
+				items.append(
+					{
+						"item_code": item_code,
+						"label": label,
+						"trackspm_tariff": tariff,
+						"sort_order": cint(row.sort_order),
+					}
+				)
+				if tariff == "t1" and not t1:
+					t1 = item_code
+				elif tariff == "t2" and not t2:
+					t2 = item_code
+			if t1:
+				tanesco = t1
+			if t2:
+				generator = t2
+			source = "POS Amount Service:{0}".format(svc_name)
+	except Exception:
+		pass
+
+	if not items:
+		items = [
+			{
+				"item_code": tanesco,
+				"label": "TANESCO",
+				"trackspm_tariff": "t1",
+				"sort_order": 0,
+			},
+			{
+				"item_code": generator,
+				"label": "Generator",
+				"trackspm_tariff": "t2",
+				"sort_order": 1,
+			},
+		]
+
+	codes = tuple(i["item_code"] for i in items)
+	by_tariff = {i["trackspm_tariff"]: i["item_code"] for i in items}
+	return {
+		"item_tanesco": tanesco,
+		"item_generator": generator,
+		"lease_item": lease_item,
+		"item_codes": codes,
+		"item_code_set": set(codes),
+		"items": items,
+		"by_tariff": by_tariff,
+		"amount_service": get_electricity_amount_service_name(),
+		"source": source,
+	}
+
+
+def invoice_item_rows(doc):
+	"""Child item rows from Sales Invoice Document, frappe._dict, or test double.
+
+	Avoids confusing frappe._dict.items (method) with child table, and
+	MagicMock.get(...) with a real items list set as an attribute.
+	"""
+	if not doc:
+		return []
+	try:
+		from frappe.model.document import Document
+
+		if isinstance(doc, Document):
+			return list(doc.get("items") or [])
+	except Exception:
+		pass
+
+	raw = getattr(doc, "items", None)
+	if callable(raw):
+		# frappe._dict: .items is dict.items — use key access
+		raw = None
+		if hasattr(doc, "get"):
+			try:
+				candidate = doc.get("items")
+				if candidate is not None and not callable(candidate):
+					raw = candidate
+			except Exception:
+				raw = None
+		if raw is None:
+			try:
+				raw = doc["items"]
+			except Exception:
+				raw = []
+	if not isinstance(raw, (list, tuple)):
+		return []
+	return list(raw)
+
+
+def invoice_foreign_item_codes(doc_or_name):
+	"""Item codes on SI that are NOT in the electricity catalog (must never go to TrackSPM)."""
+	catalog = get_electricity_catalog()
+	allowed = catalog["item_code_set"]
+	if isinstance(doc_or_name, str):
+		rows = frappe.db.sql(
+			"""
+			SELECT item_code FROM `tabSales Invoice Item`
+			WHERE parent=%s AND docstatus < 2 AND ifnull(item_code,'')!=''
+			""",
+			doc_or_name,
+			as_dict=True,
+		)
+		codes = [r.item_code for r in rows]
+	else:
+		codes = [
+			(getattr(it, "item_code", None) or "").strip()
+			for it in invoice_item_rows(doc_or_name)
+			if (getattr(it, "item_code", None) or "").strip()
+		]
+	return sorted({c for c in codes if c not in allowed})
+
 
 
 @frappe.whitelist()
@@ -401,11 +537,25 @@ def get_electricity_meter_status(lease=None, force_refresh=None):
 
     force = cint(payload.get("force_refresh"))
     try:
+        # Default: read Afritrack Meter Sync (15-min). force_refresh=1 hits TrackSPM live.
         row = find_meter_row(
             meter_serial=meter_serial,
             meter_id=trackspm_meter_id,
             force_refresh=bool(force),
         )
+        sync_meta = None
+        if not force:
+            from propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync import (
+                get_latest_units_list_payload,
+            )
+
+            stored = get_latest_units_list_payload()
+            if stored:
+                sync_meta = {
+                    "sync_name": stored.get("_sync_name"),
+                    "synced_on": str(stored.get("_synced_on") or ""),
+                    "data_source": "afritrack_meter_sync",
+                }
     except TrackSPMError as e:
         frappe.log_error(frappe.get_traceback(), "Afritrack meter status")
         return {
@@ -425,15 +575,16 @@ def get_electricity_meter_status(lease=None, force_refresh=None):
     if not row:
         return {
             "status": "error",
-            "message": "Meter {0} not found on TrackSPM. Sync meters or contact management.".format(
-                meter_serial
-            ),
+            "message": (
+                "Meter {0} not found in latest Afritrack Meter Sync. "
+                "Wait for the 15-minute sync or run Sync Now in Afritrack Settings."
+            ).format(meter_serial),
             "meter_number": meter_serial,
             "trackspm_meter_id": trackspm_meter_id,
         }
 
     status = serialize_meter_status(row, propms_serial=meter_serial)
-    return {
+    out = {
         "status": "success",
         "lease": billing.get("lease"),
         "property": billing.get("property"),
@@ -441,7 +592,11 @@ def get_electricity_meter_status(lease=None, force_refresh=None):
         "meter_number": meter_serial,
         "trackspm_meter_id": status.get("meter_id") or trackspm_meter_id,
         "meter": status,
+        "data_source": "trackspm_live" if force else "afritrack_meter_sync",
     }
+    if sync_meta:
+        out.update(sync_meta)
+    return out
 
 
 @frappe.whitelist(methods=["POST"])
@@ -473,25 +628,44 @@ def preview_electricity_purchase(
 
 
 def _invoice_split_amounts(invoice_name):
-    """Return inclusive line amounts for TANESCO / Generator on an SI."""
-    catalog = get_electricity_catalog()
-    rows = frappe.db.sql(
-        """
-        SELECT item_code, amount
-        FROM `tabSales Invoice Item`
-        WHERE parent = %s AND docstatus < 2
-        """,
-        invoice_name,
-        as_dict=True,
-    )
-    tanesco = 0.0
-    generator = 0.0
-    for r in rows:
-        if r.item_code == catalog["item_tanesco"]:
-            tanesco += flt(r.amount)
-        elif r.item_code == catalog["item_generator"]:
-            generator += flt(r.amount)
-    return flt(tanesco, 2), flt(generator, 2)
+	"""Return inclusive line amounts for TANESCO(t1) / Generator(t2) on an SI.
+
+	Only sums lines whose item_code is in the electricity POS Amount Service catalog.
+	Any other SI items are ignored for TrackSPM (never topped up).
+	"""
+	catalog = get_electricity_catalog()
+	rows = frappe.db.sql(
+		"""
+		SELECT item_code, amount
+		FROM `tabSales Invoice Item`
+		WHERE parent = %s AND docstatus < 2
+		""",
+		invoice_name,
+		as_dict=True,
+	)
+	tanesco = 0.0
+	generator = 0.0
+	allowed = catalog["item_code_set"]
+	tanesco_code = catalog["item_tanesco"]
+	generator_code = catalog["item_generator"]
+	for r in rows:
+		code = (r.item_code or "").strip()
+		if code not in allowed:
+			continue
+		if code == tanesco_code:
+			tanesco += flt(r.amount)
+		elif code == generator_code:
+			generator += flt(r.amount)
+		else:
+			# Extra catalog item with same tariff as t1/t2 first match — map via items list
+			for entry in catalog["items"]:
+				if entry["item_code"] == code:
+					if entry["trackspm_tariff"] == "t1":
+						tanesco += flt(r.amount)
+					elif entry["trackspm_tariff"] == "t2":
+						generator += flt(r.amount)
+					break
+	return flt(tanesco, 2), flt(generator, 2)
 
 
 def _find_recent_duplicate(billing, total_amount, tanesco_amount, generator_amount):

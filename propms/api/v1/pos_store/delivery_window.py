@@ -38,11 +38,15 @@ def _fmt_label(start_m, end_m):
 
 
 def get_water_delivery_settings():
-	"""Load open/close from Mobile App Settings with defaults. Slot length is fixed at 60 mins."""
+	"""Load open/close from POS Services Settings (fallback Mobile App Settings)."""
 	open_t = DEFAULTS["open_time"]
 	close_t = DEFAULTS["close_time"]
-	if frappe.db.exists("DocType", "Mobile App Settings"):
+	doc = None
+	if frappe.db.exists("DocType", "POS Services Settings"):
+		doc = frappe.get_single("POS Services Settings")
+	elif frappe.db.exists("DocType", "Mobile App Settings"):
 		doc = frappe.get_single("Mobile App Settings")
+	if doc:
 		open_t = getattr(doc, "water_delivery_open_time", None) or open_t
 		close_t = getattr(doc, "water_delivery_close_time", None) or close_t
 	return {

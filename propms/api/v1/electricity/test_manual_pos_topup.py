@@ -10,6 +10,7 @@ import frappe
 
 
 def _fake_doc(**kwargs):
+	items = kwargs.pop("items", None)
 	d = MagicMock()
 	defaults = {
 		"name": "SI-TEST-ELEC",
@@ -22,6 +23,9 @@ def _fake_doc(**kwargs):
 	defaults.update(kwargs)
 	for k, v in defaults.items():
 		setattr(d, k, v)
+	if items is None:
+		items = [MagicMock(item_code="Electricity - TANESCO")]
+	d.items = items
 	return d
 
 
@@ -29,7 +33,7 @@ class TestManualElectricityPosGuards(unittest.TestCase):
 	def test_non_electricity_skipped(self):
 		from propms.api.v1.electricity.manual_pos_topup import is_manual_electricity_pos_candidate
 
-		doc = _fake_doc(lease_item="Water")
+		doc = _fake_doc(lease_item="Water", items=[MagicMock(item_code="DRINKING WATER")])
 		self.assertFalse(is_manual_electricity_pos_candidate(doc))
 
 	def test_non_pos_skipped(self):
@@ -56,6 +60,17 @@ class TestManualElectricityPosGuards(unittest.TestCase):
 		doc = _fake_doc()
 		self.assertTrue(is_manual_electricity_pos_candidate(doc))
 
+	def test_mixed_cart_still_candidate(self):
+		from propms.api.v1.electricity.manual_pos_topup import is_manual_electricity_pos_candidate
+
+		doc = _fake_doc(
+			items=[
+				MagicMock(item_code="Electricity - TANESCO"),
+				MagicMock(item_code="DRINKING WATER"),
+			]
+		)
+		self.assertTrue(is_manual_electricity_pos_candidate(doc))
+
 	@patch("propms.api.v1.electricity.manual_pos_topup.has_electricity_item_amounts", return_value=True)
 	@patch("propms.api.v1.electricity.manual_pos_topup.run_manual_electricity_pos_topup")
 	def test_enqueue_runs_in_test(self, mock_run, mock_amounts):
@@ -71,7 +86,7 @@ class TestManualElectricityPosGuards(unittest.TestCase):
 	def test_enqueue_skips_non_electricity(self, mock_run, mock_amounts):
 		from propms.api.v1.electricity.manual_pos_topup import enqueue_manual_electricity_pos_topup
 
-		doc = _fake_doc(lease_item="POS Store")
+		doc = _fake_doc(lease_item="POS Store", items=[MagicMock(item_code="Maintenance Fee")])
 		enqueue_manual_electricity_pos_topup(doc)
 		mock_run.assert_not_called()
 
@@ -95,7 +110,7 @@ class TestManualElectricityPosRun(unittest.TestCase):
 		from propms.api.v1.electricity.manual_pos_topup import run_manual_electricity_pos_topup
 
 		with patch("frappe.db.exists", return_value=True), patch(
-			"frappe.get_doc", return_value=_fake_doc(lease_item="Water")
+			"frappe.get_doc", return_value=_fake_doc(items=[MagicMock(item_code="DRINKING WATER")])
 		):
 			result = run_manual_electricity_pos_topup("SI-WATER")
 		mock_purchase.assert_not_called()

@@ -55,9 +55,11 @@ frappe.ui.form.on('Sales Invoice', {
 frappe.ui.form.on('Sales Invoice Item', {
 	item_code: function(frm) {
 		propms_electricity_autofill.from_lease(frm, false);
+		propms_electricity_autofill.warn_mixed_items(frm);
 	},
 	items_remove: function(frm) {
 		propms_electricity_autofill.from_lease(frm, false);
+		propms_electricity_autofill.warn_mixed_items(frm);
 	}
 });
 
@@ -97,6 +99,40 @@ var propms_electricity_autofill = {
 		var codes = (catalog && catalog.item_codes) || [];
 		return (frm.doc.items || []).some(function(row) {
 			return codes.indexOf(row.item_code) !== -1;
+		});
+	},
+
+	foreign_item_codes: function(frm, catalog) {
+		var codes = (catalog && catalog.item_codes) || [];
+		var foreign = [];
+		(frm.doc.items || []).forEach(function(row) {
+			var code = (row.item_code || '').trim();
+			if (code && codes.indexOf(code) === -1 && foreign.indexOf(code) === -1) {
+				foreign.push(code);
+			}
+		});
+		return foreign;
+	},
+
+	warn_mixed_items: function(frm) {
+		if (frm.doc.docstatus !== 0) {
+			return;
+		}
+		propms_electricity_autofill.load_catalog(function(catalog) {
+			if (!propms_electricity_autofill.has_electricity_items(frm, catalog)) {
+				return;
+			}
+			var foreign = propms_electricity_autofill.foreign_item_codes(frm, catalog);
+			if (!foreign.length) {
+				return;
+			}
+			frappe.show_alert({
+				message: __(
+					'Mixed invoice OK — Afritrack will top up only electricity catalog lines ({0}). Other items stay on the SI only.',
+					[(catalog.item_codes || []).join(', ')]
+				),
+				indicator: 'blue'
+			}, 6);
 		});
 	},
 
@@ -185,11 +221,17 @@ var propms_electricity_topup = {
 		}
 
 		propms_electricity_autofill.load_catalog(function(catalog) {
-			var elec_lease = (catalog && catalog.lease_item) || 'Electricity';
-			if (frm.doc.lease_item !== elec_lease || !cint(frm.doc.is_pos)) {
+			if (!cint(frm.doc.is_pos)) {
 				return;
 			}
 			if (!(frm.doc.meter_number || '').trim()) {
+				return;
+			}
+			var codes = (catalog && catalog.item_codes) || [];
+			var has_elec = (frm.doc.items || []).some(function(row) {
+				return codes.indexOf(row.item_code) !== -1;
+			});
+			if (!has_elec) {
 				return;
 			}
 

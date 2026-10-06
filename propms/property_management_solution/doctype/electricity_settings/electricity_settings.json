@@ -1,0 +1,73 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-06 09:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "retired_banner",
+  "general_section",
+  "lease_item",
+  "items_section",
+  "items"
+ ],
+ "fields": [
+  {
+   "fieldname": "retired_banner",
+   "fieldtype": "HTML",
+   "label": "Retired",
+   "options": "<div class=\"alert alert-warning\">Retired — configure electricity on <b>POS Amount Service</b> (Electricity). Saves are blocked.</div>"
+  },
+  {
+   "fieldname": "general_section",
+   "fieldtype": "Section Break",
+   "label": "Invoice Label (retired)"
+  },
+  {
+   "default": "Electricity",
+   "description": "Retired. Use POS Amount Service → Electricity → Lease Item.",
+   "fieldname": "lease_item",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lease Item (Electricity)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Electricity Items (retired)"
+  },
+  {
+   "description": "Retired. Configure TANESCO/Generator + TrackSPM tariffs on POS Amount Service (Electricity).",
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Electricity Settings Item",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-06 10:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Electricity Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "print": 0,
+   "read": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}
