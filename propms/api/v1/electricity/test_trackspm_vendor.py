@@ -43,7 +43,7 @@ class TestTrackSPMClient(unittest.TestCase):
 			settings.property_id = "5"
 			settings.db_set = MagicMock()
 			gs.return_value = settings
-			result = sync_meters_from_trackspm(create_missing=False)
+			result = sync_meters_from_trackspm()
 
 		self.assertEqual(result["updated"], 1)
 		self.assertEqual(frappe.db.get_value("Meter", serial, "trackspm_meter_id"), "777")

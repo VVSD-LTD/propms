@@ -9,7 +9,11 @@ import frappe
 from frappe import _
 from frappe.utils import cint, get_datetime, now_datetime
 
-from propms.api.v1.amenities.doctypes import AMENITY_BOOKING, AMENITY_BOOKING_REQUEST
+from propms.api.v1.amenities.doctypes import (
+	AMENITY_BOOKING,
+	AMENITY_BOOKING_REQUEST,
+	AMENITY_BOOKING_SERIES,
+)
 from propms.api.v1.amenities.list import _is_amenity_staff
 from propms.api.v1.amenities.lifecycle import (
 	reconcile_completed_amenity_bookings,
@@ -120,6 +124,7 @@ def _tag_booking_row(row):
 	row["kind"] = "booking"
 	row["booking_id"] = row.get("name")
 	row["request_id"] = None
+	row["series_id"] = (row.get("series") or "").strip() or None
 	return row
 
 
@@ -129,6 +134,7 @@ def _tag_request_row(row):
 	row["request_id"] = row.get("name")
 	# Linked booking after approve; Open requests have none
 	row["booking_id"] = row.get("booking") or None
+	row["series_id"] = (row.get("series") or "").strip() or None
 	# Flutter compat: treat Open as pending-like
 	if row.get("status") == "Open":
 		row["display_status"] = "Pending"
@@ -138,6 +144,77 @@ def _tag_request_row(row):
 	if "cancellation_reason" not in row:
 		row["cancellation_reason"] = None
 	return row
+
+
+def _build_hub_items(combined_rows, current_user, is_staff, payload, target_status):
+	"""Hub cards: one series card per series + one-time booking/request cards."""
+	from propms.api.v1.amenities.series import serialize_series_card
+
+	series_ids = set()
+	one_time = []
+	for row in combined_rows:
+		sid = (row.get("series_id") or row.get("series") or "").strip()
+		if sid:
+			series_ids.add(sid)
+		else:
+			one_time.append(row)
+
+	# Load series for this scope (even if all children filtered out of page)
+	series_filters = {}
+	if not is_staff:
+		series_filters["tenant"] = current_user
+	amenity_name = (payload.get("amenity") or "").strip()
+	if amenity_name:
+		series_filters["amenity"] = amenity_name
+	st = (target_status or "all").strip().lower()
+	if st == "pending":
+		series_filters["status"] = "Pending"
+	elif st in ("confirmed", "upcoming"):
+		series_filters["status"] = "Confirmed"
+	elif st == "cancelled":
+		series_filters["status"] = "Cancelled"
+	elif st == "rejected":
+		series_filters["status"] = "Rejected"
+	elif st in ("completed", "no show", "open", "approved", "expired"):
+		# Series has no Completed/Open — skip series cards for these filters
+		series_filters["status"] = "__skip__"
+
+	series_cards = []
+	if series_filters.get("status") != "__skip__":
+		# Prefer series referenced by list rows; also include orphan series in scope
+		names = list(series_ids)
+		extra = frappe.get_all(
+			AMENITY_BOOKING_SERIES,
+			filters=series_filters,
+			pluck="name",
+			ignore_permissions=True,
+		)
+		for n in extra:
+			if n not in series_ids:
+				names.append(n)
+		for name in names:
+			if not frappe.db.exists(AMENITY_BOOKING_SERIES, name):
+				continue
+			# Re-check status filter on each
+			if series_filters.get("status") and series_filters["status"] != "__skip__":
+				if frappe.db.get_value(AMENITY_BOOKING_SERIES, name, "status") != series_filters["status"]:
+					continue
+			series_cards.append(serialize_series_card(name))
+
+	def _hub_sort(item):
+		if item.get("kind") == "series":
+			nxt = item.get("next_occurrence") or {}
+			return (
+				nxt.get("booking_date")
+				or item.get("series_start_date")
+				or "",
+				item.get("start_time") or "",
+			)
+		return (str(item.get("booking_date") or ""), str(item.get("start_time") or ""))
+
+	hub = list(series_cards) + list(one_time)
+	hub.sort(key=_hub_sort, reverse=True)
+	return hub
 
 
 def _apply_common_scope_filters(filters, payload, current_user, is_staff):
@@ -180,7 +257,7 @@ def _check_cancel_deadline(doc, is_staff):
 	return None
 
 
-def _cancel_booking_doc(doc, reason, current_user, is_staff):
+def _cancel_booking_doc(doc, reason, current_user, is_staff, notify=True, commit=True):
 	"""Apply existing Confirmed/Pending booking cancel rules. Returns result dict."""
 	if doc.status == "Cancelled":
 		return {"status": "error", "message": "Booking is already cancelled"}
@@ -195,14 +272,16 @@ def _cancel_booking_doc(doc, reason, current_user, is_staff):
 	if reason:
 		doc.cancellation_reason = reason
 	doc.save(ignore_permissions=True)
-	frappe.db.commit()
+	if commit:
+		frappe.db.commit()
 
-	try:
-		from propms.api.v1.amenities.notify import notify_amenity_booking_cancelled
+	if notify:
+		try:
+			from propms.api.v1.amenities.notify import notify_amenity_booking_cancelled
 
-		notify_amenity_booking_cancelled(doc, cancelled_by=current_user)
-	except Exception:
-		frappe.log_error(frappe.get_traceback(), "cancel_booking.notify")
+			notify_amenity_booking_cancelled(doc, cancelled_by=current_user)
+		except Exception:
+			frappe.log_error(frappe.get_traceback(), "cancel_booking.notify")
 
 	return {
 		"status": "success",
@@ -213,7 +292,7 @@ def _cancel_booking_doc(doc, reason, current_user, is_staff):
 	}
 
 
-def _cancel_open_request(req, reason, current_user, is_staff):
+def _cancel_open_request(req, reason, current_user, is_staff, notify=True, commit=True):
 	"""Open Request → Cancelled (no cancel-before-hours gate).
 
 	Uses for_update + re-check Open (same race guard as `_claim_open_request`).
@@ -236,14 +315,16 @@ def _cancel_open_request(req, reason, current_user, is_staff):
 		note = f"Cancelled: {reason}"
 		req.notes = f"{existing}\n{note}".strip() if existing else note
 	req.save(ignore_permissions=True)
-	frappe.db.commit()
+	if commit:
+		frappe.db.commit()
 
-	try:
-		from propms.api.v1.amenities.notify import notify_amenity_booking_cancelled
+	if notify:
+		try:
+			from propms.api.v1.amenities.notify import notify_amenity_booking_cancelled
 
-		notify_amenity_booking_cancelled(req, cancelled_by=current_user)
-	except Exception:
-		frappe.log_error(frappe.get_traceback(), "cancel_booking.notify_request")
+			notify_amenity_booking_cancelled(req, cancelled_by=current_user)
+		except Exception:
+			frappe.log_error(frappe.get_traceback(), "cancel_booking.notify_request")
 
 	return {
 		"status": "success",
@@ -348,6 +429,7 @@ def get_my_bookings(
 			"rejection_reason",
 			"approved_by",
 			"approved_on",
+			"series",
 			"creation",
 		]
 		request_fields = [
@@ -405,7 +487,22 @@ def get_my_bookings(
 		combined.sort(key=_row_sort_key, reverse=True)
 		page_rows = combined[offset : offset + page_len]
 
+		hub_all = _build_hub_items(
+			combined, current_user, is_staff, payload, target_status
+		)
+		hub_page = hub_all[offset : offset + page_len]
+
 		counts = _status_summary(scope_for_summary, request_scope)
+		series_filters = dict(scope_for_summary)
+		# Series uses amenity/tenant only (no booking_date on Series)
+		series_count_filters = {}
+		if "tenant" in series_filters:
+			series_count_filters["tenant"] = series_filters["tenant"]
+		if "amenity" in series_filters:
+			series_count_filters["amenity"] = series_filters["amenity"]
+		counts["series"] = frappe.db.count(
+			AMENITY_BOOKING_SERIES, filters=series_count_filters
+		)
 
 		return {
 			"status": "success",
@@ -414,7 +511,11 @@ def get_my_bookings(
 			"summary": counts,
 			"page": page_num,
 			"page_length": page_len,
+			# Flat occurrence list (backward compatible); includes series_id when part of a series
 			"bookings": page_rows,
+			# Preferred hub: series cards + one-time cards
+			"hub": hub_page,
+			"hub_total": len(hub_all),
 		}
 	except Exception as e:
 		frappe.log_error(frappe.get_traceback(), "get_my_bookings")

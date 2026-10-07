@@ -60,6 +60,8 @@ def _amenity_list_fields():
 		"cancel_before_hours",
 		"requires_booking",
 		"max_advance_days",
+		"allow_recurring",
+		"max_series_days",
 		"guidelines",
 		"is_active",
 		"is_published",

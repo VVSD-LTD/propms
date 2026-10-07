@@ -169,6 +169,8 @@ scheduler_events = {
         "propms.auto_custom.statusChangeBeforeLeaseExpire",
         "propms.auto_custom.statusChangeAfterLeaseExpire",
         "propms.api.v1.gate_pass.gate_pass.auto_expire_overdue_passes",
+        # Purge Cancelled + Pending (>1 day) Selcom Payment Transaction Logs
+        "propms.api.v1.payments.cleanup_transaction_logs.cleanup_selcom_payment_transaction_logs",
     ],
     "cron": {
         # "00 12 * * *": ["propms.lease_invoice.leaseInvoiceAutoCreate"],

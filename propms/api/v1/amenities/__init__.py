@@ -7,6 +7,15 @@ from propms.api.v1.amenities.booking import create_booking
 from propms.api.v1.amenities.request import create_booking_request
 from propms.api.v1.amenities.user_bookings import get_my_bookings, cancel_booking
 from propms.api.v1.amenities.staff_actions import approve_amenity_booking, reject_amenity_booking
+from propms.api.v1.amenities.series import (
+	preview_recurring_amenity_booking,
+	create_recurring_amenity_booking,
+	approve_amenity_booking_series,
+	reject_amenity_booking_series,
+	get_amenity_booking_series,
+	cancel_remaining_amenity_booking_series,
+	get_my_amenity_series,
+)
 
 __all__ = [
 	"get_amenities",
@@ -20,4 +29,11 @@ __all__ = [
 	"cancel_booking",
 	"approve_amenity_booking",
 	"reject_amenity_booking",
+	"preview_recurring_amenity_booking",
+	"create_recurring_amenity_booking",
+	"approve_amenity_booking_series",
+	"reject_amenity_booking_series",
+	"get_amenity_booking_series",
+	"cancel_remaining_amenity_booking_series",
+	"get_my_amenity_series",
 ]

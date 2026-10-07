@@ -4,5 +4,5 @@
 from frappe.model.document import Document
 
 
-class POSAmountServiceItem(Document):
+class MobilePOSServiceItem(Document):
 	pass

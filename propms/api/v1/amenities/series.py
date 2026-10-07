@@ -746,3 +746,462 @@ def reject_amenity_booking_series(series_id=None, rejection_reason=None):
 		frappe.db.rollback()
 		frappe.log_error(frappe.get_traceback(), "reject_amenity_booking_series")
 		return {"status": "error", "message": str(e)}
+
+
+def _weekday_labels_from_series(series):
+	labels = []
+	for field, wd in WEEKDAY_KEYS:
+		if cint(getattr(series, field, 0)):
+			labels.append(WEEKDAY_NAMES[wd])
+	return labels
+
+
+def _next_occurrence_for_series(series_name):
+	"""Next upcoming Open request or Confirmed booking date for hub cards."""
+	today = getdate(nowdate())
+	now = now_datetime()
+	candidates = []
+
+	for row in frappe.get_all(
+		AMENITY_BOOKING_REQUEST,
+		filters={"series": series_name, "status": "Open"},
+		fields=["booking_date", "start_time", "name"],
+		order_by="booking_date asc, start_time asc",
+		limit=5,
+	):
+		d = getdate(row.booking_date)
+		if d < today:
+			continue
+		if d == today:
+			start_dt = get_datetime(f"{row.booking_date} {row.start_time}")
+			if start_dt <= now:
+				continue
+		candidates.append(
+			{
+				"kind": "request",
+				"id": row.name,
+				"booking_date": str(row.booking_date),
+				"start_time": str(row.start_time or ""),
+			}
+		)
+		break
+
+	for row in frappe.get_all(
+		"Amenity Booking",
+		filters={"series": series_name, "status": "Confirmed"},
+		fields=["booking_date", "start_time", "name"],
+		order_by="booking_date asc, start_time asc",
+		limit=20,
+	):
+		d = getdate(row.booking_date)
+		if d < today:
+			continue
+		if d == today:
+			start_dt = get_datetime(f"{row.booking_date} {row.start_time}")
+			if start_dt <= now:
+				continue
+		candidates.append(
+			{
+				"kind": "booking",
+				"id": row.name,
+				"booking_date": str(row.booking_date),
+				"start_time": str(row.start_time or ""),
+			}
+		)
+		break
+
+	if not candidates:
+		return None
+	candidates.sort(key=lambda x: (x["booking_date"], x["start_time"]))
+	return candidates[0]
+
+
+def serialize_series_card(series_doc_or_dict):
+	"""Hub card shape for one Amenity Booking Series."""
+	if isinstance(series_doc_or_dict, str):
+		s = frappe.get_doc(AMENITY_BOOKING_SERIES, series_doc_or_dict)
+	elif hasattr(series_doc_or_dict, "as_dict"):
+		s = series_doc_or_dict
+	else:
+		s = frappe._dict(series_doc_or_dict)
+
+	amenity_meta = (
+		frappe.db.get_value(
+			"Amenity",
+			s.amenity,
+			["amenity_name", "category", "cover_image", "floor"],
+			as_dict=True,
+		)
+		or {}
+	)
+	next_occ = _next_occurrence_for_series(s.name)
+	weekday_labels = _weekday_labels_from_series(s)
+	return {
+		"kind": "series",
+		"series_id": s.name,
+		"name": s.name,
+		"amenity": s.amenity,
+		"amenity_name": amenity_meta.get("amenity_name") or s.amenity,
+		"category": amenity_meta.get("category"),
+		"cover_image": amenity_meta.get("cover_image"),
+		"floor": amenity_meta.get("floor"),
+		"status": s.status,
+		"display_status": s.status,
+		"series_start_date": str(s.series_start_date or ""),
+		"series_end_date": str(s.series_end_date or ""),
+		"start_time": str(s.start_time or ""),
+		"end_time": str(s.end_time or ""),
+		"weekday_labels": weekday_labels,
+		"weekdays_label": " · ".join(weekday_labels),
+		"guests_count": cint(s.guests_count) or 1,
+		"tenant": s.tenant,
+		"tenant_name": s.tenant_name,
+		"property_unit": s.property_unit,
+		"lease": s.lease,
+		"notes": s.notes,
+		"booked_count": cint(s.booked_count) or 0,
+		"conflict_count": cint(s.conflict_count) or 0,
+		"next_occurrence": next_occ,
+		"detail_api": "propms.api.mobile.get_amenity_booking_series",
+		"creation": str(getattr(s, "creation", "") or ""),
+	}
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_amenity_booking_series(series_id=None):
+	"""Series detail for mobile: header + chronological children (requests + bookings)."""
+	try:
+		if frappe.session.user == "Guest":
+			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+
+		payload = _parse_request_payload({"series_id": series_id})
+		sid = (payload.get("series_id") or "").strip()
+		if not sid or not frappe.db.exists(AMENITY_BOOKING_SERIES, sid):
+			return {"status": "error", "message": f"Series {sid or '—'} not found"}
+
+		series = frappe.get_doc(AMENITY_BOOKING_SERIES, sid)
+		current_user = frappe.session.user
+		is_staff = _is_amenity_staff(current_user)
+		if not is_staff and series.tenant != current_user:
+			frappe.throw(_("Not permitted to view this series"), frappe.PermissionError)
+
+		card = serialize_series_card(series)
+
+		req_rows = frappe.get_all(
+			AMENITY_BOOKING_REQUEST,
+			filters={"series": sid},
+			fields=[
+				"name",
+				"booking_date",
+				"start_time",
+				"end_time",
+				"status",
+				"guests_count",
+				"booking",
+				"rejection_reason",
+				"notes",
+				"creation",
+			],
+			order_by="booking_date asc, start_time asc",
+			ignore_permissions=True,
+		)
+		booking_rows = frappe.get_all(
+			"Amenity Booking",
+			filters={"series": sid},
+			fields=[
+				"name",
+				"booking_date",
+				"start_time",
+				"end_time",
+				"status",
+				"guests_count",
+				"cancellation_reason",
+				"rejection_reason",
+				"notes",
+				"creation",
+			],
+			order_by="booking_date asc, start_time asc",
+			ignore_permissions=True,
+		)
+
+		# Prefer booking row when request is Approved (avoid duplicate cards)
+		booking_by_date = {}
+		for b in booking_rows:
+			key = (str(b.booking_date), str(b.start_time or ""))
+			booking_by_date[key] = b
+
+		occurrences = []
+		seen_booking_names = set()
+		for r in req_rows:
+			key = (str(r.booking_date), str(r.start_time or ""))
+			linked = booking_by_date.get(key)
+			if r.status == "Approved" and linked:
+				occurrences.append(
+					{
+						"kind": "booking",
+						"booking_id": linked.name,
+						"request_id": r.name,
+						"booking_date": str(linked.booking_date),
+						"start_time": str(linked.start_time or ""),
+						"end_time": str(linked.end_time or ""),
+						"status": linked.status,
+						"display_status": linked.status,
+						"guests_count": linked.guests_count,
+						"cancellation_reason": linked.cancellation_reason,
+						"rejection_reason": linked.rejection_reason,
+						"notes": linked.notes,
+					}
+				)
+				seen_booking_names.add(linked.name)
+			else:
+				occurrences.append(
+					{
+						"kind": "request",
+						"request_id": r.name,
+						"booking_id": r.booking or None,
+						"booking_date": str(r.booking_date),
+						"start_time": str(r.start_time or ""),
+						"end_time": str(r.end_time or ""),
+						"status": r.status,
+						"display_status": "Pending" if r.status == "Open" else r.status,
+						"guests_count": r.guests_count,
+						"rejection_reason": r.rejection_reason,
+						"notes": r.notes,
+					}
+				)
+
+		for b in booking_rows:
+			if b.name in seen_booking_names:
+				continue
+			occurrences.append(
+				{
+					"kind": "booking",
+					"booking_id": b.name,
+					"request_id": None,
+					"booking_date": str(b.booking_date),
+					"start_time": str(b.start_time or ""),
+					"end_time": str(b.end_time or ""),
+					"status": b.status,
+					"display_status": b.status,
+					"guests_count": b.guests_count,
+					"cancellation_reason": b.cancellation_reason,
+					"rejection_reason": b.rejection_reason,
+					"notes": b.notes,
+				}
+			)
+
+		occurrences.sort(
+			key=lambda x: (x.get("booking_date") or "", x.get("start_time") or "")
+		)
+
+		return {
+			"status": "success",
+			"is_staff": is_staff,
+			"series": card,
+			"occurrences": occurrences,
+			"occurrence_count": len(occurrences),
+		}
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "get_amenity_booking_series")
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_remaining_amenity_booking_series(series_id=None, cancellation_reason=None):
+	"""Cancel remaining Open requests + future Confirmed bookings in a series.
+
+	Past Completed / already Cancelled rows are left alone. Series becomes Cancelled
+	when no Open/Confirmed future rows remain.
+	"""
+	try:
+		if frappe.session.user == "Guest":
+			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+
+		payload = _parse_request_payload(
+			{"series_id": series_id, "cancellation_reason": cancellation_reason}
+		)
+		sid = (payload.get("series_id") or "").strip()
+		reason = (payload.get("cancellation_reason") or "").strip() or None
+		if not sid or not frappe.db.exists(AMENITY_BOOKING_SERIES, sid):
+			return {"status": "error", "message": f"Series {sid or '—'} not found"}
+
+		series = frappe.get_doc(AMENITY_BOOKING_SERIES, sid, for_update=True)
+		current_user = frappe.session.user
+		is_staff = _is_amenity_staff(current_user)
+		if not is_staff and series.tenant != current_user:
+			frappe.throw(_("Not permitted to cancel this series"), frappe.PermissionError)
+
+		if series.status in ("Cancelled", "Rejected"):
+			return {
+				"status": "error",
+				"message": _("Series is already {0}").format(series.status),
+			}
+
+		from propms.api.v1.amenities.user_bookings import (
+			_cancel_booking_doc,
+			_cancel_open_request,
+		)
+
+		cancelled_requests = []
+		cancelled_bookings = []
+		failed = []
+
+		for row in _series_open_requests(sid):
+			req = frappe.get_doc(AMENITY_BOOKING_REQUEST, row.name)
+			result = _cancel_open_request(
+				req, reason, current_user, is_staff, notify=False, commit=False
+			)
+			if result.get("status") == "success":
+				cancelled_requests.append(row.name)
+			else:
+				failed.append({"request_id": row.name, "message": result.get("message")})
+
+		today = getdate(nowdate())
+		now = now_datetime()
+		for row in _series_bookings(sid, statuses=["Confirmed", "Pending"]):
+			doc = frappe.get_doc("Amenity Booking", row.name)
+			# Only cancel remaining (today future start or later dates)
+			d = getdate(doc.booking_date)
+			if d < today:
+				continue
+			if d == today:
+				start_dt = get_datetime(f"{doc.booking_date} {doc.start_time}")
+				if start_dt <= now:
+					continue
+			result = _cancel_booking_doc(
+				doc, reason, current_user, is_staff, notify=False, commit=False
+			)
+			if result.get("status") == "success":
+				cancelled_bookings.append(doc.name)
+			else:
+				failed.append({"booking_id": doc.name, "message": result.get("message")})
+
+		series.reload()
+		# Mark series Cancelled if nothing actionable remains
+		still_open = _series_open_requests(sid)
+		still_active = _series_bookings(sid, statuses=["Confirmed", "Pending"])
+		future_active = []
+		for row in still_active:
+			d = getdate(row.booking_date)
+			if d < today:
+				continue
+			if d == today:
+				start_dt = get_datetime(f"{row.booking_date} {row.start_time}")
+				if start_dt <= now:
+					continue
+			future_active.append(row)
+
+		if not still_open and not future_active:
+			series.status = "Cancelled"
+			if reason:
+				existing = (series.notes or "").strip()
+				note = f"Cancelled remaining: {reason}"
+				series.notes = f"{existing}\n{note}".strip() if existing else note
+			series.save(ignore_permissions=True)
+
+		frappe.db.commit()
+
+		try:
+			from propms.api.v1.amenities.notify import notify_amenity_series_cancelled
+
+			notify_amenity_series_cancelled(series, cancelled_by=current_user)
+		except Exception:
+			frappe.log_error(frappe.get_traceback(), "cancel_remaining_series.notify")
+
+		return {
+			"status": "success",
+			"message": _("Cancelled {0} request(s) and {1} booking(s)").format(
+				len(cancelled_requests), len(cancelled_bookings)
+			),
+			"series_id": sid,
+			"series_status": series.status,
+			"cancelled_request_ids": cancelled_requests,
+			"cancelled_booking_ids": cancelled_bookings,
+			"failed": failed,
+		}
+	except Exception as e:
+		frappe.db.rollback()
+		frappe.log_error(frappe.get_traceback(), "cancel_remaining_amenity_booking_series")
+		return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_my_amenity_series(status="all", page=1, page_length=20, amenity=None):
+	"""List Amenity Booking Series cards for tenant (or all for staff)."""
+	try:
+		if frappe.session.user == "Guest":
+			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+
+		payload = _parse_request_payload(
+			{
+				"status": status,
+				"page": page,
+				"page_length": page_length,
+				"amenity": amenity,
+			}
+		)
+		current_user = frappe.session.user
+		is_staff = _is_amenity_staff(current_user)
+		target = (payload.get("status") or "all").strip().lower()
+		page_num = max(1, cint(payload.get("page") or 1))
+		page_len = min(100, max(1, cint(payload.get("page_length") or 20)))
+		offset = (page_num - 1) * page_len
+
+		filters = {}
+		if not is_staff:
+			filters["tenant"] = current_user
+		amenity_name = (payload.get("amenity") or "").strip()
+		if amenity_name:
+			filters["amenity"] = amenity_name
+		if target in ("pending", "confirmed", "cancelled", "rejected"):
+			filters["status"] = target.title() if target != "pending" else "Pending"
+			if target == "confirmed":
+				filters["status"] = "Confirmed"
+			elif target == "cancelled":
+				filters["status"] = "Cancelled"
+			elif target == "rejected":
+				filters["status"] = "Rejected"
+
+		rows = frappe.get_all(
+			AMENITY_BOOKING_SERIES,
+			filters=filters,
+			fields=[
+				"name",
+				"amenity",
+				"status",
+				"series_start_date",
+				"series_end_date",
+				"start_time",
+				"end_time",
+				"week_mon",
+				"week_tue",
+				"week_wed",
+				"week_thu",
+				"week_fri",
+				"week_sat",
+				"week_sun",
+				"tenant",
+				"tenant_name",
+				"property_unit",
+				"lease",
+				"guests_count",
+				"notes",
+				"booked_count",
+				"conflict_count",
+				"creation",
+			],
+			order_by="series_start_date desc, creation desc",
+			ignore_permissions=True,
+		)
+		cards = [serialize_series_card(r) for r in rows]
+		return {
+			"status": "success",
+			"is_staff": is_staff,
+			"page": page_num,
+			"page_length": page_len,
+			"total": len(cards),
+			"series": cards[offset : offset + page_len],
+		}
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "get_my_amenity_series")
+		return {"status": "error", "message": str(e)}

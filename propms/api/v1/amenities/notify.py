@@ -95,11 +95,18 @@ def _booking_payload(booking_doc, amenity_doc=None, event_type="amenity_booked")
 			frappe.db.get_value("Amenity", amenity_name, "amenity_name") or amenity_name
 		)
 
+	series_id = getattr(booking_doc, "series", None) or ""
+	route = (
+		"/amenity_booking_series/{0}".format(series_id)
+		if series_id
+		else "/amenity_bookings"
+	)
 	return {
 		"type": event_type,
 		"event": event_type,
 		"notification_type": event_type,
 		"booking_id": booking_doc.name,
+		"series_id": series_id,
 		"amenity": amenity_name,
 		"amenity_name": amenity_label,
 		"booking_date": str(getattr(booking_doc, "booking_date", "") or ""),
@@ -114,7 +121,7 @@ def _booking_payload(booking_doc, amenity_doc=None, event_type="amenity_booked")
 		"notes": getattr(booking_doc, "notes", None) or "",
 		"cancellation_reason": getattr(booking_doc, "cancellation_reason", None) or "",
 		"timestamp": frappe.utils.now(),
-		"route": "/amenity_bookings",
+		"route": route,
 	}
 
 
@@ -401,6 +408,199 @@ def notify_amenity_booking_rejected(booking_doc, request_id=None):
 		frappe.log_error(frappe.get_traceback(), "notify_amenity_booking_rejected")
 
 
+def _series_payload(series_doc, amenity_doc=None, event_type="amenity_series_booked"):
+	amenity_name = getattr(series_doc, "amenity", None) or ""
+	amenity_label = amenity_name
+	if amenity_doc:
+		amenity_label = getattr(amenity_doc, "amenity_name", None) or amenity_name
+	elif amenity_name and frappe.db.exists("Amenity", amenity_name):
+		amenity_label = (
+			frappe.db.get_value("Amenity", amenity_name, "amenity_name") or amenity_name
+		)
+
+	weekday_bits = []
+	for label, field in (
+		("Mon", "week_mon"),
+		("Tue", "week_tue"),
+		("Wed", "week_wed"),
+		("Thu", "week_thu"),
+		("Fri", "week_fri"),
+		("Sat", "week_sat"),
+		("Sun", "week_sun"),
+	):
+		if getattr(series_doc, field, None):
+			weekday_bits.append(label)
+
+	return {
+		"type": event_type,
+		"event": event_type,
+		"notification_type": event_type,
+		"series_id": series_doc.name,
+		"booking_id": "",
+		"request_id": "",
+		"amenity": amenity_name,
+		"amenity_name": amenity_label,
+		"booking_date": str(getattr(series_doc, "series_start_date", "") or ""),
+		"series_start_date": str(getattr(series_doc, "series_start_date", "") or ""),
+		"series_end_date": str(getattr(series_doc, "series_end_date", "") or ""),
+		"start_time": str(getattr(series_doc, "start_time", "") or ""),
+		"end_time": str(getattr(series_doc, "end_time", "") or ""),
+		"weekday_labels": weekday_bits,
+		"guests_count": getattr(series_doc, "guests_count", None) or 1,
+		"tenant": getattr(series_doc, "tenant", None) or "",
+		"tenant_name": getattr(series_doc, "tenant_name", None) or "",
+		"property_unit": getattr(series_doc, "property_unit", None) or "",
+		"lease": getattr(series_doc, "lease", None) or "",
+		"status": getattr(series_doc, "status", None) or "",
+		"booked_count": getattr(series_doc, "booked_count", None) or 0,
+		"conflict_count": getattr(series_doc, "conflict_count", None) or 0,
+		"rejection_reason": getattr(series_doc, "rejection_reason", None) or "",
+		"timestamp": frappe.utils.now(),
+		"route": "/amenity_booking_series/{0}".format(series_doc.name),
+	}
+
+
+def _publish_to_tenant(events, payload, tenant):
+	if not tenant:
+		return
+	for ev in events:
+		try:
+			frappe.publish_realtime(
+				event=ev, message=payload, user=tenant, after_commit=True
+			)
+		except Exception:
+			pass
+		for room in (f"user:{tenant}", f"user_{tenant}"):
+			try:
+				frappe.publish_realtime(
+					event=ev, message=payload, room=room, after_commit=True
+				)
+			except Exception:
+				pass
+
+
+def _enqueue_tenant_fcm(tenant, title, body, payload):
+	if not tenant:
+		return
+	try:
+		frappe.enqueue(
+			"propms.api.v1.amenities.notify.enqueue_amenity_booking_push",
+			queue="short",
+			user=tenant,
+			title=title,
+			body=body,
+			payload=payload,
+		)
+	except Exception:
+		frappe.logger().error(frappe.get_traceback())
+
+
+def notify_amenity_series_booked(series_doc, amenity_doc=None):
+	"""Staff alert when a tenant creates a recurring series (one push for whole series)."""
+	try:
+		if not series_doc:
+			return
+		tenant = getattr(series_doc, "tenant", None)
+		staff_users = _get_amenity_staff_recipients(exclude_user=tenant)
+		status = (getattr(series_doc, "status", None) or "").strip()
+		if status == "Pending":
+			event_type = "amenity_series_pending"
+		else:
+			event_type = "amenity_series_booked"
+		payload = _series_payload(series_doc, amenity_doc, event_type=event_type)
+		events = (event_type, "amenity_series_created", "new_amenity_booking_series")
+		_publish_to_staff(events, payload, staff_users)
+
+		amenity_label = payload.get("amenity_name") or "Amenity"
+		tenant_label = payload.get("tenant_name") or payload.get("tenant") or "Tenant"
+		unit = payload.get("property_unit") or ""
+		unit_bit = f" ({unit})" if unit else ""
+		days = " · ".join(payload.get("weekday_labels") or []) or "selected days"
+		if status == "Pending":
+			title = f"Series request: {amenity_label}"
+			body = (
+				f"{tenant_label}{unit_bit} requested recurring {amenity_label} "
+				f"({days}) {payload.get('start_time')}-{payload.get('end_time')}"
+			)
+		else:
+			title = f"Series booked: {amenity_label}"
+			body = (
+				f"{tenant_label}{unit_bit} booked recurring {amenity_label} "
+				f"({days}), {payload.get('booked_count')} occurrence(s)"
+			)
+		_enqueue_staff_fcm(staff_users, title, body, payload)
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "notify_amenity_series_booked")
+
+
+def notify_amenity_series_approved(series_doc, amenity_doc=None):
+	"""Notify tenant that their recurring series was approved."""
+	try:
+		if not series_doc:
+			return
+		tenant = getattr(series_doc, "tenant", None)
+		if not tenant:
+			return
+		payload = _series_payload(series_doc, amenity_doc, event_type="amenity_series_approved")
+		_publish_to_tenant(("amenity_series_approved",), payload, tenant)
+		amenity_label = payload.get("amenity_name") or "Amenity"
+		title = f"Series approved: {amenity_label}"
+		body = (
+			f"Your recurring booking ({' · '.join(payload.get('weekday_labels') or [])}) "
+			f"was approved ({payload.get('booked_count')} occurrence(s))."
+		)
+		_enqueue_tenant_fcm(tenant, title, body, payload)
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "notify_amenity_series_approved")
+
+
+def notify_amenity_series_rejected(series_doc, amenity_doc=None):
+	"""Notify tenant that their recurring series was rejected."""
+	try:
+		if not series_doc:
+			return
+		tenant = getattr(series_doc, "tenant", None)
+		if not tenant:
+			return
+		payload = _series_payload(series_doc, amenity_doc, event_type="amenity_series_rejected")
+		_publish_to_tenant(("amenity_series_rejected",), payload, tenant)
+		amenity_label = payload.get("amenity_name") or "Amenity"
+		reason = payload.get("rejection_reason") or ""
+		title = f"Series rejected: {amenity_label}"
+		body = f"Your recurring booking was rejected. {reason}".strip()
+		_enqueue_tenant_fcm(tenant, title, body, payload)
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "notify_amenity_series_rejected")
+
+
+def notify_amenity_series_cancelled(series_doc, cancelled_by=None, amenity_doc=None):
+	"""Notify the other party when remaining series occurrences are cancelled."""
+	try:
+		if not series_doc:
+			return
+		cancelled_by = cancelled_by or frappe.session.user
+		payload = _series_payload(
+			series_doc, amenity_doc, event_type="amenity_series_cancelled"
+		)
+		events = ("amenity_series_cancelled",)
+		amenity_label = payload.get("amenity_name") or "Amenity"
+		title = f"Series cancelled: {amenity_label}"
+		body = (
+			f"Recurring {amenity_label} "
+			f"({payload.get('series_start_date')}–{payload.get('series_end_date')}) was cancelled."
+		)
+		if _is_amenity_staff(cancelled_by):
+			tenant = getattr(series_doc, "tenant", None)
+			_publish_to_tenant(events, payload, tenant)
+			_enqueue_tenant_fcm(tenant, title, body, payload)
+		else:
+			staff_users = _get_amenity_staff_recipients(exclude_user=cancelled_by)
+			_publish_to_staff(events, payload, staff_users)
+			_enqueue_staff_fcm(staff_users, title, body, payload)
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "notify_amenity_series_cancelled")
+
+
 @frappe.whitelist()
 def enqueue_amenity_booking_push(user, title=None, body=None, payload=None):
 	"""Background worker: FCM + Notification Log for amenity booking events."""
@@ -427,6 +627,8 @@ def enqueue_amenity_booking_push(user, title=None, body=None, payload=None):
 			"notification_type": str(event_type),
 			"update_type": str(event_type),
 			"booking_id": str(payload.get("booking_id") or ""),
+			"request_id": str(payload.get("request_id") or ""),
+			"series_id": str(payload.get("series_id") or ""),
 			"amenity": str(payload.get("amenity") or ""),
 			"amenity_name": str(payload.get("amenity_name") or ""),
 			"booking_date": str(payload.get("booking_date") or ""),

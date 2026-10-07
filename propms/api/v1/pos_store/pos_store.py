@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-"""POS Store Services — catalog from POS Services Settings + pay-first checkout.
+"""POS Store Services — catalog from Mobile POS Service + pay-first checkout.
 
-Hub rows (POS Services Settings → POS Store Services):
-  - Item + qty → Maintenance POS product checkout
-  - Amount + POS Amount Service → amount split catalog
-      · Service type Electricity → electricity APIs / TrackSPM meter top-up
-      · Service type Other → items on that POS Amount Service (e.g. Cooking Gas)
+Mobile POS Service rows:
+  - purchase_mode=qty + Item → Maintenance POS product checkout
+      · optional requires_delivery_window (open/close on the same doc)
+  - purchase_mode=amount + handler Electricity → TrackSPM meter top-up
+  - purchase_mode=amount + handler Other → amount split (e.g. Cooking Gas)
+
+API still accepts legacy param names amount_service (= Mobile POS Service name).
 """
 
 from __future__ import unicode_literals
@@ -32,6 +34,8 @@ from propms.api.v1.pos_store.delivery_window import (
 	serialize_delivery_window_for_api,
 	validate_delivery_window,
 )
+
+MOBILE_POS_SERVICE = "Mobile POS Service"
 
 ELECTRICITY_HANDLER_META = {
 	"default_label": "Electricity",
@@ -89,13 +93,37 @@ def _amount_items_from_service(svc, company=None, price_list=None):
 	return out
 
 
+def _mobile_pos_service_doctype():
+	if frappe.db.exists("DocType", MOBILE_POS_SERVICE):
+		return MOBILE_POS_SERVICE
+	if frappe.db.exists("DocType", "POS Amount Service"):
+		return "POS Amount Service"
+	return MOBILE_POS_SERVICE
+
+
+def _resolve_service_name(payload_or_name):
+	"""Accept mobile_pos_service / amount_service / service aliases."""
+	if isinstance(payload_or_name, dict):
+		for key in ("mobile_pos_service", "amount_service", "service", "service_name"):
+			val = (payload_or_name.get(key) or "").strip()
+			if val:
+				return val
+		return ""
+	return (payload_or_name or "").strip()
+
+
 def _get_amount_service_doc(amount_service):
-	name = (amount_service or "").strip()
-	if not name or not frappe.db.exists("POS Amount Service", name):
-		frappe.throw(_("POS Amount Service {0} not found").format(name or "—"))
-	svc = frappe.get_doc("POS Amount Service", name)
+	"""Load enabled Mobile POS Service (amount mode). Legacy name: amount_service."""
+	dt = _mobile_pos_service_doctype()
+	name = _resolve_service_name(amount_service)
+	if not name or not frappe.db.exists(dt, name):
+		frappe.throw(_("Mobile POS Service {0} not found").format(name or "—"))
+	svc = frappe.get_doc(dt, name)
 	if not cint(svc.enabled):
-		frappe.throw(_("POS Amount Service {0} is disabled").format(name))
+		frappe.throw(_("Mobile POS Service {0} is disabled").format(name))
+	mode = (getattr(svc, "purchase_mode", None) or "amount").strip()
+	if mode != "amount":
+		frappe.throw(_("Mobile POS Service {0} is not an amount service").format(name))
 	return svc
 
 
@@ -106,26 +134,48 @@ def _normalize_handler(svc):
 	return handler
 
 
-def _amount_hub_entry(row, company=None, price_list=None):
-	"""Build hub entry for Service Type = Amount (Electricity or Other)."""
-	svc_name = (getattr(row, "amount_service", None) or "").strip()
-	label = (row.label or "").strip() or None
-	sort_order = cint(row.sort_order)
+def _get_mobile_pos_services(enabled_only=True):
+	"""Enabled Mobile POS Service docs ordered for the catalog."""
+	dt = _mobile_pos_service_doctype()
+	if not frappe.db.exists("DocType", dt):
+		return []
+	filters = {"enabled": 1} if enabled_only else {}
+	names = frappe.get_all(
+		dt,
+		filters=filters,
+		pluck="name",
+		order_by="sort_order asc, modified asc",
+	)
+	return [frappe.get_cached_doc(dt, n) for n in names]
 
-	# Legacy Electricity / Special rows without amount_service yet
-	if not svc_name and _is_legacy_electricity_row(row):
-		svc_name = "Electricity"
 
-	if not svc_name or not frappe.db.exists("POS Amount Service", svc_name):
+def _qty_service_for_item(item_code):
+	if not item_code:
 		return None
-
-	svc = frappe.get_cached_doc("POS Amount Service", svc_name)
-	if not cint(svc.enabled):
+	dt = _mobile_pos_service_doctype()
+	if not frappe.db.exists("DocType", dt):
 		return None
+	name = frappe.db.get_value(
+		dt,
+		{"purchase_mode": "qty", "item": item_code, "enabled": 1},
+		"name",
+	)
+	if not name:
+		return None
+	return frappe.get_cached_doc(dt, name)
 
+
+def _is_item_enabled_in_settings(item_code):
+	"""Qty item enabled on Mobile POS Service (name kept for settlement callers)."""
+	return bool(_qty_service_for_item(item_code))
+
+
+def _amount_catalog_entry(svc, company=None, price_list=None):
+	"""Build catalog entry for purchase_mode=amount."""
+	svc_name = svc.name
 	handler = _normalize_handler(svc)
 	title = (svc.title or svc_name).strip()
-	hub_label = label or title
+	sort_order = cint(getattr(svc, "sort_order", 0))
 	amount_items = _amount_items_from_service(svc, company=company, price_list=price_list)
 	if not amount_items and handler != "Electricity":
 		return None
@@ -135,7 +185,6 @@ def _amount_hub_entry(row, company=None, price_list=None):
 
 		catalog = get_electricity_catalog()
 		meta = ELECTRICITY_HANDLER_META
-		# Prefer live catalog lines (with rates) when available
 		if not amount_items:
 			amount_items = catalog.get("items") or []
 		return {
@@ -145,8 +194,9 @@ def _amount_hub_entry(row, company=None, price_list=None):
 			"ui_mode": "amount_split",
 			"purchase_mode": "amount",
 			"amount_handler": "Electricity",
-			"amount_service": svc_name,
-			"label": hub_label or meta["default_label"],
+			"mobile_pos_service": svc_name,
+			"amount_service": svc_name,  # legacy alias
+			"label": title or meta["default_label"],
 			"api": meta["api"],
 			"checkout_api": meta["checkout_api"],
 			"preview_api": meta["preview_api"],
@@ -161,11 +211,13 @@ def _amount_hub_entry(row, company=None, price_list=None):
 			"item_tanesco": catalog.get("item_tanesco"),
 			"item_generator": catalog.get("item_generator"),
 			"catalog_source": catalog.get("source"),
+			"requires_delivery_window": False,
 			"features": {
 				"meter": True,
 				"meter_status": True,
 				"trackspm_topup": True,
 				"requires_lease": True,
+				"delivery_window": False,
 			},
 		}
 
@@ -178,65 +230,24 @@ def _amount_hub_entry(row, company=None, price_list=None):
 		"ui_mode": "amount_split",
 		"purchase_mode": "amount",
 		"amount_handler": "Other",
+		"mobile_pos_service": svc_name,
 		"amount_service": svc_name,
-		"label": hub_label,
+		"label": title,
 		"api": meta["api"],
 		"checkout_api": meta["checkout_api"],
 		"preview_api": meta["preview_api"],
 		"sort_order": sort_order,
 		"lease_item": title,
 		"amount_items": amount_items,
+		"requires_delivery_window": False,
 		"features": {
 			"meter": False,
 			"meter_status": False,
 			"trackspm_topup": False,
 			"requires_lease": True,
+			"delivery_window": False,
 		},
 	}
-
-
-def _is_legacy_electricity_row(row):
-	stype = (row.service_type or "").strip()
-	if stype == "Electricity":
-		return True
-	if stype == "Special" and (getattr(row, "special_key", None) or "").strip().lower() == "electricity":
-		return True
-	return False
-
-
-def _is_amount_row(row):
-	stype = (row.service_type or "").strip()
-	if stype == "Amount":
-		return True
-	return _is_legacy_electricity_row(row)
-
-
-
-def _get_pos_store_service_rows(enabled_only=True):
-	"""Enabled hub rows from POS Services Settings (fallback: Mobile App Settings)."""
-	settings = None
-	if frappe.db.exists("DocType", "POS Services Settings"):
-		settings = frappe.get_single("POS Services Settings")
-	elif frappe.db.exists("DocType", "Mobile App Settings"):
-		# Legacy until migrate patch moves rows
-		settings = frappe.get_single("Mobile App Settings")
-	if not settings:
-		return []
-	rows = list(settings.get("pos_store_services") or [])
-	if enabled_only:
-		rows = [r for r in rows if cint(r.enabled)]
-	rows.sort(key=lambda r: (cint(r.sort_order), cint(r.idx)))
-	return rows
-
-
-def _is_item_enabled_in_settings(item_code):
-	if not item_code:
-		return False
-	for row in _get_pos_store_service_rows(enabled_only=True):
-		if (row.service_type or "") == "Item" and (row.item or "") == item_code:
-			if (row.purchase_mode or "qty") == "qty":
-				return True
-	return False
 
 
 def _selling_rate(item_code, company, price_list, standard_rate=None):
@@ -247,7 +258,15 @@ def _selling_rate(item_code, company, price_list, standard_rate=None):
 	return rate
 
 
-def _serialize_item(item, company, currency, price_list, warehouse, label=None):
+def _serialize_item(
+	item,
+	company,
+	currency,
+	price_list,
+	warehouse,
+	label=None,
+	svc=None,
+):
 	rate = _selling_rate(item["item_code"], company, price_list, item.get("standard_rate"))
 	is_stock_item = cint(item.get("is_stock_item"))
 	actual_qty = 0.0
@@ -256,8 +275,12 @@ def _serialize_item(item, company, currency, price_list, warehouse, label=None):
 		actual_qty = _get_bin_qty(item["item_code"], warehouse) if warehouse else 0.0
 		in_stock = bool(warehouse) and actual_qty > 0
 
-	display = label or item.get("item_name") or item["item_code"]
-	requires = bool(_is_water_item(item["item_code"]))
+	display = label or (svc.title if svc else None) or item.get("item_name") or item["item_code"]
+	requires = bool(svc and cint(getattr(svc, "requires_delivery_window", 0)))
+	if not requires and not svc:
+		# Legacy heuristic when service not passed
+		requires = bool(_is_water_item(item["item_code"]))
+
 	out = {
 		"item_code": item["item_code"],
 		"item_name": item.get("item_name") or item["item_code"],
@@ -276,10 +299,15 @@ def _serialize_item(item, company, currency, price_list, warehouse, label=None):
 		"warehouse": warehouse or "",
 		"service_type": "Item",
 		"purchase_mode": "qty",
+		"mobile_pos_service": svc.name if svc else None,
+		"amount_service": svc.name if svc else None,
 		"requires_delivery_window": requires,
 	}
 	if requires:
-		out["delivery_window"] = serialize_delivery_window_for_api()
+		out["delivery_window"] = serialize_delivery_window_for_api(
+			service_name=svc.name if svc else None,
+			item_code=item["item_code"],
+		)
 	return out
 
 
@@ -307,7 +335,7 @@ def _load_item_doc_fields(item_code):
 
 
 def _get_eligible_item(item_code):
-	"""Item must be enabled on POS Services Settings (Item + qty) and sellable."""
+	"""Item must be enabled on a qty Mobile POS Service and sellable."""
 	if not item_code or not _is_item_enabled_in_settings(item_code):
 		return None
 	item = _load_item_doc_fields(item_code)
@@ -320,7 +348,7 @@ def _get_eligible_item(item_code):
 
 @frappe.whitelist(methods=["GET", "POST"])
 def get_pos_store_catalog():
-	"""Hub catalog from POS Services Settings → POS Store Services."""
+	"""Catalog from enabled Mobile POS Service docs."""
 	_require_auth()
 
 	company = frappe.db.get_single_value("Global Defaults", "default_company") or frappe.db.get_value(
@@ -335,40 +363,46 @@ def get_pos_store_catalog():
 	items = []
 	special_services = []
 
-	for row in _get_pos_store_service_rows(enabled_only=True):
-		stype = (row.service_type or "Item").strip()
-		mode = (row.purchase_mode or "qty").strip()
-		label = (row.label or "").strip()
-
-		if _is_amount_row(row):
-			entry = _amount_hub_entry(row, company=company, price_list=price_list)
+	for svc in _get_mobile_pos_services(enabled_only=True):
+		mode = (getattr(svc, "purchase_mode", None) or "amount").strip()
+		if mode == "amount":
+			entry = _amount_catalog_entry(svc, company=company, price_list=price_list)
 			if entry:
 				services.append(entry)
 				special_services.append(entry)
 			continue
 
-		if stype == "Item":
-			item = _load_item_doc_fields(row.item)
+		if mode == "qty":
+			item_code = (getattr(svc, "item", None) or "").strip()
+			item = _load_item_doc_fields(item_code)
 			if not item or cint(item.get("disabled")) or not cint(item.get("is_sales_item")):
 				continue
-			payload = _serialize_item(item, company, currency, price_list, warehouse, label=label or None)
+			payload = _serialize_item(
+				item,
+				company,
+				currency,
+				price_list,
+				warehouse,
+				label=(svc.title or "").strip() or None,
+				svc=svc,
+			)
 			payload["service_type"] = "Item"
 			payload["ui_mode"] = "qty"
-			payload["purchase_mode"] = mode or "qty"
+			payload["purchase_mode"] = "qty"
 			payload["key"] = f"item:{item['item_code']}"
-			payload["sort_order"] = cint(row.sort_order)
+			payload["sort_order"] = cint(getattr(svc, "sort_order", 0))
 			payload["detail_api"] = "propms.api.mobile.get_pos_store_item"
 			payload["checkout_api"] = "propms.api.mobile.checkout_pos_item"
+			requires = bool(cint(getattr(svc, "requires_delivery_window", 0)))
 			payload["features"] = {
 				"meter": False,
 				"meter_status": False,
 				"trackspm_topup": False,
 				"requires_lease": True,
-				"delivery_window": bool(_is_water_item(item["item_code"])),
+				"delivery_window": requires,
 			}
 			services.append(payload)
-			if (mode or "qty") == "qty":
-				items.append(payload)
+			items.append(payload)
 
 	return {
 		"status": "success",
@@ -381,17 +415,30 @@ def get_pos_store_catalog():
 		"special_services": special_services,
 		"amount_services": [s for s in services if s.get("service_type") == "Amount"],
 		"item_services": [s for s in services if s.get("service_type") == "Item"],
-		"source": "POS Services Settings",
+		"source": MOBILE_POS_SERVICE,
 	}
 
 
 @frappe.whitelist(methods=["GET", "POST"])
-def get_water_delivery_window():
-	"""Same-day drinking-water delivery rules for the mobile picker."""
+def get_water_delivery_window(mobile_pos_service=None, amount_service=None, item_code=None):
+	"""Same-day delivery slots for a qty Mobile POS Service (or first water-like service)."""
 	_require_auth()
+	payload = _parse_request_payload(
+		{
+			"mobile_pos_service": mobile_pos_service,
+			"amount_service": amount_service,
+			"item_code": item_code,
+			"service": None,
+		}
+	)
+	svc_name = _resolve_service_name(payload)
+	item = (payload.get("item_code") or "").strip() or None
 	return {
 		"status": "success",
-		"delivery_window": serialize_delivery_window_for_api(),
+		"delivery_window": serialize_delivery_window_for_api(
+			service_name=svc_name or None,
+			item_code=item,
+		),
 	}
 
 
@@ -417,18 +464,18 @@ def get_pos_store_item(item_code=None):
 	currency = frappe.db.get_value("Company", company, "default_currency") or "TZS"
 	price_list = frappe.db.get_single_value("Selling Settings", "selling_price_list") or "Standard Selling"
 	stock_ctx = _get_mobile_cart_stock_context(company)
-
-	# Prefer label from settings if set
-	hub_label = None
-	for row in _get_pos_store_service_rows(enabled_only=True):
-		if (row.service_type or "") == "Item" and row.item == item_code and row.label:
-			hub_label = row.label
-			break
+	svc = _qty_service_for_item(item_code)
 
 	return {
 		"status": "success",
 		"item": _serialize_item(
-			item, company, currency, price_list, stock_ctx.get("warehouse"), label=hub_label
+			item,
+			company,
+			currency,
+			price_list,
+			stock_ctx.get("warehouse"),
+			label=(svc.title if svc else None),
+			svc=svc,
 		),
 	}
 
@@ -480,11 +527,17 @@ def _prepare_pos_item_intent(item_code=None, qty=None, lease=None):
 	delivery_time_start = None
 	delivery_time_end = None
 	delivery_instructions = None
-	if _is_water_item(item_code):
+	svc = _qty_service_for_item(item_code)
+	requires_window = bool(svc and cint(getattr(svc, "requires_delivery_window", 0)))
+	if not requires_window and not svc and _is_water_item(item_code):
+		requires_window = True
+	if requires_window:
 		window = validate_delivery_window(
 			start=payload.get("delivery_time_start"),
 			end=payload.get("delivery_time_end"),
 			delivery_date=payload.get("delivery_date"),
+			service_name=svc.name if svc else None,
+			item_code=item_code,
 		)
 		delivery_date = window["delivery_date"]
 		delivery_time_start = window["delivery_time_start"]
@@ -505,6 +558,7 @@ def _prepare_pos_item_intent(item_code=None, qty=None, lease=None):
 		"amount": payload.get("amount"),
 		"card_token": payload.get("card_token") or payload.get("token"),
 		"cvv": payload.get("cvv"),
+		"mobile_pos_service": svc.name if svc else None,
 		"delivery_date": delivery_date,
 		"delivery_time_start": delivery_time_start,
 		"delivery_time_end": delivery_time_end,
@@ -916,6 +970,8 @@ def _prepare_amount_service_intent(amount_service=None, total_amount=None, alloc
 	payload = _parse_request_payload(
 		{
 			"amount_service": amount_service,
+			"mobile_pos_service": amount_service,
+			"service": None,
 			"total_amount": total_amount,
 			"allocations": allocations,
 			"lease": lease,
@@ -923,7 +979,7 @@ def _prepare_amount_service_intent(amount_service=None, total_amount=None, alloc
 			"generator_amount": None,
 		}
 	)
-	svc = _get_amount_service_doc(payload.get("amount_service"))
+	svc = _get_amount_service_doc(payload)
 	handler = _normalize_handler(svc)
 	title = (svc.title or svc.name).strip()
 
@@ -939,7 +995,7 @@ def _prepare_amount_service_intent(amount_service=None, total_amount=None, alloc
 		if cint(r.enabled) and (r.item or "").strip()
 	}
 	if not allowed:
-		frappe.throw(_("POS Amount Service {0} has no enabled items").format(svc.name))
+		frappe.throw(_("Mobile POS Service {0} has no enabled items").format(svc.name))
 
 	alloc = _parse_allocations(payload, allowed)
 
@@ -992,11 +1048,18 @@ def _prepare_amount_service_intent(amount_service=None, total_amount=None, alloc
 
 
 @frappe.whitelist(methods=["GET", "POST"])
-def get_amount_service_rates(amount_service=None, lease=None):
-	"""Rates + catalog lines for any POS Amount Service (Electricity, Cooking Gas, …)."""
+def get_amount_service_rates(amount_service=None, lease=None, mobile_pos_service=None):
+	"""Rates + catalog lines for any amount Mobile POS Service (Electricity, Cooking Gas, …)."""
 	_require_auth()
-	payload = _parse_request_payload({"amount_service": amount_service, "lease": lease})
-	svc = _get_amount_service_doc(payload.get("amount_service"))
+	payload = _parse_request_payload(
+		{
+			"amount_service": amount_service,
+			"mobile_pos_service": mobile_pos_service or amount_service,
+			"service": None,
+			"lease": lease,
+		}
+	)
+	svc = _get_amount_service_doc(payload)
 	handler = _normalize_handler(svc)
 	title = (svc.title or svc.name).strip()
 
@@ -1024,6 +1087,7 @@ def get_amount_service_rates(amount_service=None, lease=None):
 
 	return {
 		"status": "success",
+		"mobile_pos_service": svc.name,
 		"amount_service": svc.name,
 		"amount_handler": handler,
 		"label": title,
@@ -1064,6 +1128,7 @@ def preview_amount_service(
 	)
 	return {
 		"status": "success",
+		"mobile_pos_service": intent["svc"].name,
 		"amount_service": intent["svc"].name,
 		"amount_handler": intent["handler"],
 		"label": intent["title"],
@@ -1143,6 +1208,7 @@ def checkout_amount_service(
 	extra = {
 		"amount_service_purchase": True,
 		"payment_workflow": workflow,
+		"mobile_pos_service": intent["svc"].name,
 		"amount_service": intent["svc"].name,
 		"amount_handler": intent["handler"],
 		"lease": billing.get("lease"),

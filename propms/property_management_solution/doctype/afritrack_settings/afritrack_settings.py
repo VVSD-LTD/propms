@@ -17,4 +17,4 @@ def sync_meters_from_trackspm():
 		sync_now,
 	)
 
-	return sync_now(create_missing=0)
+	return sync_now()

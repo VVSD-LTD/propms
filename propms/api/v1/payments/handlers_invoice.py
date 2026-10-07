@@ -71,50 +71,18 @@ def settle_sales_invoice_payment(txn, order_id, selcom_ref=None, amount=None, ra
             "invoice": inv.name,
         }
 
-    mode_of_payment = settings.get("mode_of_payment")
-    if not mode_of_payment or not frappe.db.exists("Mode of Payment", mode_of_payment):
+    paid_to_account = settings.get("default_bank_account")
+    if not paid_to_account or not frappe.db.exists("Account", paid_to_account):
         frappe.throw(
             _(
-                "Please set <b>Mode of Payment (Payment Entry)</b> in "
+                "Please set <b>Default Bank Account</b> in "
                 "<a href='/app/selcom-settings'>Selcom Settings</a>."
             ),
-            title=_("Mode of Payment Not Configured"),
+            title=_("Bank Account Not Configured"),
         )
 
-    paid_to_account = settings.get("default_bank_account")
-    if not paid_to_account and mode_of_payment and frappe.db.exists("Mode of Payment", mode_of_payment):
-        paid_to_account = frappe.db.get_value(
-            "Mode of Payment Account",
-            {"parent": mode_of_payment, "company": inv.company},
-            "default_account",
-        )
-    if not paid_to_account:
-        inv_curr = inv.currency or "TZS"
-        paid_to_account = (
-            frappe.db.get_value("Company", inv.company, "default_bank_account")
-            or frappe.db.get_value("Company", inv.company, "default_cash_account")
-            or frappe.db.get_value(
-                "Account",
-                {
-                    "company": inv.company,
-                    "account_type": "Bank",
-                    "is_group": 0,
-                    "disabled": 0,
-                    "account_currency": inv_curr,
-                },
-                "name",
-            )
-            or frappe.db.get_value(
-                "Account",
-                {"company": inv.company, "account_type": "Bank", "is_group": 0, "disabled": 0},
-                "name",
-            )
-            or frappe.db.get_value(
-                "Account",
-                {"company": inv.company, "account_type": "Cash", "is_group": 0, "disabled": 0},
-                "name",
-            )
-        )
+    # Optional label on PE only (not required by ERPNext / not from Settings)
+    mode_of_payment = "Selcom" if frappe.db.exists("Mode of Payment", "Selcom") else None
 
     original_user = frappe.session.user
     frappe.set_user("Administrator")
@@ -126,9 +94,9 @@ def settle_sales_invoice_payment(txn, order_id, selcom_ref=None, amount=None, ra
             pe = get_payment_entry("Sales Invoice", inv.name, party_amount=allocated_amt)
             pe.reference_no = str(selcom_ref or order_id)
             pe.reference_date = today()
-            pe.mode_of_payment = mode_of_payment
-            if paid_to_account:
-                pe.paid_to = paid_to_account
+            pe.paid_to = paid_to_account
+            if mode_of_payment:
+                pe.mode_of_payment = mode_of_payment
         except Exception:
             pe = frappe.new_doc("Payment Entry")
             pe.payment_type = "Receive"
@@ -140,9 +108,9 @@ def settle_sales_invoice_payment(txn, order_id, selcom_ref=None, amount=None, ra
             pe.paid_to_account_currency = inv.currency or "TZS"
             pe.reference_no = str(selcom_ref or order_id)
             pe.reference_date = today()
-            pe.mode_of_payment = mode_of_payment
-            if paid_to_account:
-                pe.paid_to = paid_to_account
+            pe.paid_to = paid_to_account
+            if mode_of_payment:
+                pe.mode_of_payment = mode_of_payment
 
             if flt(inv.outstanding_amount) > 0:
                 pe.append(

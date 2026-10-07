@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Same-day drinking-water delivery slots for POS Store.
+"""Same-day delivery slots for Mobile POS Service qty products (e.g. drinking water).
 
 Tenants pick one fixed 1-hour slot (e.g. 10:00–11:00), not a free-form from–to range.
 Past slots for today are not bookable. Optional delivery notes stay on checkout.
+
+Window open/close come from Mobile POS Service when the service has
+requires_delivery_window. Legacy fallback: POS Services Settings / defaults.
 """
 
 from __future__ import unicode_literals
 
-from datetime import time, timedelta
+from datetime import time
 
 import frappe
 from frappe import _
@@ -21,6 +24,8 @@ DEFAULTS = {
 
 # Product rule: every bookable slot is exactly one hour.
 SLOT_DURATION_MINS = 60
+
+MOBILE_POS_SERVICE = "Mobile POS Service"
 
 
 def _time_to_mins(t):
@@ -37,8 +42,53 @@ def _fmt_label(start_m, end_m):
 	return f"{_mins_to_time_str(start_m)[:5]} – {_mins_to_time_str(end_m)[:5]}"
 
 
+def _settings_dict(open_t, close_t):
+	return {
+		"open_time": get_time(open_t or DEFAULTS["open_time"]),
+		"close_time": get_time(close_t or DEFAULTS["close_time"]),
+		"slot_duration_mins": SLOT_DURATION_MINS,
+	}
+
+
+def get_delivery_settings_for_service(service_name=None, item_code=None):
+	"""Load open/close from a Mobile POS Service (qty + requires_delivery_window)."""
+	svc = None
+	if service_name and frappe.db.exists("DocType", MOBILE_POS_SERVICE):
+		if frappe.db.exists(MOBILE_POS_SERVICE, service_name):
+			svc = frappe.get_cached_doc(MOBILE_POS_SERVICE, service_name)
+	if not svc and item_code and frappe.db.exists("DocType", MOBILE_POS_SERVICE):
+		name = frappe.db.get_value(
+			MOBILE_POS_SERVICE,
+			{"purchase_mode": "qty", "item": item_code, "enabled": 1},
+			"name",
+		)
+		if name:
+			svc = frappe.get_cached_doc(MOBILE_POS_SERVICE, name)
+
+	if svc and cint(getattr(svc, "requires_delivery_window", 0)):
+		return _settings_dict(
+			getattr(svc, "delivery_open_time", None),
+			getattr(svc, "delivery_close_time", None),
+		)
+
+	return get_water_delivery_settings()
+
+
 def get_water_delivery_settings():
-	"""Load open/close from POS Services Settings (fallback Mobile App Settings)."""
+	"""Legacy fallback: first qty service with delivery window, else Settings, else defaults."""
+	if frappe.db.exists("DocType", MOBILE_POS_SERVICE) and frappe.db.has_column(
+		MOBILE_POS_SERVICE, "requires_delivery_window"
+	):
+		name = frappe.db.get_value(
+			MOBILE_POS_SERVICE,
+			{"purchase_mode": "qty", "requires_delivery_window": 1, "enabled": 1},
+			"name",
+			order_by="sort_order asc, modified asc",
+		)
+		if name:
+			svc = frappe.get_cached_doc(MOBILE_POS_SERVICE, name)
+			return _settings_dict(svc.delivery_open_time, svc.delivery_close_time)
+
 	open_t = DEFAULTS["open_time"]
 	close_t = DEFAULTS["close_time"]
 	doc = None
@@ -49,11 +99,7 @@ def get_water_delivery_settings():
 	if doc:
 		open_t = getattr(doc, "water_delivery_open_time", None) or open_t
 		close_t = getattr(doc, "water_delivery_close_time", None) or close_t
-	return {
-		"open_time": get_time(open_t),
-		"close_time": get_time(close_t),
-		"slot_duration_mins": SLOT_DURATION_MINS,
-	}
+	return _settings_dict(open_t, close_t)
 
 
 def build_delivery_slots(settings=None, now=None, delivery_date=None):
@@ -103,8 +149,12 @@ def build_delivery_slots(settings=None, now=None, delivery_date=None):
 	return slots
 
 
-def serialize_delivery_window_for_api(settings=None, delivery_date=None, now=None):
+def serialize_delivery_window_for_api(
+	settings=None, delivery_date=None, now=None, service_name=None, item_code=None
+):
 	"""API payload for mobile: list of 1-hour slots (past ones marked unavailable)."""
+	if settings is None and (service_name or item_code):
+		settings = get_delivery_settings_for_service(service_name=service_name, item_code=item_code)
 	settings = settings or get_water_delivery_settings()
 	now = now or now_datetime()
 	od = delivery_date or today()
@@ -124,11 +174,17 @@ def serialize_delivery_window_for_api(settings=None, delivery_date=None, now=Non
 		"slots": bookable,
 		# Full day for UIs that want to show disabled past slots.
 		"all_slots": all_slots,
+		"mobile_pos_service": service_name or None,
+		"item_code": item_code or None,
 	}
 
 
-def validate_delivery_window(start, end=None, settings=None, now=None, delivery_date=None):
+def validate_delivery_window(
+	start, end=None, settings=None, now=None, delivery_date=None, service_name=None, item_code=None
+):
 	"""Validate chosen 1-hour slot. If only start is sent, end = start + 60 mins."""
+	if settings is None and (service_name or item_code):
+		settings = get_delivery_settings_for_service(service_name=service_name, item_code=item_code)
 	settings = settings or get_water_delivery_settings()
 	now = now or now_datetime()
 	if isinstance(now, str):

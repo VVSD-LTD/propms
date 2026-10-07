@@ -13,6 +13,13 @@ from propms.api.v1.amenities import (
 	cancel_booking as _cancel_booking,
 	approve_amenity_booking as _approve_amenity_booking,
 	reject_amenity_booking as _reject_amenity_booking,
+	preview_recurring_amenity_booking as _preview_recurring,
+	create_recurring_amenity_booking as _create_recurring,
+	get_amenity_booking_series as _get_series,
+	get_my_amenity_series as _get_my_series,
+	cancel_remaining_amenity_booking_series as _cancel_remaining_series,
+	approve_amenity_booking_series as _approve_series,
+	reject_amenity_booking_series as _reject_series,
 )
 
 
@@ -77,3 +84,42 @@ def approve_amenity_booking(booking_id=None):
 @frappe.whitelist(methods=["POST"])
 def reject_amenity_booking(booking_id=None, rejection_reason=None):
 	return _reject_amenity_booking(booking_id=booking_id, rejection_reason=rejection_reason)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def preview_recurring_amenity_booking(**kwargs):
+	return _preview_recurring(**kwargs)
+
+
+@frappe.whitelist(methods=["POST"])
+def create_recurring_amenity_booking(**kwargs):
+	return _create_recurring(**kwargs)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_amenity_booking_series(series_id=None):
+	return _get_series(series_id=series_id)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_my_amenity_series(status="all", page=1, page_length=20, amenity=None):
+	return _get_my_series(
+		status=status, page=page, page_length=page_length, amenity=amenity
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_remaining_amenity_booking_series(series_id=None, cancellation_reason=None):
+	return _cancel_remaining_series(
+		series_id=series_id, cancellation_reason=cancellation_reason
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def approve_amenity_booking_series(series_id=None):
+	return _approve_series(series_id=series_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def reject_amenity_booking_series(series_id=None, rejection_reason=None):
+	return _reject_series(series_id=series_id, rejection_reason=rejection_reason)

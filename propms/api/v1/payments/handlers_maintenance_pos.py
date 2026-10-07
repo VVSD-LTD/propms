@@ -293,9 +293,7 @@ def _validate_mobile_pos_item(item_code):
 	from propms.api.v1.pos_store.pos_store import _is_item_enabled_in_settings
 
 	if not _is_item_enabled_in_settings(item_code):
-		return False, _("Item {0} is not enabled in POS Services Settings → POS Store Services").format(
-			item_code
-		)
+		return False, _("Item {0} is not enabled on Mobile POS Service (qty)").format(item_code)
 	return True, None
 
 def _load_intent(txn):

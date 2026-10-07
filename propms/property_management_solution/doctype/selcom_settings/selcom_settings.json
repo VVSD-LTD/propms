@@ -1,7 +1,6 @@
 {
  "actions": [],
- "allow_rename": 0,
- "creation": "2026-09-05 09:10:00.000000",
+ "creation": "2026-09-05 09:10:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -13,10 +12,9 @@
   "api_key",
   "api_secret",
   "accounting_section",
-  "mode_of_payment",
-  "mobile_cart_pos_profile",
-  "column_break_2",
   "default_bank_account",
+  "column_break_zfcr",
+  "mobile_cart_pos_profile",
   "webhook_section",
   "ipn_callback_url"
  ],
@@ -36,6 +34,7 @@
    "description": "Merchant Vendor ID assigned by Selcom (e.g. VIVATOWERS)",
    "fieldname": "vendor_id",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Vendor ID",
    "reqd": 1
   },
@@ -44,6 +43,7 @@
    "description": "Selcom API Gateway Base URL",
    "fieldname": "base_url",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Base URL",
    "reqd": 1
   },
@@ -54,12 +54,14 @@
   {
    "fieldname": "api_key",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "API Key",
    "reqd": 1
   },
   {
    "fieldname": "api_secret",
    "fieldtype": "Password",
+   "in_list_view": 1,
    "label": "API Secret",
    "reqd": 1
   },
@@ -69,30 +71,19 @@
    "label": "ERPNext Accounting Integration"
   },
   {
-   "default": "Selcom",
-   "description": "ERPNext Mode of Payment to link with created Payment Entries",
-   "fieldname": "mode_of_payment",
+   "description": "Bank / Cash account used as paid_to on Payment Entries created from Selcom IPN (required).",
+   "fieldname": "default_bank_account",
    "fieldtype": "Link",
-   "label": "Mode of Payment",
-   "options": "Mode of Payment"
+   "label": "Default Bank Account",
+   "options": "Account",
+   "reqd": 1
   },
   {
    "description": "POS Profile used for mobile POS Store / electricity Paid POS Sales Invoices (warehouse + payment methods).",
    "fieldname": "mobile_cart_pos_profile",
    "fieldtype": "Link",
-   "label": "Mobile Cart POS Profile",
+   "label": "POS Profile",
    "options": "POS Profile"
-  },
-  {
-   "fieldname": "column_break_2",
-   "fieldtype": "Column Break"
-  },
-  {
-   "description": "Default Bank / Cash account for payment receipt",
-   "fieldname": "default_bank_account",
-   "fieldtype": "Link",
-   "label": "Default Bank Account",
-   "options": "Account"
   },
   {
    "fieldname": "webhook_section",
@@ -106,13 +97,17 @@
    "fieldtype": "Data",
    "label": "IPN Callback URL",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_zfcr",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-05 09:10:00.000000",
+ "modified": "2026-10-06 14:47:23.969045",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Selcom Settings",
@@ -122,10 +117,8 @@
    "create": 1,
    "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
-   "report": 1,
    "role": "System Manager",
    "share": 1,
    "write": 1

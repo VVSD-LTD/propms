@@ -2,14 +2,14 @@ frappe.ui.form.on("Afritrack Settings", {
 	refresh: function (frm) {
 		frm.set_intro(
 			__(
-				"Complete flow: Sync Meters fetches TrackSPM /units/list, stores the full JSON on Afritrack Meter Sync, and updates TrackSPM Meter ID on existing Meter docs (does not create meters). Mobile meter status reads the latest sync (every 15 minutes). Keep Restrict Purchases on while testing with Afritrack’s test meter only."
+				"Complete flow: Sync Meters fetches TrackSPM /units/list, updates Afritrack Meter Sync (Single) metadata, and writes unit details onto each existing Meter (does not create meters). Mobile meter status reads Meter fields. Keep Restrict Purchases on while testing with Afritrack’s test meter only."
 			)
 		);
 		if (!frm.is_new()) {
 			frm.add_custom_button(__("Sync Meters from TrackSPM"), function () {
 				frappe.confirm(
 					__(
-						"This calls TrackSPM /units/list, saves the full JSON to Afritrack Meter Sync, and updates TrackSPM Meter ID on existing meters only. Continue?"
+						"This calls TrackSPM /units/list, updates Afritrack Meter Sync (Single), and writes unit details onto existing meters only. Continue?"
 					),
 					function () {
 						frappe.call({

@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestPOSAmountService(FrappeTestCase):
+class TestAfritrackMeterSync(FrappeTestCase):
 	pass

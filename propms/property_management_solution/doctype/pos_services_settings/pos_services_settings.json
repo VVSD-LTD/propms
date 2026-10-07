@@ -4,6 +4,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "retired_html",
   "services_section",
   "pos_store_services",
   "water_delivery_section",
@@ -15,34 +16,50 @@
  ],
  "fields": [
   {
-   "fieldname": "services_section",
-   "fieldtype": "Section Break"
+   "fieldname": "retired_html",
+   "fieldtype": "HTML",
+   "label": "Retired Notice",
+   "options": "<div class=\"alert alert-warning\"><b>Retired.</b> Configure the mobile catalog on <a href=\"/app/mobile-pos-service\">Mobile POS Service</a> (qty items, amount services, and delivery windows). This Single is kept only for legacy data / fallback.</div>"
   },
   {
-   "description": "Item + qty = Maintenance POS product. Amount + Amount Service = pay-by-amount catalog (POS Amount Service Electricity, Cooking Gas, etc.).",
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:false",
+   "fieldname": "services_section",
+   "fieldtype": "Section Break",
+   "label": "Legacy Hub (unused)"
+  },
+  {
+   "description": "Retired — catalog is Mobile POS Service. Rows are cleared by migrate.",
    "fieldname": "pos_store_services",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "POS Store Services",
-   "options": "Mobile POS Store Service"
+   "options": "Mobile POS Store Service",
+   "read_only": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "water_delivery_section",
    "fieldtype": "Section Break",
-   "label": "Drinking Water Delivery Slots"
+   "hidden": 1,
+   "label": "Legacy Delivery Slots (unused)"
   },
   {
    "default": "08:00:00",
-   "description": "First 1-hour slot starts at this time (same day). Example: 08:00 \u2192 slot 08:00\u201309:00.",
+   "description": "Retired — set Delivery Open/Close on the qty Mobile POS Service (e.g. Drinking Water).",
    "fieldname": "water_delivery_open_time",
    "fieldtype": "Time",
-   "label": "Delivery Open Time"
+   "hidden": 1,
+   "label": "Delivery Open Time",
+   "read_only": 1
   },
   {
    "default": "18:00:00",
-   "description": "Last slot must end by this time. Example: 18:00 \u2192 last slot 17:00\u201318:00.",
    "fieldname": "water_delivery_close_time",
    "fieldtype": "Time",
-   "label": "Delivery Close Time"
+   "hidden": 1,
+   "label": "Delivery Close Time",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_water_del",
@@ -50,7 +67,6 @@
   },
   {
    "default": "60",
-   "description": "Unused \u2014 slots are fixed at 1 hour.",
    "fieldname": "water_delivery_min_window_mins",
    "fieldtype": "Int",
    "hidden": 1,
@@ -58,7 +74,6 @@
   },
   {
    "default": "60",
-   "description": "Unused \u2014 slots are fixed at 1 hour.",
    "fieldname": "water_delivery_picker_step_mins",
    "fieldtype": "Int",
    "hidden": 1,
@@ -68,7 +83,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-06 11:17:13.897209",
+ "modified": "2026-10-07 10:30:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "POS Services Settings",

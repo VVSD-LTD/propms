@@ -18,28 +18,45 @@ ALLOCATION_TOLERANCE = 1.0  # TZS
 ELECTRICITY_AMOUNT_SERVICE = "Electricity"
 
 
+def _electricity_service_doctype():
+	if frappe.db.exists("DocType", "Mobile POS Service"):
+		return "Mobile POS Service"
+	if frappe.db.exists("DocType", "POS Amount Service"):
+		return "POS Amount Service"
+	return None
+
+
 def get_electricity_amount_service_name():
-	"""POS Amount Service doc used for electricity invoices + TrackSPM."""
-	if not frappe.db.exists("DocType", "POS Amount Service"):
+	"""Mobile POS Service (amount/Electricity) used for invoices + TrackSPM."""
+	dt = _electricity_service_doctype()
+	if not dt:
 		return None
-	# Prefer titled Electricity with handler Electricity
+	filters_base = {"handler": "Electricity", "enabled": 1}
+	# Prefer purchase_mode=amount when column exists
+	if frappe.db.has_column(dt, "purchase_mode"):
+		name = frappe.db.get_value(
+			dt,
+			{**filters_base, "purchase_mode": "amount", "title": ELECTRICITY_AMOUNT_SERVICE},
+			"name",
+		)
+		if name:
+			return name
+		name = frappe.db.get_value(dt, {**filters_base, "purchase_mode": "amount"}, "name")
+		if name:
+			return name
 	name = frappe.db.get_value(
-		"POS Amount Service",
-		{"handler": "Electricity", "enabled": 1, "title": ELECTRICITY_AMOUNT_SERVICE},
+		dt,
+		{**filters_base, "title": ELECTRICITY_AMOUNT_SERVICE},
 		"name",
 	)
 	if name:
 		return name
-	return frappe.db.get_value(
-		"POS Amount Service",
-		{"handler": "Electricity", "enabled": 1},
-		"name",
-	)
+	return frappe.db.get_value(dt, filters_base, "name")
 
 
 
 def get_electricity_catalog():
-	"""ERP electricity items from POS Amount Service (handler=Electricity).
+	"""ERP electricity items from Mobile POS Service (handler=Electricity).
 
 	Afritrack Settings is TrackSPM credentials / meter sync only — never item config.
 	Only catalog item_codes are eligible for TrackSPM top-up amounts.
@@ -50,11 +67,12 @@ def get_electricity_catalog():
 	lease_item = LEASE_ITEM_ELECTRICITY
 	items = []
 	source = "defaults"
+	dt = _electricity_service_doctype()
 
 	try:
 		svc_name = get_electricity_amount_service_name()
-		if svc_name:
-			s = frappe.get_cached_doc("POS Amount Service", svc_name)
+		if svc_name and dt:
+			s = frappe.get_cached_doc(dt, svc_name)
 			rows = sorted(
 				[r for r in (s.get("items") or []) if cint(r.enabled) and (r.item or "").strip()],
 				key=lambda r: (cint(r.sort_order), cint(r.idx)),
@@ -84,7 +102,7 @@ def get_electricity_catalog():
 				tanesco = t1
 			if t2:
 				generator = t2
-			source = "POS Amount Service:{0}".format(svc_name)
+			source = "{0}:{1}".format(dt, svc_name)
 	except Exception:
 		pass
 
@@ -522,7 +540,57 @@ def get_electricity_meter_status(lease=None, force_refresh=None):
         get_settings,
         serialize_meter_status,
     )
+    from propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync import (
+        get_sync_meta,
+    )
 
+    force = cint(payload.get("force_refresh"))
+
+    # Default path: Meter DocType fields (filled by 15-min Single sync). No TrackSPM call.
+    if not force:
+        try:
+            row = find_meter_row(
+                meter_serial=meter_serial,
+                meter_id=trackspm_meter_id,
+                force_refresh=False,
+            )
+        except Exception as e:
+            frappe.log_error(frappe.get_traceback(), "Afritrack meter status")
+            return {
+                "status": "error",
+                "message": "Unable to read meter status: {0}".format(e),
+                "meter_number": meter_serial,
+            }
+        if not row:
+            return {
+                "status": "error",
+                "message": (
+                    "Meter {0} has no TrackSPM details yet. "
+                    "Wait for the 15-minute sync or run Sync Now on Afritrack Meter Sync."
+                ).format(meter_serial),
+                "meter_number": meter_serial,
+                "trackspm_meter_id": trackspm_meter_id,
+            }
+        status = serialize_meter_status(row, propms_serial=meter_serial)
+        out = {
+            "status": "success",
+            "lease": billing.get("lease"),
+            "property": billing.get("property"),
+            "customer": billing.get("customer"),
+            "meter_number": meter_serial,
+            "trackspm_meter_id": status.get("meter_id") or trackspm_meter_id,
+            "meter": status,
+            "data_source": "meter",
+        }
+        meta = get_sync_meta()
+        if meta:
+            out["sync_name"] = meta.get("sync_name")
+            out["synced_on"] = str(meta.get("synced_on") or "")
+            out["last_updated_on"] = str(meta.get("last_updated_on") or "")
+            out["data_source"] = "afritrack_meter_sync"
+        return out
+
+    # force_refresh=1: live TrackSPM (needs credentials) and refresh Meter fields
     try:
         settings = get_settings()
     except Exception:
@@ -535,27 +603,12 @@ def get_electricity_meter_status(lease=None, force_refresh=None):
             "meter_number": meter_serial,
         }
 
-    force = cint(payload.get("force_refresh"))
     try:
-        # Default: read Afritrack Meter Sync (15-min). force_refresh=1 hits TrackSPM live.
         row = find_meter_row(
             meter_serial=meter_serial,
             meter_id=trackspm_meter_id,
-            force_refresh=bool(force),
+            force_refresh=True,
         )
-        sync_meta = None
-        if not force:
-            from propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync import (
-                get_latest_units_list_payload,
-            )
-
-            stored = get_latest_units_list_payload()
-            if stored:
-                sync_meta = {
-                    "sync_name": stored.get("_sync_name"),
-                    "synced_on": str(stored.get("_synced_on") or ""),
-                    "data_source": "afritrack_meter_sync",
-                }
     except TrackSPMError as e:
         frappe.log_error(frappe.get_traceback(), "Afritrack meter status")
         return {
@@ -576,15 +629,15 @@ def get_electricity_meter_status(lease=None, force_refresh=None):
         return {
             "status": "error",
             "message": (
-                "Meter {0} not found in latest Afritrack Meter Sync. "
-                "Wait for the 15-minute sync or run Sync Now in Afritrack Settings."
+                "Meter {0} not found in TrackSPM units/list. "
+                "Check the meter serial / TrackSPM Meter ID."
             ).format(meter_serial),
             "meter_number": meter_serial,
             "trackspm_meter_id": trackspm_meter_id,
         }
 
     status = serialize_meter_status(row, propms_serial=meter_serial)
-    out = {
+    return {
         "status": "success",
         "lease": billing.get("lease"),
         "property": billing.get("property"),
@@ -592,11 +645,8 @@ def get_electricity_meter_status(lease=None, force_refresh=None):
         "meter_number": meter_serial,
         "trackspm_meter_id": status.get("meter_id") or trackspm_meter_id,
         "meter": status,
-        "data_source": "trackspm_live" if force else "afritrack_meter_sync",
+        "data_source": "trackspm_live",
     }
-    if sync_meta:
-        out.update(sync_meta)
-    return out
 
 
 @frappe.whitelist(methods=["POST"])

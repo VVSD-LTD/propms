@@ -1,4 +1,6 @@
 [pre_model_sync]
+propms.patches.v15_0.rename_pos_amount_service_to_mobile_pos_service
+propms.patches.v15_0.convert_afritrack_meter_sync_to_single_pre
 
 [post_model_sync]
 propms.patches.data_population.populate_data
@@ -11,3 +13,5 @@ propms.patches.v15_0.migrate_pos_amount_service_type
 propms.patches.v15_0.merge_electricity_settings_into_pos_amount_service
 propms.patches.v15_0.hide_sales_invoice_lease_item
 propms.patches.v15_0.rename_pos_amount_service_handler_other
+propms.patches.v15_0.migrate_mobile_pos_service_hub
+propms.patches.v15_0.convert_afritrack_meter_sync_to_single

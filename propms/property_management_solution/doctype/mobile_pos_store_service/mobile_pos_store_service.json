@@ -63,13 +63,13 @@
   {
    "columns": 2,
    "depends_on": "eval:doc.service_type=='Amount'",
-   "description": "Catalog for this amount service (create Cooking Gas, Electricity, etc. under POS Amount Service).",
+   "description": "Legacy hub link — catalog is now Mobile POS Service directly.",
    "fieldname": "amount_service",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Amount Service",
    "mandatory_depends_on": "eval:doc.service_type=='Amount'",
-   "options": "POS Amount Service"
+   "options": "Mobile POS Service"
   },
   {
    "columns": 1,

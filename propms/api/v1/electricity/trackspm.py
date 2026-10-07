@@ -146,9 +146,9 @@ def list_meters(property_id=None, tariffs=1):
 
 
 def get_units_list_cached(property_id=None, tariffs=1, force_refresh=False):
-	"""Prefer latest Afritrack Meter Sync JSON; optionally force live TrackSPM fetch.
+	"""Prefer Meter snapshots (15-min sync); optionally force live TrackSPM fetch.
 
-	Normal mobile traffic should hit stored sync (15-min job), not TrackSPM per tenant.
+	Normal mobile traffic should hit Meter fields, not TrackSPM per tenant.
 	"""
 	settings = get_settings()
 	pid = str(property_id or settings.property_id or "5")
@@ -159,7 +159,7 @@ def get_units_list_cached(property_id=None, tariffs=1, force_refresh=False):
 		)
 
 		stored = get_latest_units_list_payload(property_id=pid)
-		if stored:
+		if stored and stored.get("data"):
 			return stored
 
 	# Live fetch (+ short redis cache) when no sync yet or force_refresh
@@ -174,27 +174,51 @@ def get_units_list_cached(property_id=None, tariffs=1, force_refresh=False):
 
 
 def find_meter_row(meter_serial=None, meter_id=None, force_refresh=False):
-	"""Find one meter row from units/list by serial and/or TrackSPM meter_id."""
+	"""Find one meter: Meter DocType snapshot by default; live TrackSPM when force_refresh."""
 	serial = (meter_serial or "").strip()
 	mid = str(meter_id).strip() if meter_id is not None else ""
 	if not serial and not mid:
 		return None
 
-	payload = get_units_list_cached(force_refresh=force_refresh)
+	if not force_refresh:
+		from propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync import (
+			find_meter_row_from_meter,
+		)
+
+		stored = find_meter_row_from_meter(meter_serial=serial, meter_id=mid)
+		if stored:
+			return stored
+
+	# Live /units/list (and optionally refresh the matching Meter)
+	payload = get_units_list_cached(force_refresh=True)
 	rows = payload.get("data") or []
 	if not isinstance(rows, list):
 		raise TrackSPMError("units/list data is not a list", response=payload)
 
+	matched = None
 	for row in rows:
 		if not isinstance(row, dict):
 			continue
 		row_serial = (row.get("meter_serial") or row.get("meter_reference") or "").strip()
 		row_id = str(row.get("meter_id") or "").strip()
 		if mid and row_id == mid:
-			return row
+			matched = row
+			break
 		if serial and row_serial == serial:
-			return row
-	return None
+			matched = row
+			break
+
+	if matched and force_refresh:
+		from propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync import (
+			apply_trackspm_row_to_meter,
+		)
+
+		row_serial = (matched.get("meter_serial") or matched.get("meter_reference") or serial or "").strip()
+		if row_serial:
+			apply_trackspm_row_to_meter(row_serial, matched)
+			frappe.db.commit()
+
+	return matched
 
 
 def serialize_meter_status(row, propms_serial=None):
@@ -271,10 +295,10 @@ def create_utility_bill(meter_id, tariff, amount, wallet_id=None):
 	}
 
 
-def sync_meters_from_trackspm(property_id=None, create_missing=False, triggered_by="Manual"):
-	"""Fetch /units/list → Afritrack Meter Sync (full JSON) + update Meter IDs.
+def sync_meters_from_trackspm(property_id=None, triggered_by="Manual"):
+	"""Fetch /units/list → write unit details onto each Meter + refresh Single sync meta.
 
-	create_missing=False (default): only update existing PropMS Meter docs.
+	Only updates existing PropMS Meter docs — never creates meters.
 	"""
 	from propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync import (
 		run_afritrack_meter_sync,
@@ -282,6 +306,5 @@ def sync_meters_from_trackspm(property_id=None, create_missing=False, triggered_
 
 	return run_afritrack_meter_sync(
 		property_id=property_id,
-		create_missing=create_missing,
 		triggered_by=triggered_by or "Manual",
 	)

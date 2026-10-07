@@ -907,20 +907,28 @@ def pay_pos_item_with_stored_card(
 
 
 @frappe.whitelist(methods=["GET", "POST"])
-def get_water_delivery_window():
-    """Same-day drinking-water delivery rules for the mobile picker."""
+def get_water_delivery_window(mobile_pos_service=None, amount_service=None, item_code=None):
+    """Same-day delivery slots from Mobile POS Service (qty + delivery window)."""
     from propms.api.v1.pos_store import pos_store as v1_pos
-    return v1_pos.get_water_delivery_window()
+    return v1_pos.get_water_delivery_window(
+        mobile_pos_service=mobile_pos_service,
+        amount_service=amount_service,
+        item_code=item_code,
+    )
 
 
 # -------------------------------------------------------------------------
 # Amount services (Electricity / Cooking Gas / …) — shared amount_split UI
 # -------------------------------------------------------------------------
 @frappe.whitelist(methods=["GET", "POST"])
-def get_amount_service_rates(amount_service=None, lease=None):
-    """Catalog + rates for a POS Amount Service (reuse electricity-style UI)."""
+def get_amount_service_rates(amount_service=None, lease=None, mobile_pos_service=None):
+    """Catalog + rates for a Mobile POS Service (amount mode)."""
     from propms.api.v1.pos_store import pos_store as v1_pos
-    return v1_pos.get_amount_service_rates(amount_service=amount_service, lease=lease)
+    return v1_pos.get_amount_service_rates(
+        amount_service=amount_service or mobile_pos_service,
+        lease=lease,
+        mobile_pos_service=mobile_pos_service or amount_service,
+    )
 
 
 @frappe.whitelist(methods=["GET", "POST"])
@@ -974,9 +982,9 @@ def get_electricity_rates(lease=None):
 
 @frappe.whitelist(methods=["GET", "POST"])
 def get_electricity_meter_status(lease=None, force_refresh=None):
-    """Meter balances/power for tenant — prefers Afritrack Meter Sync (15-min).
+    """Meter balances/power for tenant — reads Meter fields (15-min Afritrack sync).
 
-    force_refresh=1 hits TrackSPM live (ops/debug only).
+    force_refresh=1 hits TrackSPM live and refreshes the Meter (ops/debug only).
     """
     from propms.api.v1.electricity import electricity as v1_el
     return v1_el.get_electricity_meter_status(lease=lease, force_refresh=force_refresh)
@@ -1180,15 +1188,36 @@ def create_amenity_booking(
 
 
 @frappe.whitelist(methods=["GET", "POST"])
-def get_my_amenity_bookings(status="all", page=1, page_length=20):
+def get_my_amenity_bookings(
+    status="all",
+    page=1,
+    page_length=20,
+    amenity=None,
+    booking_date=None,
+    booking_date_from=None,
+    booking_date_to=None,
+):
+    """Hub list: returns ``hub`` (series + one-time cards) and flat ``bookings``."""
     from propms.api.v1.amenities import get_my_bookings as v1_get_my_bookings
-    return v1_get_my_bookings(status=status, page=page, page_length=page_length)
+    return v1_get_my_bookings(
+        status=status,
+        page=page,
+        page_length=page_length,
+        amenity=amenity,
+        booking_date=booking_date,
+        booking_date_from=booking_date_from,
+        booking_date_to=booking_date_to,
+    )
 
 
 @frappe.whitelist(methods=["POST"])
-def cancel_amenity_booking(booking_id=None, cancellation_reason=None):
+def cancel_amenity_booking(booking_id=None, cancellation_reason=None, request_id=None):
     from propms.api.v1.amenities import cancel_booking as v1_cancel_booking
-    return v1_cancel_booking(booking_id=booking_id, cancellation_reason=cancellation_reason)
+    return v1_cancel_booking(
+        booking_id=booking_id,
+        cancellation_reason=cancellation_reason,
+        request_id=request_id,
+    )
 
 
 @frappe.whitelist(methods=["GET", "POST"])
@@ -1207,6 +1236,120 @@ def approve_amenity_booking(booking_id=None):
 def reject_amenity_booking(booking_id=None, rejection_reason=None):
     from propms.api.v1.amenities import reject_amenity_booking as v1
     return v1(booking_id=booking_id, rejection_reason=rejection_reason)
+
+
+# -------------------------------------------------------------------------
+# Amenity Booking Series (recurring)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def preview_recurring_amenity_booking(
+    amenity=None,
+    series_start_date=None,
+    series_end_date=None,
+    start_time=None,
+    end_time=None,
+    weekdays=None,
+    week_mon=None,
+    week_tue=None,
+    week_wed=None,
+    week_thu=None,
+    week_fri=None,
+    week_sat=None,
+    week_sun=None,
+    lease=None,
+    property_unit=None,
+):
+    from propms.api.v1.amenities import preview_recurring_amenity_booking as v1
+    return v1(
+        amenity=amenity,
+        series_start_date=series_start_date,
+        series_end_date=series_end_date,
+        start_time=start_time,
+        end_time=end_time,
+        weekdays=weekdays,
+        week_mon=week_mon,
+        week_tue=week_tue,
+        week_wed=week_wed,
+        week_thu=week_thu,
+        week_fri=week_fri,
+        week_sat=week_sat,
+        week_sun=week_sun,
+        lease=lease,
+        property_unit=property_unit,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def create_recurring_amenity_booking(
+    amenity=None,
+    series_start_date=None,
+    series_end_date=None,
+    start_time=None,
+    end_time=None,
+    weekdays=None,
+    week_mon=None,
+    week_tue=None,
+    week_wed=None,
+    week_thu=None,
+    week_fri=None,
+    week_sat=None,
+    week_sun=None,
+    guests_count=1,
+    notes=None,
+    lease=None,
+    property_unit=None,
+):
+    from propms.api.v1.amenities import create_recurring_amenity_booking as v1
+    return v1(
+        amenity=amenity,
+        series_start_date=series_start_date,
+        series_end_date=series_end_date,
+        start_time=start_time,
+        end_time=end_time,
+        weekdays=weekdays,
+        week_mon=week_mon,
+        week_tue=week_tue,
+        week_wed=week_wed,
+        week_thu=week_thu,
+        week_fri=week_fri,
+        week_sat=week_sat,
+        week_sun=week_sun,
+        guests_count=guests_count,
+        notes=notes,
+        lease=lease,
+        property_unit=property_unit,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_amenity_booking_series(series_id=None):
+    """Series detail: header card + chronological occurrence children."""
+    from propms.api.v1.amenities import get_amenity_booking_series as v1
+    return v1(series_id=series_id)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_my_amenity_series(status="all", page=1, page_length=20, amenity=None):
+    from propms.api.v1.amenities import get_my_amenity_series as v1
+    return v1(status=status, page=page, page_length=page_length, amenity=amenity)
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_remaining_amenity_booking_series(series_id=None, cancellation_reason=None):
+    from propms.api.v1.amenities import cancel_remaining_amenity_booking_series as v1
+    return v1(series_id=series_id, cancellation_reason=cancellation_reason)
+
+
+@frappe.whitelist(methods=["POST"])
+def approve_amenity_booking_series(series_id=None):
+    from propms.api.v1.amenities import approve_amenity_booking_series as v1
+    return v1(series_id=series_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def reject_amenity_booking_series(series_id=None, rejection_reason=None):
+    from propms.api.v1.amenities import reject_amenity_booking_series as v1
+    return v1(series_id=series_id, rejection_reason=rejection_reason)
 
 
 # -------------------------------------------------------------------------
