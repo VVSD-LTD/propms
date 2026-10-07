@@ -167,11 +167,11 @@ def _xlsx_for(report_name, filters):
 def _html_for(report_name, filters):
 	parts = [
 		"<html><head><meta charset='utf-8'><style>",
-		"body{font-family:Arial,sans-serif;font-size:11px;color:#1f2933}",
+		"body{font-family:Arial,sans-serif;font-size:12px;color:#1f2933}",
 		"h1{font-size:18px;margin:0 0 8px}h2{font-size:14px;margin:16px 0 8px}",
 		"table.data{border-collapse:collapse;width:100%;margin:0;border:1px solid #1f2933;table-layout:fixed}",
-		"table.data th,table.data td{border:1px solid #1f2933;padding:3px 5px;vertical-align:top;font-size:11px}",
-		"table.data th{background:#1f4e79;color:#fff;text-align:left;font-size:12px;font-weight:bold}",
+		"table.data th,table.data td{border:1px solid #1f2933;padding:3px 6px;vertical-align:top;font-size:13px}",
+		"table.data th{background:#1f4e79;color:#fff;text-align:left;font-size:14px;font-weight:bold}",
 		"table.data col.sn{width:14mm}",
 		"table.data tr,table.data td,table.data th{page-break-inside:avoid}",
 		"table.data.continued{page-break-before:always}",
@@ -179,7 +179,7 @@ def _html_for(report_name, filters):
 		"table.data.bar-fit th{font-size:17px}",
 		".chart{margin:4px 0 8px}",
 		"table.summary{border-collapse:collapse;margin:8px 0 12px;border:1px solid #1f2933}",
-		"table.summary th,table.summary td{border:1px solid #1f2933;padding:4px 8px;font-size:12px}",
+		"table.summary th,table.summary td{border:1px solid #1f2933;padding:4px 8px;font-size:13px}",
 		"table.summary th{background:#1f4e79;color:#fff}",
 		".legend div{margin:3px 0}.swatch{display:inline-block;width:12px;height:12px;margin-right:8px}",
 		".legend.pie div{font-size:16px}",
@@ -576,12 +576,12 @@ _COL_CHARS = {
 	"lease_start_date": 12,
 	"lease_end_date": 12,
 	"portfolio": 14,
-	"property_group": 12,
+	"property_group": 14,
 	"floor": 14,
 	"occupancy_status": 18,
-	"property": 18,
-	"unit_owner": 18,
-	"lease_customer": 18,
+	"property": 20,
+	"unit_owner": 22,
+	"lease_customer": 20,
 	"lease_name": 20,
 	"tenant_label": 18,
 	"email": 22,
@@ -592,33 +592,53 @@ _COL_CHARS = {
 
 
 def _row_weight(row, headers):
+	# Ten columns are narrower, so the same text wraps a line sooner.
+	factor = 0.85 if len(headers) >= 10 else 1
 	weight = 1
 	for key, _label in headers:
 		text = _text(row.get(key))
-		width = _COL_CHARS.get(key, 16)
+		width = max(8, int(_COL_CHARS.get(key, 16) * factor))
 		if text:
 			weight = max(weight, (len(text) + width - 1) // width)
 	return weight
 
 
 def _table_chunks(rows, headers):
-	if len(headers) < 10:
-		return [rows[index : index + 24] for index in range(0, len(rows), 24)]
-	# A full landscape page holds about this many wrapped lines, header included.
-	budget = 36
+	# Budget is the wrapped-line total that fills a landscape page and still
+	# keeps the last row on that page. Narrower sheets wrap sooner.
+	if len(headers) >= 11:
+		budget = 31
+	elif len(headers) >= 10:
+		budget = 34
+	elif headers and headers[0][0] != "sn":
+		budget = 32
+	else:
+		budget = 36
 	chunks = []
+	weights = []
 	current = []
 	used = 0
 	for row in rows:
 		weight = _row_weight(row, headers)
 		if current and used + weight > budget:
 			chunks.append(current)
+			weights.append(used)
 			current = []
 			used = 0
 		current.append(row)
 		used += weight
 	if current:
 		chunks.append(current)
+		weights.append(used)
+	# A one-row tail still fits on the previous page when that page is not already full.
+	if (
+		len(chunks) >= 2
+		and len(chunks[-1]) == 1
+		and weights[-2] <= budget - 1
+		and weights[-2] + weights[-1] <= budget + 1
+	):
+		chunks[-2].extend(chunks[-1])
+		chunks.pop()
 	return chunks
 
 
@@ -636,7 +656,7 @@ def _html_table(headers, rows, has_chart=False, bar_fit=False, chart_type=None):
 	# the page. Each chunk is its own table. Wide sheets wrap, so the chunk
 	# size follows the text instead of a fixed row count.
 	# A pie leaves room for only a few rows, so a longer list starts on the next page.
-	fits_with_chart = chart_type == "bar" or (chart_type == "pie" and len(rows) <= 5)
+	fits_with_chart = chart_type == "bar"
 	chunks = _table_chunks(rows, headers)
 	parts = []
 	for index, chunk in enumerate(chunks):

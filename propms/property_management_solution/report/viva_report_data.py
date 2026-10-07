@@ -409,9 +409,35 @@ def _customer_contacts():
 		""",
 		as_dict=True,
 	)
+	child_phones = frappe.db.sql(
+		"""
+		SELECT dl.link_name AS customer, cp.phone
+		FROM `tabContact Phone` cp
+		INNER JOIN `tabContact` c ON c.name = cp.parent
+		INNER JOIN `tabDynamic Link` dl
+			ON dl.parent = c.name
+			AND dl.parenttype = 'Contact'
+			AND dl.link_doctype = 'Customer'
+		WHERE IFNULL(cp.phone, '') != ''
+			AND IFNULL(dl.link_name, '') != ''
+		""",
+		as_dict=True,
+	)
+	addresses = frappe.db.sql(
+		"""
+		SELECT dl.link_name AS customer, a.email_id, a.phone
+		FROM `tabAddress` a
+		INNER JOIN `tabDynamic Link` dl
+			ON dl.parent = a.name
+			AND dl.parenttype = 'Address'
+			AND dl.link_doctype = 'Customer'
+		WHERE IFNULL(dl.link_name, '') != ''
+		""",
+		as_dict=True,
+	)
 	customers = frappe.db.sql(
 		"""
-		SELECT name AS customer, email_id, custom_customer_email, mobile_no
+		SELECT name AS customer, email_id, mobile_no
 		FROM `tabCustomer`
 		""",
 		as_dict=True,
@@ -422,20 +448,25 @@ def _customer_contacts():
 		if not customer:
 			return
 		emails, phones = bucket.setdefault(customer, (set(), set()))
-		if email and str(email).strip():
-			emails.add(str(email).strip())
-		if phone and str(phone).strip():
-			phones.add(str(phone).strip())
+		email = _clean_contact(email)
+		phone = _clean_contact(phone)
+		if email:
+			emails.add(email)
+		if phone:
+			phones.add(phone)
 
 	for row in customers:
 		add(row.customer, row.email_id, row.mobile_no)
-		add(row.customer, row.custom_customer_email, None)
+	for row in addresses:
+		add(row.customer, row.email_id, row.phone)
 	for row in rows:
 		add(row.customer, row.email_id, row.mobile_no)
 		add(row.customer, None, row.phone)
 	for row in child_emails:
 		add(row.customer, row.email_id, None)
-	return {customer: (" / ".join(sorted(emails)), " / ".join(sorted(phones))) for customer, (emails, phones) in bucket.items()}
+	for row in child_phones:
+		add(row.customer, None, row.phone)
+	return {customer: (_slash(emails), _slash(phones)) for customer, (emails, phones) in bucket.items()}
 
 
 def _property_user_contacts(contact_names):
@@ -451,11 +482,53 @@ def _property_user_contacts(contact_names):
 		{"names": names},
 		as_dict=True,
 	)
-	return {row.name: _join_contact(row.email_id, row.mobile_no or row.phone) for row in rows}
+	extra_emails = frappe.db.sql(
+		"""
+		SELECT parent AS name, email_id
+		FROM `tabContact Email`
+		WHERE parent IN %(names)s AND IFNULL(email_id, '') != ''
+		""",
+		{"names": names},
+		as_dict=True,
+	)
+	extra_phones = frappe.db.sql(
+		"""
+		SELECT parent AS name, phone
+		FROM `tabContact Phone`
+		WHERE parent IN %(names)s AND IFNULL(phone, '') != ''
+		""",
+		{"names": names},
+		as_dict=True,
+	)
+	bucket = {name: (set(), set()) for name in names}
+	for row in rows:
+		_add_pair(bucket, row.name, row.email_id, row.mobile_no)
+		_add_pair(bucket, row.name, None, row.phone)
+	for row in extra_emails:
+		_add_pair(bucket, row.name, row.email_id, None)
+	for row in extra_phones:
+		_add_pair(bucket, row.name, None, row.phone)
+	return {name: (_slash(emails), _slash(phones)) for name, (emails, phones) in bucket.items()}
 
 
-def _join_contact(email, phone):
-	return ((email or "").strip(), (phone or "").strip())
+def _add_pair(bucket, name, email, phone):
+	if name not in bucket:
+		return
+	emails, phones = bucket[name]
+	email = _clean_contact(email)
+	phone = _clean_contact(phone)
+	if email:
+		emails.add(email)
+	if phone:
+		phones.add(phone)
+
+
+def _clean_contact(value):
+	return " ".join(str(value or "").replace("\xa0", " ").split())
+
+
+def _slash(values):
+	return " / ".join(sorted(values))
 
 
 def _join_unique(left, right):
