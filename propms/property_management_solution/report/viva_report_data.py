@@ -2,7 +2,7 @@
 
 Rows come from Property plus the current Active lease. Status labels follow the
 requested workbooks: commercial rented status, and residential status by owner
-portfolio (Virgin Plaza, Vasta, TRCS, Investor).
+portfolio (Virgin Plaza, Vasta, RedCross, Investor).
 """
 
 import frappe
@@ -10,10 +10,10 @@ import frappe
 MANAGED_OWNERS = {
 	"Virgin Plaza": ("Virgin Plaza Limited", "Virgin Plaza Limited (USD)"),
 	"Vasta": ("Vasta Properties Limited",),
-	"TRCS": ("RedCross",),
+	"RedCross": ("RedCross",),
 }
 
-PORTFOLIO_ORDER = ("Virgin Plaza", "Vasta", "TRCS", "Investor")
+PORTFOLIO_ORDER = ("Virgin Plaza", "Vasta", "RedCross", "Investor")
 COMMERCIAL_GROUPS = ("Warehouse", "Ground Floor", "First Floor", "Second Floor", "Other")
 COMMERCIAL_STATUSES = ("Leased-Customer", "Leased-Internal", "Empty")
 
@@ -57,6 +57,10 @@ def column(fieldname, label, fieldtype="Data", options=None, width=140):
 	}
 	if options:
 		col["options"] = options
+	# An empty first cell is treated as numeric and the whole column is pushed right.
+	# Text, links, and dates stay left to right, same as the other report columns.
+	if fieldtype not in ("Int", "Float", "Currency", "Percent"):
+		col["align"] = "left"
 	return col
 
 
@@ -97,6 +101,98 @@ def summary_cards(pairs):
 			}
 		)
 	return cards
+
+
+def status_shares(counts, order):
+	"""Status, count, and percentage. The last occupied status absorbs rounding so the shares add to 100."""
+	labels = list(order)
+	labels.extend(label for label in counts if label not in labels)
+	total = sum(counts.get(label, 0) for label in labels)
+	occupied = [label for label in labels if counts.get(label)]
+	last_occupied = occupied[-1] if occupied else None
+	shares = []
+	running = 0.0
+	for label in labels:
+		count = counts.get(label, 0)
+		if not total or not count:
+			share = 0
+		elif label == last_occupied:
+			share = round(100 - running, 2)
+		else:
+			share = round(count * 100.0 / total, 2)
+			running += share
+		shares.append((label, count, share))
+	return total, shares
+
+
+def percent_cards(total_label, counts, order):
+	"""Count cards only. The share of each status is drawn on the pie."""
+	labels = list(order)
+	labels.extend(label for label in counts if label not in labels)
+	total = sum(counts.get(label, 0) for label in labels)
+	cards = [
+		{"label": total_label, "value": total, "datatype": "Int", "indicator": "Blue"},
+	]
+	indicators = ["Green", "Orange", "Red", "Purple", "Grey", "Blue"]
+	for idx, label in enumerate(labels):
+		cards.append(
+			{
+				"label": label,
+				"value": counts.get(label, 0),
+				"datatype": "Int",
+				"indicator": indicators[idx % len(indicators)],
+			}
+		)
+	return cards
+
+
+def filter_values(filters, fieldname):
+	value = (filters or {}).get(fieldname)
+	if value in (None, "", []):
+		return []
+	if isinstance(value, str):
+		text = value.strip()
+		if text.startswith("["):
+			parsed = frappe.parse_json(text)
+			value = parsed if isinstance(parsed, list) else [text]
+		else:
+			value = [text]
+	return [item for item in value if item not in (None, "")]
+
+
+def keep_row(row, filters, checks):
+	filters = filters or {}
+	for check in checks:
+		kind = check[0]
+		if kind == "multi":
+			chosen = {str(item) for item in filter_values(filters, check[1])}
+			if chosen and str(row.get(check[2]) if row.get(check[2]) is not None else "") not in chosen:
+				return False
+		elif kind == "exact":
+			value = filters.get(check[1])
+			if value and str(row.get(check[2]) or "") != str(value):
+				return False
+		elif kind == "like":
+			query = str(filters.get(check[1]) or "").strip().lower()
+			if query and query not in str(row.get(check[2]) or "").lower():
+				return False
+		elif kind == "date":
+			chosen = filters.get(check[1])
+			if not chosen:
+				continue
+			row_value = row.get(check[2])
+			if not row_value or frappe.utils.getdate(row_value) != frappe.utils.getdate(chosen):
+				return False
+	return True
+
+
+def number_rows(rows):
+	numbered = []
+	for index, row in enumerate(rows, start=1):
+		copy = dict(row)
+		copy["sn"] = index
+		numbered.append(copy)
+	return numbered
 
 
 def load_rows():
@@ -199,12 +295,12 @@ def residential_status(prop):
 		return {
 			"Virgin Plaza": "Viva Empty",
 			"Vasta": "Vasta Empty",
-			"TRCS": "TRCS Empty",
+			"RedCross": "RedCross Empty",
 		}.get(prop.portfolio, "Empty")
 	return {
 		"Virgin Plaza": "Viva-Leased -Customer",
 		"Vasta": "Vasta-Leased- Customer",
-		"TRCS": "TRCS-Leased- Customer",
+		"RedCross": "RedCross-Leased- Customer",
 	}.get(prop.portfolio, "Leased-Customer")
 
 
@@ -219,7 +315,7 @@ def portfolio_of(owner):
 	if lower.startswith("vasta properties"):
 		return "Vasta"
 	if "redcross" in lower.replace(" ", "") or "red cross" in lower:
-		return "TRCS"
+		return "RedCross"
 	return "Investor"
 
 
