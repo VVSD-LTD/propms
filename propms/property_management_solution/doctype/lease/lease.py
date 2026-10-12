@@ -1,7 +1,9 @@
 from __future__ import unicode_literals
+import calendar
+
 import frappe
 from frappe.model.document import Document
-from frappe.utils import add_days, today, getdate, add_months, get_datetime, now
+from frappe.utils import add_days, today, getdate, add_months, get_datetime, now, flt
 from propms.auto_custom import app_error_log, makeInvoiceSchedule, getDateMonthDiff
 from frappe import _
 
@@ -314,6 +316,42 @@ def getAllLease():
     for lease in lease_list:
         make_lease_invoice_schedule(lease.name)
 
+def _schedule_coverage_end(schedule_start, qty):
+    """Last day an invoiced schedule row already covers.
+
+    Whole months use the same month step as schedule generation. A fractional
+    qty is the leftover days of the next month, matching getDateMonthDiff.
+    """
+    start = getdate(schedule_start)
+    qty = flt(qty)
+    if qty <= 0:
+        return add_days(start, -1)
+
+    whole = int(qty)
+    end = add_days(add_months(start, whole), -1) if whole else add_days(start, -1)
+    fraction = qty - whole
+    if not fraction:
+        return end
+
+    month_start = add_months(start, whole)
+    days_in_month = calendar.monthrange(month_start.year, month_start.month)[1]
+    extra_days = int(round(fraction * days_in_month))
+    if extra_days:
+        return add_days(month_start, extra_days - 1)
+    return end
+
+
+def _frequency_period_end(origin, frequency_factor, on_date):
+    """End of the frequency period, counted from origin, that contains on_date."""
+    grid_start = getdate(origin)
+    on_date = getdate(on_date)
+    while True:
+        grid_end = add_days(add_months(grid_start, frequency_factor), -1)
+        if on_date <= grid_end:
+            return grid_end
+        grid_start = add_days(grid_end, 1)
+
+
 @frappe.whitelist()
 def make_lease_invoice_schedule(leasedoc):
     lease = frappe.get_doc("Lease", str(leasedoc))
@@ -361,7 +399,17 @@ def make_lease_invoice_schedule(leasedoc):
             frappe.db.set_value("Lease Invoice Schedule", s.name, "idx", idx)
             idx += 1
 
-        # ── Step 4: Rebuild schedules per item, using per-item last invoiced period ──
+        # ── Step 4: Rebuild only the part of each item that is not invoiced yet ──
+        invoiced_by_item = {}
+        for row in frappe.get_all(
+            "Lease Invoice Schedule",
+            filters={"parent": lease.name},
+            fields=["lease_item", "schedule_start_date", "date_to_invoice", "qty", "invoice_number"],
+        ):
+            if not row.invoice_number:
+                continue
+            invoiced_by_item.setdefault(row.lease_item, []).append(row)
+
         for item in lease.lease_item:
             frequency_factor = item_invoice_frequency.get(item.frequency)
             if not frequency_factor:
@@ -371,76 +419,75 @@ def make_lease_invoice_schedule(leasedoc):
                 )
                 continue
 
-            # Effective date range for this item
             item_start = getdate(item.valid_from) if item.get("valid_from") else getdate(lease.start_date)
             item_end = getdate(item.valid_to) if item.get("valid_to") else getdate(lease.end_date)
+            invoiced_rows = []
+            covered_until = None
+            for row in invoiced_by_item.get(item.lease_item, []):
+                row_start = getdate(row.schedule_start_date or row.date_to_invoice)
+                row_end = _schedule_coverage_end(row_start, row.qty)
+                if row_end < item_start or row_start > item_end:
+                    continue
+                invoiced_rows.append((row_start, row_end))
+                if covered_until is None or row_end > covered_until:
+                    covered_until = row_end
 
-            # ── FIX: Per-item lookup using schedule_start_date + qty months ──
-            # This avoids the off-by-one that caused duplicate creation when
-            # date_to_invoice (period start) was used as the cutoff directly.
-            latest_item_invoiced = frappe.get_all(
-                "Lease Invoice Schedule",
-                filters={
-                    "parent": lease.name,
-                    "lease_item": item.lease_item,
-                    "invoice_number": ["not in", ["", None]],
-                },
-                fields=["schedule_start_date", "date_to_invoice", "qty"],
-                order_by="schedule_start_date desc",
-                limit=1,
-            )
-
-            if latest_item_invoiced:
-                s = latest_item_invoiced[0]
-                period_start = getdate(s.schedule_start_date or s.date_to_invoice)
-                # qty may be fractional for the last partial period, round up to full periods
-                qty_months = int(round(float(s.qty or frequency_factor)))
-                # Next period starts exactly qty months after the last invoiced period start
-                invoice_date = add_months(period_start, qty_months)
-            else:
+            invoice_date = item_start
+            if covered_until:
+                invoice_date = add_days(covered_until, 1)
+            if invoice_start_date and getdate(invoice_start_date) > invoice_date:
+                invoice_date = getdate(invoice_start_date)
+            if invoice_date < item_start:
                 invoice_date = item_start
 
-            # Apply invoice_start_date floor
-            if getdate(invoice_start_date) > invoice_date:
-                invoice_date = getdate(invoice_start_date)
-
-            # Align invoice_date to the correct period grid starting from item_start
-            # so we don't start mid-period
-            period_start = item_start
-            while period_start < invoice_date:
-                period_end = add_days(add_months(period_start, frequency_factor), -1)
-                next_start = add_days(period_end, 1)
-                if next_start > invoice_date:
-                    break
-                period_start = next_start
-            invoice_date = period_start
-
-            # Generate schedule rows forward from invoice_date
             while invoice_date <= item_end:
-                invoice_period_end = add_days(add_months(invoice_date, frequency_factor), -1)
-                if invoice_period_end > item_end:
-                    invoice_qty = getDateMonthDiff(invoice_date, item_end, 1)
-                else:
-                    invoice_qty = float(frequency_factor)
+                # A frequency bucket that was only partly invoiced keeps its
+                # original end, so the next full period still starts on the
+                # item anniversary instead of shifting forward.
+                period_end = _frequency_period_end(item_start, frequency_factor, invoice_date)
+                if period_end > item_end:
+                    period_end = item_end
 
-                makeInvoiceSchedule(
-                    invoice_date,
-                    item.lease_item,
-                    item.paid_by,
-                    item.lease_item,
-                    lease.name,
-                    invoice_qty,
-                    item.amount,
-                    idx,
-                    item.currency_code,
-                    item.witholding_tax,
-                    lease.days_to_invoice_in_advance,
-                    item.invoice_item_group,
-                    item.payment_terms,
-                    item.document_type,
-                )
-                idx += 1
-                invoice_date = add_days(invoice_period_end, 1)
+                for row_start, row_end in invoiced_rows:
+                    if row_start == invoice_date:
+                        next_date = add_days(row_end, 1)
+                        invoice_date = next_date if next_date > invoice_date else add_days(invoice_date, 1)
+                        period_end = None
+                        break
+                if period_end is None:
+                    continue
+                if period_end < invoice_date:
+                    break
+
+                full_period_end = add_days(add_months(invoice_date, frequency_factor), -1)
+                if period_end == full_period_end:
+                    invoice_qty = float(frequency_factor)
+                else:
+                    invoice_qty = getDateMonthDiff(invoice_date, period_end, 1)
+
+                if invoice_qty and invoice_qty > 0:
+                    makeInvoiceSchedule(
+                        invoice_date,
+                        item.lease_item,
+                        item.paid_by,
+                        item.lease_item,
+                        lease.name,
+                        invoice_qty,
+                        item.amount,
+                        idx,
+                        item.currency_code,
+                        item.witholding_tax,
+                        lease.days_to_invoice_in_advance,
+                        item.invoice_item_group,
+                        item.payment_terms,
+                        item.document_type,
+                    )
+                    idx += 1
+
+                next_date = add_days(period_end, 1)
+                if next_date <= invoice_date:
+                    break
+                invoice_date = next_date
 
         # ── Step 5: Final re-index all schedules by date_to_invoice ──
         all_schedules = frappe.get_all(
