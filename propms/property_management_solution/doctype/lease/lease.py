@@ -8,6 +8,19 @@ from propms.auto_custom import app_error_log, makeInvoiceSchedule, getDateMonthD
 from frappe import _
 
 
+def lease_periods_overlap(start_a, end_a, start_b, end_b):
+    """True when two lease periods share a day. A blank end date stays open."""
+    start_a = getdate(start_a) if start_a else None
+    end_a = getdate(end_a) if end_a else None
+    start_b = getdate(start_b) if start_b else None
+    end_b = getdate(end_b) if end_b else None
+    if end_a and start_b and start_b > end_a:
+        return False
+    if end_b and start_a and start_a > end_b:
+        return False
+    return True
+
+
 class Lease(Document):
     def on_submit(self):
         try:
@@ -39,8 +52,9 @@ class Lease(Document):
             # Validate no date gaps in lease items
             self.validate_no_date_gaps()
 
-            # Lease Status Validation: Prevent multiple active leases per property
-            if self.lease_status == "Active":
+            # Block another non-draft lease on this property only when the periods share a day.
+            if self.lease_status == "Active" and self.property and self.start_date:
+                this_end = None if self.skip_end_date or not self.end_date else self.end_date
                 conflicting_leases = frappe.db.get_all(
                     "Lease",
                     filters={
@@ -49,22 +63,29 @@ class Lease(Document):
                         "name": ["!=", self.name],
                         "docstatus": ["<", 2],
                     },
-                    fields=["name", "end_date", "lease_status"],
+                    fields=["name", "start_date", "end_date", "skip_end_date", "lease_status"],
                 )
                 for lease in conflicting_leases:
-                    if not lease["end_date"] or getdate(lease["end_date"]) > getdate(
-                        self.start_date
+                    other_end = (
+                        None
+                        if lease.get("skip_end_date") or not lease.get("end_date")
+                        else lease.get("end_date")
+                    )
+                    if not lease_periods_overlap(
+                        self.start_date, this_end, lease.get("start_date"), other_end
                     ):
-                        msg = _(
-                            "Cannot activate lease <b>{0}</b> for property <b>{1}</b>.<br>Conflicting lease: <b>{2} (Status: {3}, End Date: {4})</b>"
-                        ).format(
-                            self.name,
-                            self.property,
-                            lease["name"],
-                            lease["lease_status"],
-                            lease["end_date"] or "None",
-                        )
-                        frappe.throw(msg, frappe.ValidationError)
+                        continue
+                    msg = _(
+                        "Cannot activate lease <b>{0}</b> for property <b>{1}</b>.<br>Overlapping lease: <b>{2}</b> ({3}, {4} to {5})"
+                    ).format(
+                        self.name,
+                        self.property,
+                        lease["name"],
+                        lease["lease_status"],
+                        lease.get("start_date") or "None",
+                        lease.get("end_date") or "open",
+                    )
+                    frappe.throw(msg, frappe.ValidationError)
 
             if (
                 get_datetime(self.start_date)
@@ -86,6 +107,8 @@ class Lease(Document):
             else:
                 frappe.db.set_value("Property", self.property, "status", "On Lease")
                 frappe.msgprint(_(f'Property "{self.property}" has now been set <b>On Lease from Active</b> for Lease "{self.name}"'))
+        except frappe.ValidationError:
+            raise
         except Exception as e:
             app_error_log(frappe.session.user, str(e))
 
