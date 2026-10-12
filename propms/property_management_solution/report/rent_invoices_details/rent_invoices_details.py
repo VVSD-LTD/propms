@@ -96,8 +96,8 @@ def get_data(filters):
                 item_code, 
                 base_net_amount as item_total, 
                 net_amount as item_foreign_total,
-                service_start_date as from_date, 
-                service_end_date as to_date, 
+                subscription_start_date as from_date, 
+                subscription_end_date as to_date, 
                 qty as quantity, 
                 net_rate
             FROM

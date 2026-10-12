@@ -245,7 +245,7 @@ def leaseInvoiceAutoCreate():
             item_json["cost_center"] = getCostCenter(invoice_item.parent)
             item_json["withholding_tax_rate"] = invoice_item.tax
             # item_json["enable_deferred_revenue"] = 1 # Set it to true
-            item_json["service_start_date"] = str(invoice_item.schedule_start_date)
+            item_json["subscription_start_date"] = str(invoice_item.schedule_start_date)
             if invoice_item.qty != int(invoice_item.qty):
                 # it means the last invoice for the lease that may have fraction of months
                 subs_end_date = lease_end_date
@@ -254,7 +254,7 @@ def leaseInvoiceAutoCreate():
                 subs_end_date = add_days(
                     add_months(invoice_item.schedule_start_date, invoice_item.qty), -1
                 )
-            item_json["service_end_date"] = str(subs_end_date)
+            item_json["subscription_end_date"] = str(subs_end_date)
             # Append to the dictionary as a dict() so that the values for the new row can be set
             item_dict.append(dict(item_json))
             lease_invoice_schedule_list.append(invoice_item.name)
@@ -401,7 +401,7 @@ def leaseInvoiceAutoCreateForLease(lease):
             item_json["rate"] = invoice_item.rate
             item_json["cost_center"] = getCostCenter(invoice_item.parent)
             item_json["withholding_tax_rate"] = invoice_item.tax
-            item_json["service_start_date"] = str(invoice_item.schedule_start_date)
+            item_json["subscription_start_date"] = str(invoice_item.schedule_start_date)
 
             if invoice_item.qty != int(invoice_item.qty):
                 subs_end_date = lease_end_date
@@ -409,7 +409,7 @@ def leaseInvoiceAutoCreateForLease(lease):
                 subs_end_date = add_days(
                     add_months(invoice_item.schedule_start_date, invoice_item.qty), -1
                 )
-            item_json["service_end_date"] = str(subs_end_date)
+            item_json["subscription_end_date"] = str(subs_end_date)
             item_dict.append(dict(item_json))
             lease_invoice_schedule_list.append(invoice_item.name)
 

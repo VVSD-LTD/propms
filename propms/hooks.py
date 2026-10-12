@@ -158,6 +158,7 @@ scheduler_events = {
         ],
         "50 23 * * *": [
             "propms.custom.sales_invoice_penalty.process_daily_sales_invoice_penalties",
+            "propms.auto_custom.closeExpiredLeasesAndReleaseProperties",
         ],
         "00 00 * * *": ["propms.lease_invoice_schedule.make_lease_invoice_schedule"],
         "00 12 * * *": ["propms.lease_invoice.enqueue_lease_invoice_auto_create"],

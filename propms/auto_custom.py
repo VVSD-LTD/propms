@@ -289,8 +289,9 @@ def statusChangeAfterLeaseExpire():
                 )
             ).run()
 
-            # If no active leases, add to update list
-            if not active_leases:
+            # A signed lease that ends in the future still holds the property,
+            # even when the official start date has not arrived.
+            if not active_leases and not _has_future_active_lease(prop.name):
                 properties_to_update.append(prop.name)
 
         # Bulk update properties to Available
@@ -301,6 +302,66 @@ def statusChangeAfterLeaseExpire():
 
     except Exception as e:
         app_error_log(frappe.session.user, str(e))
+
+def _has_future_active_lease(property_name):
+    return frappe.db.exists(
+        "Lease",
+        {
+            "property": property_name,
+            "lease_status": "Active",
+            "end_date": [">", frappe.utils.today()],
+        },
+    )
+
+
+@frappe.whitelist()
+def setPropertyOnLeaseForFutureEnd():
+    """An active lease with a future end date means the property is already taken."""
+    try:
+        today = frappe.utils.today()
+        rows = frappe.db.sql(
+            """
+            SELECT DISTINCT p.name
+            FROM `tabProperty` p
+            INNER JOIN `tabLease` l ON l.property = p.name
+            WHERE p.status = 'Available'
+              AND l.lease_status = 'Active'
+              AND l.end_date > %(today)s
+            """,
+            {"today": today},
+            as_dict=1,
+        )
+        for row in rows:
+            frappe.db.set_value("Property", row.name, "status", "On Lease")
+    except Exception as e:
+        app_error_log(frappe.session.user, str(e))
+
+
+@frappe.whitelist()
+def closeExpiredLeasesAndReleaseProperties():
+    """Close leases whose end date has passed, then release properties with nothing left."""
+    try:
+        today = frappe.utils.today()
+        expired = frappe.db.sql(
+            """
+            SELECT name
+            FROM `tabLease`
+            WHERE lease_status IN ('Active', 'Vacating')
+              AND IFNULL(skip_end_date, 0) = 0
+              AND end_date IS NOT NULL
+              AND end_date <= %(today)s
+            """,
+            {"today": today},
+            as_dict=1,
+        )
+        for lease in expired:
+            frappe.db.set_value("Lease", lease.name, "lease_status", "Closed")
+
+        statusChangeAfterLeaseExpire()
+        setPropertyOnLeaseForFutureEnd()
+    except Exception as e:
+        app_error_log(frappe.session.user, str(e))
+
 
 @frappe.whitelist()
 def update_property_status():
@@ -668,8 +729,8 @@ def get_item_details(item, qty, service_start_date, service_end_date):
     item_json = {}
     item_json["item_code"] = item
     item_json["qty"] = qty
-    item_json["service_start_date"] = service_start_date
-    item_json["service_end_date"] = service_end_date
+    item_json["subscription_start_date"] = service_start_date
+    item_json["subscription_end_date"] = service_end_date
     item_dict.append(item_json)
     return item_dict
 
