@@ -7,6 +7,7 @@
  "field_order": [
   "series_section",
   "amenity",
+  "series_type",
   "status",
   "column_break_s1",
   "series_start_date",
@@ -41,7 +42,8 @@
   "section_break_zbey",
   "rejection_reason",
   "bookings_section",
-  "bookings"
+  "bookings",
+  "connections_tab"
  ],
  "fields": [
   {
@@ -56,6 +58,16 @@
    "in_standard_filter": 1,
    "label": "Amenity",
    "options": "Amenity",
+   "reqd": 1
+  },
+  {
+   "default": "Recurring",
+   "fieldname": "series_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Series Type",
+   "options": "One Time\nRecurring",
    "reqd": 1
   },
   {
@@ -106,6 +118,7 @@
    "reqd": 1
   },
   {
+   "depends_on": "eval:doc.series_type=='Recurring'",
    "fieldname": "weekdays_section",
    "fieldtype": "Section Break",
    "label": "Repeat On"
@@ -260,11 +273,28 @@
    "label": "Bookings",
    "options": "Amenity Booking Series Item",
    "read_only": 1
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
   }
  ],
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2026-10-02 10:45:51.772712",
+ "links": [
+  {
+   "group": "Amenity Bookings",
+   "link_doctype": "Amenity Booking Request",
+   "link_fieldname": "series"
+  },
+  {
+   "group": "Amenity Bookings",
+   "link_doctype": "Amenity Booking",
+   "link_fieldname": "series"
+  }
+ ],
+ "modified": "2026-10-12 11:28:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Amenity Booking Series",
@@ -294,7 +324,7 @@
   }
  ],
  "row_format": "Dynamic",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

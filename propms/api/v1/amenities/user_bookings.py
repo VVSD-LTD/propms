@@ -119,12 +119,19 @@ def _row_sort_key(row):
 	)
 
 
+def _series_type_for(series_name):
+	if not series_name:
+		return None
+	return frappe.db.get_value(AMENITY_BOOKING_SERIES, series_name, "series_type") or "Recurring"
+
+
 def _tag_booking_row(row):
 	row = dict(row)
 	row["kind"] = "booking"
 	row["booking_id"] = row.get("name")
 	row["request_id"] = None
 	row["series_id"] = (row.get("series") or "").strip() or None
+	row["series_type"] = _series_type_for(row["series_id"])
 	return row
 
 
@@ -135,6 +142,7 @@ def _tag_request_row(row):
 	# Linked booking after approve; Open requests have none
 	row["booking_id"] = row.get("booking") or None
 	row["series_id"] = (row.get("series") or "").strip() or None
+	row["series_type"] = _series_type_for(row["series_id"])
 	# Flutter compat: treat Open as pending-like
 	if row.get("status") == "Open":
 		row["display_status"] = "Pending"
@@ -309,12 +317,23 @@ def _cancel_open_request(req, reason, current_user, is_staff, notify=True, commi
 		}
 
 	req.status = "Cancelled"
+	for child in getattr(req, "occurrences", None) or []:
+		if (child.status or "Pending") == "Pending":
+			child.status = "Cancelled"
 	# Request DocType has no cancellation_reason; keep reason in notes if provided
 	if reason:
 		existing = (req.notes or "").strip()
 		note = f"Cancelled: {reason}"
 		req.notes = f"{existing}\n{note}".strip() if existing else note
 	req.save(ignore_permissions=True)
+
+	try:
+		from propms.api.v1.amenities.staff_actions import _sync_parent_series_after_request
+
+		_sync_parent_series_after_request(getattr(req, "series", None))
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "cancel_booking.sync_series")
+
 	if commit:
 		frappe.db.commit()
 
@@ -331,6 +350,7 @@ def _cancel_open_request(req, reason, current_user, is_staff, notify=True, commi
 		"message": "Booking request cancelled successfully",
 		"booking_id": None,
 		"request_id": req.name,
+		"series_id": getattr(req, "series", None) or None,
 		"kind": "request",
 	}
 

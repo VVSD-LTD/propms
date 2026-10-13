@@ -111,13 +111,16 @@ def enqueue_app_notification_push(user, notification_id, title, body):
     try:
         frappe.logger().info(f"📲 FCM APP NOTIFICATION: Starting for user={user}, notification={notification_id}")
         
-        # Get user device tokens
+        # Most recent device token only — avoids duplicate pushes when stale
+        # User Device rows accumulate from reinstalls / multiple logins.
         tokens = frappe.get_all(
             "User Device",
             filters={"user": user},
-            pluck="token"
+            order_by="creation desc",
+            pluck="token",
+            limit_page_length=1,
         )
-        
+
         if not tokens:
             frappe.logger().warning(f"📲 FCM APP NOTIFICATION: No device tokens found for user {user}")
             return {
@@ -125,7 +128,7 @@ def enqueue_app_notification_push(user, notification_id, title, body):
                 "user": user,
                 "notification_id": notification_id
             }
-        
+
         frappe.logger().info(f"📲 FCM APP NOTIFICATION: Found {len(tokens)} device token(s) for user {user}")
         
         # Prepare FCM data payload for app notification

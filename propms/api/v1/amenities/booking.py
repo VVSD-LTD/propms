@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 """Amenity booking creation service.
 
-Tenant create always goes through Amenity Booking Request (auto-approve → Booking).
-``create_booking`` keeps the mobile whitelist name and delegates to the request flow.
+Tenant create always goes through:
+Amenity Booking Request → Amenity Booking Series → Amenity Booking (if auto-approved).
+
+``create_booking`` keeps the mobile whitelist name and delegates to the request flow
+(One Time series). Recurring uses ``create_recurring_amenity_booking``.
 """
 
 from __future__ import unicode_literals

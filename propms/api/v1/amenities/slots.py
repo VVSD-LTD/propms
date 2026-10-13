@@ -8,6 +8,14 @@ from frappe import _
 from frappe.utils import add_days, cint, get_datetime, get_time, getdate, now_datetime, nowdate
 
 
+def optional_positive_days(val):
+	"""Return a positive day limit, or ``None`` when empty/0 (no limit)."""
+	if val is None or val == "":
+		return None
+	n = cint(val)
+	return n if n > 0 else None
+
+
 def _parse_time_str(val):
 	"""Parse time string into datetime.time object."""
 	if not val:
@@ -47,16 +55,20 @@ def get_available_slots(amenity=None, booking_date=None):
 		if not doc.is_active:
 			return {"status": "error", "message": f"Amenity {doc.amenity_name} is currently inactive"}
 
-		max_advance = cint(doc.max_advance_days or 7)
-		max_date = getdate(add_days(today_date, max_advance))
+		max_advance = optional_positive_days(doc.max_advance_days)
 
 		if target_date < today_date:
 			return {"status": "error", "message": "Cannot view slots for a past date"}
-		if target_date > max_date:
-			return {
-				"status": "error",
-				"message": f"Bookings can only be made up to {max_advance} days in advance (until {max_date}).",
-			}
+		if max_advance is not None:
+			max_date = getdate(add_days(today_date, max_advance))
+			if target_date > max_date:
+				return {
+					"status": "error",
+					"message": (
+						f"Bookings can only be made up to {max_advance} days in advance "
+						f"(until {max_date})."
+					),
+				}
 
 		open_t = _parse_time_str(doc.open_time or "06:00:00")
 		close_t = _parse_time_str(doc.close_time or "22:00:00")
@@ -171,15 +183,19 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 
 		target_date = getdate(booking_date or nowdate())
 		today_date = getdate(nowdate())
-		max_advance = cint(doc.max_advance_days or 7)
-		max_date = getdate(add_days(today_date, max_advance))
+		max_advance = optional_positive_days(doc.max_advance_days)
 		if target_date < today_date:
 			return {"status": "error", "message": "Cannot view availability for a past date"}
-		if target_date > max_date:
-			return {
-				"status": "error",
-				"message": f"Bookings can only be made up to {max_advance} days in advance (until {max_date}).",
-			}
+		if max_advance is not None:
+			max_date = getdate(add_days(today_date, max_advance))
+			if target_date > max_date:
+				return {
+					"status": "error",
+					"message": (
+						f"Bookings can only be made up to {max_advance} days in advance "
+						f"(until {max_date})."
+					),
+				}
 
 		open_t = _parse_time_str(doc.open_time or "06:00:00").strftime("%H:%M:%S")
 		close_t = _parse_time_str(doc.close_time or "22:00:00").strftime("%H:%M:%S")
@@ -214,20 +230,11 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 				"source": "booking",
 			})
 
-		# Open requests hold the slot the same way Confirmed/Pending bookings do.
+		# Open requests hold slots via occurrence children (or legacy parent date).
 		if frappe.db.exists("DocType", "Amenity Booking Request"):
-			open_requests = frappe.get_all(
-				"Amenity Booking Request",
-				filters={
-					"amenity": doc.name,
-					"booking_date": str(target_date),
-					"status": "Open",
-				},
-				fields=["name", "start_time", "end_time", "status", "tenant_name", "tenant"],
-				order_by="start_time asc",
-				ignore_permissions=True,
-			)
-			for r in open_requests or []:
+			from propms.api.v1.amenities.overlap import _open_request_slots_for_date
+
+			for r in _open_request_slots_for_date(doc.name, target_date) or []:
 				s = _parse_time_str(r.start_time).strftime("%H:%M:%S")
 				e = _parse_time_str(r.end_time).strftime("%H:%M:%S")
 				label = (r.tenant_name or r.tenant or "Requested") if is_staff else "Requested"

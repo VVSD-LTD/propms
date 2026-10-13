@@ -16,75 +16,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Building & Services",
-   "link_count": 6,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Amenity",
-   "link_count": 0,
-   "link_to": "Amenity",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Amenity Booking Request",
-   "link_count": 0,
-   "link_to": "Amenity Booking Request",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Amenity Booking",
-   "link_count": 0,
-   "link_to": "Amenity Booking",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Amenity Booking Series",
-   "link_count": 0,
-   "link_to": "Amenity Booking Series",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Visitor Gate Pass",
-   "link_count": 0,
-   "link_to": "Visitor Gate Pass",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Building Contact",
-   "link_count": 0,
-   "link_to": "Building Contact",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Payments & Alerts",
    "link_count": 3,
    "link_type": "DocType",
@@ -209,9 +140,78 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Building & Services",
+   "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Amenity",
+   "link_count": 0,
+   "link_to": "Amenity",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Amenity Booking Request",
+   "link_count": 0,
+   "link_to": "Amenity Booking Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Amenity Booking Series",
+   "link_count": 0,
+   "link_to": "Amenity Booking Series",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Amenity Booking",
+   "link_count": 0,
+   "link_to": "Amenity Booking",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Visitor Gate Pass",
+   "link_count": 0,
+   "link_to": "Visitor Gate Pass",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Building Contact",
+   "link_count": 0,
+   "link_to": "Building Contact",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-10-07 11:10:43.602599",
+ "modified": "2026-10-12 11:58:00.416000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Mobile App",

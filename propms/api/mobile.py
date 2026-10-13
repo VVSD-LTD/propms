@@ -1227,15 +1227,21 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 
 
 @frappe.whitelist(methods=["POST"])
-def approve_amenity_booking(booking_id=None):
+def approve_amenity_booking(booking_id=None, request_id=None):
+    """Staff: approve Open Request (or legacy Pending booking). Prefer request_id."""
     from propms.api.v1.amenities import approve_amenity_booking as v1
-    return v1(booking_id=booking_id)
+    return v1(booking_id=booking_id, request_id=request_id)
 
 
 @frappe.whitelist(methods=["POST"])
-def reject_amenity_booking(booking_id=None, rejection_reason=None):
+def reject_amenity_booking(booking_id=None, rejection_reason=None, request_id=None):
+    """Staff: reject Open Request (or legacy Pending booking). Prefer request_id."""
     from propms.api.v1.amenities import reject_amenity_booking as v1
-    return v1(booking_id=booking_id, rejection_reason=rejection_reason)
+    return v1(
+        booking_id=booking_id,
+        rejection_reason=rejection_reason,
+        request_id=request_id,
+    )
 
 
 # -------------------------------------------------------------------------

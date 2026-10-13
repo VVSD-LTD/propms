@@ -77,13 +77,17 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 
 
 @frappe.whitelist(methods=["POST"])
-def approve_amenity_booking(booking_id=None):
-	return _approve_amenity_booking(booking_id=booking_id)
+def approve_amenity_booking(booking_id=None, request_id=None):
+	return _approve_amenity_booking(booking_id=booking_id, request_id=request_id)
 
 
 @frappe.whitelist(methods=["POST"])
-def reject_amenity_booking(booking_id=None, rejection_reason=None):
-	return _reject_amenity_booking(booking_id=booking_id, rejection_reason=rejection_reason)
+def reject_amenity_booking(booking_id=None, rejection_reason=None, request_id=None):
+	return _reject_amenity_booking(
+		booking_id=booking_id,
+		rejection_reason=rejection_reason,
+		request_id=request_id,
+	)
 
 
 @frappe.whitelist(methods=["GET", "POST"])

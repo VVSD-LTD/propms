@@ -16,3 +16,16 @@ class AmenityBookingRequest(Document):
 
 		if self.status == "Rejected" and not self.rejection_reason:
 			frappe.throw("Rejection Reason is required when status is Rejected")
+
+		# Keep parent summary fields aligned with first occurrence
+		if self.occurrences:
+			first = sorted(
+				self.occurrences,
+				key=lambda r: (str(r.booking_date or ""), str(r.start_time or "")),
+			)[0]
+			self.booking_date = first.booking_date
+			self.start_time = first.start_time
+			self.end_time = first.end_time
+
+		if not self.series_type:
+			self.series_type = "One Time"

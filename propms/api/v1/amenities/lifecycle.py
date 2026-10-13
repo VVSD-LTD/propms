@@ -98,7 +98,10 @@ def reconcile_stale_pending_amenity_bookings(limit=500):
 
 
 def reconcile_stale_open_amenity_requests(limit=500):
-	"""Expire Open Requests whose start datetime has passed."""
+	"""Expire Open Requests whose earliest occurrence start has passed.
+
+	Uses Request Item children when present; otherwise parent booking_date/start.
+	"""
 	now = now_datetime()
 	rows = frappe.get_all(
 		AMENITY_BOOKING_REQUEST,
@@ -108,11 +111,34 @@ def reconcile_stale_open_amenity_requests(limit=500):
 		ignore_permissions=True,
 	)
 	updated = 0
+	item_doctype = "Amenity Booking Request Item"
+	has_items = frappe.db.exists("DocType", item_doctype)
+
 	for row in rows:
-		if not row.booking_date or not row.start_time:
-			continue
+		earliest = None
+		if has_items:
+			items = frappe.get_all(
+				item_doctype,
+				filters={
+					"parent": row.name,
+					"parenttype": AMENITY_BOOKING_REQUEST,
+					"status": ["in", ["Pending", ""]],
+				},
+				fields=["booking_date", "start_time"],
+				order_by="booking_date asc, start_time asc",
+				limit_page_length=1,
+				ignore_permissions=True,
+			)
+			if items:
+				earliest = items[0]
+
+		if not earliest:
+			if not row.booking_date or not row.start_time:
+				continue
+			earliest = row
+
 		try:
-			start_dt = get_datetime(f"{row.booking_date} {row.start_time}")
+			start_dt = get_datetime(f"{earliest.booking_date} {earliest.start_time}")
 		except Exception:
 			continue
 		if start_dt >= now:
@@ -124,6 +150,16 @@ def reconcile_stale_open_amenity_requests(limit=500):
 			"Expired",
 			update_modified=True,
 		)
+		if has_items:
+			frappe.db.sql(
+				"""
+				UPDATE `tabAmenity Booking Request Item`
+				SET status = 'Cancelled'
+				WHERE parent = %s AND parenttype = %s
+				  AND IFNULL(status, 'Pending') = 'Pending'
+				""",
+				(row.name, AMENITY_BOOKING_REQUEST),
+			)
 		updated += 1
 
 	if updated:

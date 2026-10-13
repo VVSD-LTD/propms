@@ -7,7 +7,6 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "category",
   "target_audience",
   "target_floor",
   "target_unit",
@@ -26,15 +25,6 @@
   "amended_from"
  ],
  "fields": [
-  {
-   "default": "Notice",
-   "fieldname": "category",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Category",
-   "options": "\nNotice\nMaintenance\nSafety\nEvent\nGeneral\nEmergency"
-  },
   {
    "default": "Everyone",
    "fieldname": "target_audience",
@@ -154,7 +144,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-01 12:00:00.000000",
+ "modified": "2026-10-08 10:34:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Mobile Notifications",

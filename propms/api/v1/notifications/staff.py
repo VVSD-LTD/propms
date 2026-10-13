@@ -106,7 +106,6 @@ def _serialize_preview(doc):
 		"company": doc.company,
 		"property": doc.property,
 		"customer": doc.customer,
-		"category": getattr(doc, "category", None) or "Notice",
 		"target_audience": getattr(doc, "target_audience", None) or "Everyone",
 		"delivery": getattr(doc, "delivery", None) or "",
 		"creation": str(doc.creation) if doc.creation else None,
@@ -124,7 +123,6 @@ def _serialize_list_row(row):
 		"message": row.message,
 		"customer": row.customer,
 		"property": row.property,
-		"category": row.category or "Notice",
 		"docstatus": row.docstatus,
 		"delivery": row.delivery or "",
 		"sender": row.sender,
@@ -304,7 +302,6 @@ def list_staff_notifications(status="all", limit=20, offset=0, **kwargs):
 			"message",
 			"customer",
 			"property",
-			"category",
 			"docstatus",
 			"delivery",
 			"sender",
@@ -351,7 +348,6 @@ def create_notification(
 	company=None,
 	property=None,
 	customer=None,
-	category=None,
 	target_audience=None,
 	target_floor=None,
 	target_unit=None,
@@ -373,7 +369,6 @@ def create_notification(
 		company = company if company is not None else payload.get("company")
 		property = property if property is not None else payload.get("property")
 		customer = customer if customer is not None else payload.get("customer")
-		category = category if category is not None else payload.get("category")
 		target_audience = (
 			target_audience if target_audience is not None else payload.get("target_audience")
 		)
@@ -421,7 +416,6 @@ def create_notification(
 			"company": company,
 			"property": property,
 			"customer": customer,
-			"category": category or "Notice",
 			"target_audience": target_audience or "Everyone",
 			"target_floor": target_floor,
 			"target_unit": target_unit,

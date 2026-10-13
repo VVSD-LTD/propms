@@ -127,5 +127,15 @@ def send_to_tokens(tokens, data=None, title=None, body=None):
         except Exception as e:
             failure_count += 1
             frappe.logger().error(f"❌ FCM send failed for token {token[:16]}...: {str(e)}")
-    
+            try:
+                from propms.api.v1.notifications.fcm import (
+                    delete_invalid_token,
+                    is_invalid_token_error,
+                )
+
+                if is_invalid_token_error(e):
+                    delete_invalid_token(token)
+            except Exception:
+                frappe.logger().error(frappe.get_traceback())
+
     return {"success": success_count, "failure": failure_count}

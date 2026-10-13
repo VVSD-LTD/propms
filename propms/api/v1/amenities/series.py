@@ -3,8 +3,6 @@
 
 from __future__ import unicode_literals
 
-from datetime import timedelta
-
 import frappe
 from frappe import _
 from frappe.utils import add_days, cint, date_diff, get_datetime, getdate, now_datetime, nowdate
@@ -12,8 +10,8 @@ from frappe.utils import add_days, cint, date_diff, get_datetime, getdate, now_d
 from propms.api.v1.amenities.doctypes import AMENITY_BOOKING_REQUEST, AMENITY_BOOKING_SERIES
 from propms.api.v1.amenities.list import _is_amenity_staff
 from propms.api.v1.amenities.overlap import find_conflicting_booking, is_time_on_step
-from propms.api.v1.amenities.request import _create_confirmed_booking_from_request
-from propms.api.v1.amenities.slots import _parse_time_str
+from propms.api.v1.amenities.request import fulfill_request_to_series_and_bookings
+from propms.api.v1.amenities.slots import _parse_time_str, optional_positive_days
 from propms.api.v1.gate_pass.gate_pass import _get_tenant_default_unit, _parse_request_payload
 
 
@@ -177,9 +175,9 @@ def _validate_series_inputs(amenity_doc, payload, is_staff=False):
 	if start_date < today:
 		frappe.throw(_("Series start date cannot be in the past"), frappe.ValidationError)
 
-	max_series = cint(getattr(amenity_doc, "max_series_days", None) or 120)
+	max_series = optional_positive_days(getattr(amenity_doc, "max_series_days", None))
 	span = date_diff(end_date, start_date)
-	if span > max_series:
+	if max_series is not None and span > max_series:
 		frappe.throw(
 			_("Series can span at most {0} days (your range is {1} days)").format(max_series, span),
 			frappe.ValidationError,
@@ -295,7 +293,10 @@ def preview_recurring_amenity_booking(
 			"amenity": amenity_doc.name,
 			"amenity_name": amenity_doc.amenity_name,
 			"allow_recurring": cint(getattr(amenity_doc, "allow_recurring", 1)),
-			"max_series_days": cint(getattr(amenity_doc, "max_series_days", None) or 120),
+			"max_series_days": optional_positive_days(
+				getattr(amenity_doc, "max_series_days", None)
+			)
+			or 0,
 			"requires_approval": _amenity_requires_approval(amenity_doc),
 			"series_start_date": str(start_date),
 			"series_end_date": str(end_date),
@@ -334,7 +335,7 @@ def create_recurring_amenity_booking(
 	lease=None,
 	property_unit=None,
 ):
-	"""Create series + Open Requests per free occurrence (auto-approve → Bookings)."""
+	"""One Request + occurrence children for free dates; Series + Bookings on approve/auto."""
 	try:
 		if frappe.session.user == "Guest":
 			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
@@ -411,38 +412,9 @@ def create_recurring_amenity_booking(
 				"conflict_count": len(conflicts),
 			}
 
-		auto = cint(getattr(amenity_doc, "auto_approval", 0))
-		checks = _weekdays_to_checks(weekdays)
-		initial_status = "Confirmed" if auto else "Pending"
-		series = frappe.get_doc(
-			{
-				"doctype": AMENITY_BOOKING_SERIES,
-				"amenity": amenity_doc.name,
-				"status": initial_status,
-				"series_start_date": str(start_date),
-				"series_end_date": str(end_date),
-				"start_time": s_time,
-				"end_time": e_time,
-				"tenant": current_user,
-				"tenant_name": resident_name,
-				"property_unit": prop_unit,
-				"lease": lease_name,
-				"guests_count": max(1, cint(payload.get("guests_count") or 1)),
-				"notes": (payload.get("notes") or "").strip(),
-				"booked_count": len(free),
-				"conflict_count": len(conflicts),
-				**checks,
-			}
-		)
-		if initial_status == "Confirmed":
-			series.approved_by = current_user
-			series.approved_on = now_datetime()
-		series.insert(ignore_permissions=True)
-
-		request_ids = []
-		booking_ids = []
+		# Re-check race; keep free rows only
+		occurrence_children = []
 		for row in free:
-			# Re-check race (Bookings + Open Requests)
 			conflict = find_conflicting_booking(
 				amenity_doc.name, row["booking_date"], s_time, e_time, 0
 			)
@@ -456,61 +428,88 @@ def create_recurring_amenity_booking(
 					}
 				)
 				continue
-
-			req = frappe.get_doc(
+			occurrence_children.append(
 				{
-					"doctype": AMENITY_BOOKING_REQUEST,
-					"amenity": amenity_doc.name,
 					"booking_date": row["booking_date"],
 					"start_time": s_time,
 					"end_time": e_time,
-					"status": "Open",
-					"tenant": current_user,
-					"tenant_name": resident_name,
-					"property_unit": prop_unit,
-					"lease": lease_name,
-					"guests_count": series.guests_count,
-					"notes": series.notes,
-					"series": series.name,
+					"status": "Pending",
 				}
 			)
-			req.insert(ignore_permissions=True)
-			request_ids.append(req.name)
 
-			if auto:
-				booking_doc = _create_confirmed_booking_from_request(req)
-				req.status = "Approved"
-				req.booking = booking_doc.name
-				req.approved_by = current_user
-				req.approved_on = now_datetime()
-				req.save(ignore_permissions=True)
-				booking_ids.append(booking_doc.name)
-
-		occurrence_count = len(request_ids)
-		# Child sync during auto-approve saves series; reload before final stats
-		series.reload()
-		series.booked_count = len(booking_ids) if auto else occurrence_count
-		series.conflict_count = len(conflicts)
-		if not occurrence_count:
-			series.status = "Cancelled"
-			series.save(ignore_permissions=True)
-			frappe.db.commit()
+		if not occurrence_children:
 			return {
 				"status": "error",
 				"message": _("No free dates could be booked (all conflicted)."),
-				"series_id": series.name,
 				"conflicts": conflicts,
+				"conflict_count": len(conflicts),
 			}
-		series.save(ignore_permissions=True)
+
+		auto = cint(getattr(amenity_doc, "auto_approval", 0))
+		guests_count = max(1, cint(payload.get("guests_count") or 1))
+		notes = (payload.get("notes") or "").strip()
+		first = occurrence_children[0]
+
+		# 1) One Amenity Booking Request + all free dates as children (no Series yet)
+		req = frappe.get_doc(
+			{
+				"doctype": AMENITY_BOOKING_REQUEST,
+				"amenity": amenity_doc.name,
+				"series_type": "Recurring",
+				"booking_date": first["booking_date"],
+				"start_time": s_time,
+				"end_time": e_time,
+				"status": "Open",
+				"tenant": current_user,
+				"tenant_name": resident_name,
+				"property_unit": prop_unit,
+				"lease": lease_name,
+				"guests_count": guests_count,
+				"notes": notes,
+				"occurrences": occurrence_children,
+			}
+		)
+		req.insert(ignore_permissions=True)
+
+		booking_ids = []
+		series_name = None
+		series_status = None
+		booked_count = len(occurrence_children)
+
+		if auto:
+			req.reload()
+			result = fulfill_request_to_series_and_bookings(req, notify=False, commit=False)
+			if result.get("status") != "success":
+				frappe.db.rollback()
+				return result
+			booking_ids = result.get("booking_ids") or []
+			series_name = result.get("series_id")
+			series_status = "Confirmed"
+			booked_count = len(booking_ids)
+			req.reload()
+			series = frappe.get_doc(AMENITY_BOOKING_SERIES, series_name)
+			series.conflict_count = len(conflicts)
+			series.save(ignore_permissions=True)
+		else:
+			series = None
+
 		frappe.db.commit()
 
-		# One staff notification for the whole series (not per occurrence)
+		# One staff notification for the whole request / series
 		try:
-			from propms.api.v1.amenities.notify import notify_amenity_series_booked
+			from propms.api.v1.amenities.notify import (
+				notify_amenity_request_pending,
+				notify_amenity_series_booked,
+			)
 
-			notify_amenity_series_booked(series, amenity_doc)
+			if auto and series_name:
+				notify_amenity_series_booked(
+					frappe.get_doc(AMENITY_BOOKING_SERIES, series_name), amenity_doc
+				)
+			else:
+				notify_amenity_request_pending(req, amenity_doc)
 		except Exception:
-			frappe.log_error(frappe.get_traceback(), "create_recurring.notify_series")
+			frappe.log_error(frappe.get_traceback(), "create_recurring.notify")
 
 		if auto:
 			message = _("Series created with {0} booking(s); {1} conflict(s) skipped.").format(
@@ -518,17 +517,20 @@ def create_recurring_amenity_booking(
 			)
 		else:
 			message = _(
-				"Series submitted with {0} request(s); {1} conflict(s) skipped."
-			).format(len(request_ids), len(conflicts))
+				"Recurring request submitted with {0} day(s); {1} conflict(s) skipped."
+			).format(len(occurrence_children), len(conflicts))
 
 		return {
 			"status": "success",
 			"message": message,
-			"series_id": series.name,
-			"series_status": series.status,
-			"request_ids": request_ids,
+			"request_id": req.name,
+			"request_ids": [req.name],
+			"series_id": series_name,
+			"series_type": "Recurring",
+			"series_status": series_status,
 			"booking_ids": booking_ids,
-			"booked_count": series.booked_count,
+			"booked_count": booked_count,
+			"occurrence_count": len(occurrence_children),
 			"conflicts": conflicts,
 			"conflict_count": len(conflicts),
 			"requires_approval": _amenity_requires_approval(amenity_doc),
@@ -836,9 +838,11 @@ def serialize_series_card(series_doc_or_dict):
 	)
 	next_occ = _next_occurrence_for_series(s.name)
 	weekday_labels = _weekday_labels_from_series(s)
+	series_type = (getattr(s, "series_type", None) or "Recurring").strip() or "Recurring"
 	return {
 		"kind": "series",
 		"series_id": s.name,
+		"series_type": series_type,
 		"name": s.name,
 		"amenity": s.amenity,
 		"amenity_name": amenity_meta.get("amenity_name") or s.amenity,
@@ -919,12 +923,12 @@ def get_amenity_booking_series(series_id=None):
 				"rejection_reason",
 				"notes",
 				"creation",
+				"request",
 			],
 			order_by="booking_date asc, start_time asc",
 			ignore_permissions=True,
 		)
 
-		# Prefer booking row when request is Approved (avoid duplicate cards)
 		booking_by_date = {}
 		for b in booking_rows:
 			key = (str(b.booking_date), str(b.start_time or ""))
@@ -932,7 +936,79 @@ def get_amenity_booking_series(series_id=None):
 
 		occurrences = []
 		seen_booking_names = set()
+		item_doctype = "Amenity Booking Request Item"
+		has_items = frappe.db.exists("DocType", item_doctype)
+
 		for r in req_rows:
+			item_rows = []
+			if has_items:
+				item_rows = frappe.get_all(
+					item_doctype,
+					filters={
+						"parent": r.name,
+						"parenttype": AMENITY_BOOKING_REQUEST,
+					},
+					fields=[
+						"booking_date",
+						"start_time",
+						"end_time",
+						"booking",
+						"status",
+					],
+					order_by="booking_date asc, start_time asc",
+					ignore_permissions=True,
+				)
+
+			if item_rows:
+				for item in item_rows:
+					key = (str(item.booking_date), str(item.start_time or ""))
+					linked = booking_by_date.get(key)
+					if linked or item.booking:
+						b = linked
+						if not b and item.booking:
+							b = next(
+								(x for x in booking_rows if x.name == item.booking),
+								None,
+							)
+						if b:
+							occurrences.append(
+								{
+									"kind": "booking",
+									"booking_id": b.name,
+									"request_id": r.name,
+									"booking_date": str(b.booking_date),
+									"start_time": str(b.start_time or ""),
+									"end_time": str(b.end_time or ""),
+									"status": b.status,
+									"display_status": b.status,
+									"guests_count": b.guests_count,
+									"cancellation_reason": b.cancellation_reason,
+									"rejection_reason": b.rejection_reason,
+									"notes": b.notes,
+								}
+							)
+							seen_booking_names.add(b.name)
+							continue
+					occurrences.append(
+						{
+							"kind": "request",
+							"request_id": r.name,
+							"booking_id": item.booking or None,
+							"booking_date": str(item.booking_date),
+							"start_time": str(item.start_time or ""),
+							"end_time": str(item.end_time or ""),
+							"status": r.status,
+							"display_status": (
+								"Pending" if r.status == "Open" else r.status
+							),
+							"guests_count": r.guests_count,
+							"rejection_reason": r.rejection_reason,
+							"notes": r.notes,
+						}
+					)
+				continue
+
+			# Legacy: one request row = one day
 			key = (str(r.booking_date), str(r.start_time or ""))
 			linked = booking_by_date.get(key)
 			if r.status == "Approved" and linked:
@@ -977,7 +1053,7 @@ def get_amenity_booking_series(series_id=None):
 				{
 					"kind": "booking",
 					"booking_id": b.name,
-					"request_id": None,
+					"request_id": getattr(b, "request", None) or None,
 					"booking_date": str(b.booking_date),
 					"start_time": str(b.start_time or ""),
 					"end_time": str(b.end_time or ""),

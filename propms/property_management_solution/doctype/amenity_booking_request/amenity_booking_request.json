@@ -7,12 +7,15 @@
  "field_order": [
   "booking_details_section",
   "amenity",
+  "series_type",
   "booking_date",
   "end_time",
   "column_break_book1",
   "status",
   "guests_count",
   "start_time",
+  "occurrences_section",
+  "occurrences",
   "tenant_unit_section",
   "tenant",
   "tenant_name",
@@ -26,7 +29,8 @@
   "rejection_reason",
   "column_break_notes1",
   "approved_by",
-  "approved_on"
+  "approved_on",
+  "connections_tab"
  ],
  "fields": [
   {
@@ -44,11 +48,22 @@
    "reqd": 1
   },
   {
+   "default": "One Time",
+   "fieldname": "series_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Series Type",
+   "options": "One Time\nRecurring",
+   "reqd": 1
+  },
+  {
+   "description": "First / primary occurrence date (summary for list views)",
    "fieldname": "booking_date",
    "fieldtype": "Date",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Booking Date",
+   "label": "First Date",
    "reqd": 1
   },
   {
@@ -85,6 +100,18 @@
    "fieldtype": "Int",
    "in_list_view": 1,
    "label": "Guests Count"
+  },
+  {
+   "fieldname": "occurrences_section",
+   "fieldtype": "Section Break",
+   "label": "Requested Dates"
+  },
+  {
+   "fieldname": "occurrences",
+   "fieldtype": "Table",
+   "label": "Occurrences",
+   "options": "Amenity Booking Request Item",
+   "reqd": 1
   },
   {
    "fieldname": "tenant_unit_section",
@@ -170,12 +197,24 @@
    "fieldtype": "Datetime",
    "label": "Approved On",
    "read_only": 1
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2026-10-05 12:00:00.000000",
+ "links": [
+  {
+   "group": "Amenity Bookings",
+   "link_doctype": "Amenity Booking",
+   "link_fieldname": "request"
+  }
+ ],
+ "modified": "2026-10-12 11:25:03.335228",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Amenity Booking Request",
@@ -249,7 +288,7 @@
  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
- "sort_field": "booking_date",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

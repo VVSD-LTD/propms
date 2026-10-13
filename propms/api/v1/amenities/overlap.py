@@ -70,6 +70,87 @@ def compute_free_gaps(open_time, close_time, busy):
 	return gaps
 
 
+def _open_request_slots_for_date(amenity, booking_date, exclude_request=None):
+	"""Yield busy slots from Open requests: child occurrences preferred, else parent."""
+	import frappe
+
+	from propms.api.v1.amenities.doctypes import (
+		AMENITY_BOOKING_REQUEST,
+		AMENITY_BOOKING_REQUEST_ITEM,
+	)
+
+	open_reqs = frappe.get_all(
+		AMENITY_BOOKING_REQUEST,
+		filters={"amenity": amenity, "status": "Open"},
+		fields=["name", "booking_date", "start_time", "end_time", "tenant", "tenant_name", "status"],
+		ignore_permissions=True,
+	)
+	if not open_reqs:
+		return []
+
+	open_by_name = {r.name: r for r in open_reqs}
+	open_names = list(open_by_name.keys())
+	held = []
+	seen_parents = set()
+
+	if frappe.db.exists("DocType", AMENITY_BOOKING_REQUEST_ITEM):
+		item_rows = frappe.get_all(
+			AMENITY_BOOKING_REQUEST_ITEM,
+			filters={
+				"parent": ["in", open_names],
+				"parenttype": AMENITY_BOOKING_REQUEST,
+				"booking_date": str(booking_date),
+				"status": ["in", ["Pending", ""]],
+			},
+			fields=["name", "parent", "start_time", "end_time", "booking_date", "status"],
+			ignore_permissions=True,
+		)
+		for item in item_rows or []:
+			parent = open_by_name.get(item.parent)
+			if not parent:
+				continue
+			if exclude_request and item.parent == exclude_request:
+				continue
+			seen_parents.add(item.parent)
+			held.append(
+				frappe._dict(
+					{
+						"name": item.parent,
+						"start_time": item.start_time,
+						"end_time": item.end_time,
+						"tenant": parent.tenant,
+						"tenant_name": parent.tenant_name,
+						"status": parent.status,
+						"source": "request",
+					}
+				)
+			)
+
+	# Legacy Open requests without child rows (or other dates on parent only)
+	for r in open_reqs:
+		if exclude_request and r.name == exclude_request:
+			continue
+		if r.name in seen_parents:
+			continue
+		if str(r.booking_date) != str(booking_date):
+			continue
+		held.append(
+			frappe._dict(
+				{
+					"name": r.name,
+					"start_time": r.start_time,
+					"end_time": r.end_time,
+					"tenant": r.tenant,
+					"tenant_name": r.tenant_name,
+					"status": r.status,
+					"source": "request",
+				}
+			)
+		)
+
+	return held
+
+
 def find_conflicting_booking(
 	amenity,
 	booking_date,
@@ -82,7 +163,7 @@ def find_conflicting_booking(
 	"""DB helper: first conflicting Confirmed/Pending booking or Open request, or None.
 
 	Returned dict includes ``source``: ``"booking"`` or ``"request"``.
-	Pending bookings are still checked during the migration window.
+	Open request holds come from occurrence child rows when present.
 	"""
 	import frappe
 
@@ -107,21 +188,8 @@ def find_conflicting_booking(
 			return r
 
 	if frappe.db.exists("DocType", "Amenity Booking Request"):
-		req_rows = frappe.get_all(
-			"Amenity Booking Request",
-			filters={
-				"amenity": amenity,
-				"booking_date": str(booking_date),
-				"status": "Open",
-			},
-			fields=["name", "start_time", "end_time", "tenant", "tenant_name", "status"],
-			ignore_permissions=True,
-		)
-		for r in req_rows or []:
-			if exclude_request and r.name == exclude_request:
-				continue
+		for r in _open_request_slots_for_date(amenity, booking_date, exclude_request):
 			other_end = expand_end_with_buffer(r.end_time, buffer_mins)
 			if ranges_overlap(start_time, req_end_buf, r.start_time, other_end):
-				r["source"] = "request"
 				return r
 	return None

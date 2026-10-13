@@ -157,8 +157,7 @@
    "reqd": 1
   },
   {
-   "default": "7",
-   "description": "How far ahead a tenant may book (calendar days from today).",
+   "description": "How far ahead a tenant may book (calendar days from today). Leave empty or 0 for no limit.",
    "fieldname": "max_advance_days",
    "fieldtype": "Int",
    "label": "Max Advance Booking Days"
@@ -213,8 +212,7 @@
    "label": "Allow Recurring"
   },
   {
-   "default": "120",
-   "description": "Max calendar days from series start to series end (e.g. 120 \u2248 4 months).",
+   "description": "Max calendar days from series start to series end (e.g. 120 \u2248 4 months). Leave empty or 0 for no limit.",
    "fieldname": "max_series_days",
    "fieldtype": "Int",
    "label": "Max Series Days"
@@ -255,7 +253,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-02 10:40:00.000000",
+ "modified": "2026-10-12 12:30:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Amenity",

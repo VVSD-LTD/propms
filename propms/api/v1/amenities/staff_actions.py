@@ -7,12 +7,59 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
-from propms.api.v1.amenities.doctypes import AMENITY_BOOKING, AMENITY_BOOKING_REQUEST
+from propms.api.v1.amenities.doctypes import (
+	AMENITY_BOOKING,
+	AMENITY_BOOKING_REQUEST,
+	AMENITY_BOOKING_SERIES,
+)
 from propms.api.v1.amenities.list import _is_amenity_staff
 from propms.api.v1.amenities.overlap import find_conflicting_booking
-from propms.api.v1.amenities.request import _create_confirmed_booking_from_request
+from propms.api.v1.amenities.request import fulfill_request_to_series_and_bookings
 from propms.api.v1.amenities.slots import _parse_time_str
 from propms.api.v1.gate_pass.gate_pass import _parse_request_payload
+
+
+def _sync_parent_series_after_request(series_name):
+	"""When no Open requests remain, mark parent Series Confirmed or Rejected.
+
+	Keeps legacy multi-request series aligned after single-request approve/reject.
+	"""
+	if not series_name or not frappe.db.exists(AMENITY_BOOKING_SERIES, series_name):
+		return
+
+	series = frappe.get_doc(AMENITY_BOOKING_SERIES, series_name)
+	if series.status == "Cancelled":
+		return
+
+	open_n = frappe.db.count(
+		AMENITY_BOOKING_REQUEST, {"series": series_name, "status": "Open"}
+	)
+	if open_n > 0:
+		return
+
+	approved_n = frappe.db.count(
+		AMENITY_BOOKING_REQUEST, {"series": series_name, "status": "Approved"}
+	)
+	rejected_n = frappe.db.count(
+		AMENITY_BOOKING_REQUEST, {"series": series_name, "status": "Rejected"}
+	)
+	cancelled_n = frappe.db.count(
+		AMENITY_BOOKING_REQUEST, {"series": series_name, "status": "Cancelled"}
+	)
+
+	if approved_n > 0:
+		series.status = "Confirmed"
+		series.booked_count = approved_n
+		if not series.approved_by:
+			series.approved_by = frappe.session.user
+			series.approved_on = now_datetime()
+		series.save(ignore_permissions=True)
+	elif rejected_n > 0 and cancelled_n == 0:
+		series.status = "Rejected"
+		series.save(ignore_permissions=True)
+	elif cancelled_n > 0 or rejected_n > 0:
+		series.status = "Cancelled"
+		series.save(ignore_permissions=True)
 
 
 def _resolve_approve_reject_target(payload):
@@ -42,60 +89,23 @@ def _claim_open_request(req_name):
 
 
 def _fulfill_open_request(req_name, notify=True, commit=True):
-	"""Open Request → Confirmed Booking; mark Request Approved + link.
-
-	``commit`` / ``notify`` can be disabled for batch series approve.
-	"""
+	"""Open Request → Series + Confirmed Booking(s) per occurrence."""
 	req, err = _claim_open_request(req_name)
 	if err:
 		return err
 
-	buffer_mins = 0
-	s = _parse_time_str(req.start_time).strftime("%H:%M:%S")
-	e = _parse_time_str(req.end_time).strftime("%H:%M:%S")
-	conflict = find_conflicting_booking(
-		req.amenity,
-		req.booking_date,
-		s,
-		e,
-		buffer_mins,
-		exclude_request=req.name,
-	)
-	if conflict:
-		return {
-			"status": "error",
-			"message": f"Cannot approve: overlaps {conflict.name}",
-		}
-
-	booking_doc = _create_confirmed_booking_from_request(req)
-	req.status = "Approved"
-	req.booking = booking_doc.name
-	req.approved_by = frappe.session.user
-	req.approved_on = now_datetime()
-	req.save(ignore_permissions=True)
-
-	if commit:
-		frappe.db.commit()
-
-	if notify:
-		try:
-			from propms.api.v1.amenities.notify import notify_amenity_booking_approved
-
-			notify_amenity_booking_approved(booking_doc, request_id=req.name)
-		except Exception:
-			frappe.log_error(frappe.get_traceback(), "approve_amenity_booking.notify")
-
-	return {
-		"status": "success",
-		"message": "Booking approved",
-		"request_id": req.name,
-		"booking_id": booking_doc.name,
-		"doc": booking_doc.as_dict(),
-	}
+	result = fulfill_request_to_series_and_bookings(req, notify=notify, commit=commit)
+	if result.get("status") == "success" and getattr(req, "series", None):
+		# Legacy multi-request series may still need sibling sync
+		if not commit:
+			pass
+		else:
+			_sync_parent_series_after_request(req.series)
+	return result
 
 
 def _approve_open_request(req_name):
-	"""Open Request → Confirmed Booking; mark Request Approved + link."""
+	"""Open Request → Series + Confirmed Booking(s)."""
 	return _fulfill_open_request(req_name, notify=True, commit=True)
 
 
@@ -107,7 +117,12 @@ def _reject_open_request(req_name, reason):
 
 	req.status = "Rejected"
 	req.rejection_reason = reason
+	for child in getattr(req, "occurrences", None) or []:
+		if (child.status or "Pending") == "Pending":
+			child.status = "Cancelled"
 	req.save(ignore_permissions=True)
+
+	_sync_parent_series_after_request(getattr(req, "series", None))
 	frappe.db.commit()
 
 	try:
@@ -122,6 +137,7 @@ def _reject_open_request(req_name, reason):
 		"message": "Booking rejected",
 		"request_id": req.name,
 		"booking_id": None,
+		"series_id": getattr(req, "series", None) or None,
 	}
 
 
@@ -133,7 +149,7 @@ def _approve_pending_booking(doc):
 			"message": f"Only Pending bookings can be approved (current: {doc.status})",
 		}
 
-	buffer_mins = 0  # no cleanup grace after booking end
+	buffer_mins = 0
 	s = _parse_time_str(doc.start_time).strftime("%H:%M:%S")
 	e = _parse_time_str(doc.end_time).strftime("%H:%M:%S")
 	conflict = find_conflicting_booking(
@@ -191,7 +207,7 @@ def _reject_pending_booking(doc, reason):
 
 @frappe.whitelist(methods=["POST"])
 def approve_amenity_booking(booking_id=None, request_id=None):
-	"""Staff-only: Open Request → Confirmed Booking (or legacy Pending → Confirmed)."""
+	"""Staff-only: Open Request → Series + Bookings (or legacy Pending → Confirmed)."""
 	try:
 		if frappe.session.user == "Guest":
 			frappe.throw(_("Authentication required"), frappe.AuthenticationError)

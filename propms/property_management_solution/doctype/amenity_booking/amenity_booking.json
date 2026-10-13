@@ -17,6 +17,7 @@
   "tenant",
   "tenant_name",
   "series",
+  "request",
   "column_break_ten1",
   "property_unit",
   "lease",
@@ -26,7 +27,8 @@
   "column_break_zyhh",
   "cancellation_reason",
   "approved_on",
-  "approved_by"
+  "approved_by",
+  "connections_tab"
  ],
  "fields": [
   {
@@ -132,6 +134,14 @@
    "read_only": 1
   },
   {
+   "fieldname": "request",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Booking Request",
+   "options": "Amenity Booking Request",
+   "read_only": 1
+  },
+  {
    "fieldname": "notes_section",
    "fieldtype": "Section Break",
    "label": "Notes & Cancellation"
@@ -167,12 +177,24 @@
   {
    "fieldname": "column_break_zyhh",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2026-10-02 10:42:48.148795",
+ "links": [
+  {
+   "group": "Amenity Bookings",
+   "link_doctype": "Amenity Booking Request",
+   "link_fieldname": "booking"
+  }
+ ],
+ "modified": "2026-10-12 11:28:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Amenity Booking",
@@ -234,7 +256,7 @@
  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
- "sort_field": "booking_date",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1
