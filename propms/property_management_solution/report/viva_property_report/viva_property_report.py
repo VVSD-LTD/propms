@@ -14,6 +14,13 @@ def get_columns(filters):
     # if report_type == "Active Properties":
     return [
         {
+            "fieldname": "floor_no",
+            "label": "Floor No",
+            "fieldtype": "Int",
+            "width": 80,
+            "hidden": 1,
+        },
+        {
             "fieldname": "property",
             "label": "Property",
             "fieldtype": "Link",
@@ -77,6 +84,20 @@ def get_columns(filters):
             "width": 160
         },
         {
+            "fieldname": "lease_customer",
+            "label": "Lease Customer",
+            "fieldtype": "Link",
+            "options": "Customer",
+            "width": 180
+        },
+        {
+            "fieldname": "pos_customer",
+            "label": "POS Customer",
+            "fieldtype": "Link",
+            "options": "Customer",
+            "width": 180
+        },
+        {
             "fieldname": "lease_start_date",
             "label": "Lease Start Date",
             "fieldtype": "Date",
@@ -128,10 +149,15 @@ def get_active_properties_data(filters, property_type):
         statuses = [f'"{status}"' for status in filters.get('property_status')]
         conditions.append(f"p.status IN ({', '.join(statuses)})")
 
+    if filters.get("marketing_status"):
+        marketing_statuses = [f'"{status}"' for status in filters.get('marketing_status')]
+        conditions.append(f"p.marketing_status IN ({', '.join(marketing_statuses)})")
+
     where_clause = f"AND {' AND '.join(conditions)}" if conditions else ""
 
     query = f"""
         SELECT
+            p.floor_no,
             p.name AS property,
             p.unit_owner,
             p.company,
@@ -144,6 +170,8 @@ def get_active_properties_data(filters, property_type):
             p.status AS property_status,
             p.marketing_status,
             l.name AS lease_name,
+            l.lease_customer,
+            l.customer AS pos_customer,
             l.start_date AS lease_start_date,
             l.end_date AS lease_end_date
         FROM `tabProperty` p
@@ -159,7 +187,7 @@ def get_active_properties_data(filters, property_type):
             )
         WHERE p.name != ''
         {where_clause}
-        ORDER BY p.name
+        ORDER BY p.floor_no ASC, p.name ASC
     """
 
     return frappe.db.sql(query, {"from_date": from_date, "to_date": to_date}, as_dict=1)
