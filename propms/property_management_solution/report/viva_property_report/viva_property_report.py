@@ -34,12 +34,6 @@ def get_columns(filters):
             "width": 200
         },
         {
-            "fieldname": "company",
-            "label": "Company",
-            "fieldtype": "Data",
-            "width": 150
-        },
-        {
             "fieldname": "type",
             "label": "Property Type",
             "fieldtype": "Link",
