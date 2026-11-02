@@ -95,8 +95,6 @@ def _validate_occurrence_slot(amenity_doc, target_date, s_time, e_time, today_da
 			or 30
 		),
 	)
-	open_s = _parse_time_str(amenity_doc.open_time).strftime("%H:%M:%S")
-	close_s = _parse_time_str(amenity_doc.close_time).strftime("%H:%M:%S")
 
 	if not is_time_on_step(s_time, step) or not is_time_on_step(e_time, step):
 		return {
@@ -104,10 +102,31 @@ def _validate_occurrence_slot(amenity_doc, target_date, s_time, e_time, today_da
 			"message": f"Start and end times must align to {step}-minute steps",
 		}
 
-	if s_time < open_s or e_time > close_s:
+	from propms.api.v1.amenities.hours import get_operating_hours_for_date
+
+	hours = get_operating_hours_for_date(amenity_doc, target_date)
+	if not hours.get("is_open"):
+		label = (
+			hours.get("holiday_description")
+			if hours.get("is_holiday")
+			else hours.get("day_of_week")
+		)
 		return {
 			"status": "error",
-			"message": f"Booking must be within operating hours ({open_s}–{close_s})",
+			"message": f"{amenity_doc.amenity_name} is closed on {label}",
+		}
+	open_s = hours["open_time"]
+	close_s = hours["close_time"]
+
+	if s_time < open_s or e_time > close_s:
+		label = (
+			hours.get("holiday_description") or "Holiday"
+			if hours.get("is_holiday")
+			else hours.get("day_of_week")
+		)
+		return {
+			"status": "error",
+			"message": f"Booking must be within {label} hours ({open_s}–{close_s})",
 		}
 
 	return None
@@ -465,6 +484,8 @@ def create_booking_request(
 				],
 			}
 		)
+		# API owns fulfill + notify; desk after_insert must not double-run
+		req.flags.skip_auto_fulfill = True
 		req.insert(ignore_permissions=True)
 
 		booking_name = None

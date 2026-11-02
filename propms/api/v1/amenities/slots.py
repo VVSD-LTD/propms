@@ -70,8 +70,36 @@ def get_available_slots(amenity=None, booking_date=None):
 					),
 				}
 
-		open_t = _parse_time_str(doc.open_time or "06:00:00")
-		close_t = _parse_time_str(doc.close_time or "22:00:00")
+		from propms.api.v1.amenities.hours import get_operating_hours_for_date
+
+		hours = get_operating_hours_for_date(doc, target_date)
+		if not hours.get("is_open"):
+			closed_label = (
+				hours.get("holiday_description")
+				if hours.get("is_holiday")
+				else hours.get("day_of_week")
+			)
+			return {
+				"status": "success",
+				"amenity": doc.name,
+				"amenity_name": doc.amenity_name,
+				"category": doc.category,
+				"capacity": max(1, cint(doc.capacity or 10)),
+				"booking_date": str(target_date),
+				"day_of_week": hours.get("day_of_week"),
+				"is_closed": 1,
+				"is_holiday": 1 if hours.get("is_holiday") else 0,
+				"holiday_description": hours.get("holiday_description"),
+				"open_time": None,
+				"close_time": None,
+				"total_slots": 0,
+				"available_slots_count": 0,
+				"slots": [],
+				"message": f"{doc.amenity_name} is closed on {closed_label}",
+			}
+
+		open_t = _parse_time_str(hours["open_time"])
+		close_t = _parse_time_str(hours["close_time"])
 		duration_mins = max(15, cint(doc.slot_duration_mins or 60))
 		capacity = max(1, cint(doc.capacity or 10))
 
@@ -145,6 +173,12 @@ def get_available_slots(amenity=None, booking_date=None):
 			"category": doc.category,
 			"capacity": capacity,
 			"booking_date": str(target_date),
+			"day_of_week": hours.get("day_of_week"),
+			"is_closed": 0,
+			"is_holiday": 1 if hours.get("is_holiday") else 0,
+			"holiday_description": hours.get("holiday_description"),
+			"open_time": open_t.strftime("%H:%M:%S"),
+			"close_time": close_t.strftime("%H:%M:%S"),
 			"total_slots": len(slots),
 			"available_slots_count": sum(1 for s in slots if s["is_available"]),
 			"slots": slots,
@@ -197,8 +231,43 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 					),
 				}
 
-		open_t = _parse_time_str(doc.open_time or "06:00:00").strftime("%H:%M:%S")
-		close_t = _parse_time_str(doc.close_time or "22:00:00").strftime("%H:%M:%S")
+		from propms.api.v1.amenities.hours import get_operating_hours_for_date
+
+		hours = get_operating_hours_for_date(doc, target_date)
+		if not hours.get("is_open"):
+			closed_label = (
+				hours.get("holiday_description")
+				if hours.get("is_holiday")
+				else hours.get("day_of_week")
+			)
+			return {
+				"status": "success",
+				"amenity": doc.name,
+				"amenity_name": doc.amenity_name,
+				"booking_date": str(target_date),
+				"day_of_week": hours.get("day_of_week"),
+				"is_closed": 1,
+				"is_holiday": 1 if hours.get("is_holiday") else 0,
+				"holiday_description": hours.get("holiday_description"),
+				"open_time": None,
+				"close_time": None,
+				"booking_time_step_mins": max(
+					1,
+					cint(getattr(doc, "booking_time_step_mins", None) or doc.slot_duration_mins or 30),
+				),
+				"cleanup_buffer_mins": 0,
+				"auto_approval": cint(getattr(doc, "auto_approval", 0) or 0),
+				"requires_approval": 0 if cint(getattr(doc, "auto_approval", 0) or 0) else 1,
+				"cancel_before_hours": cint(getattr(doc, "cancel_before_hours", None) or 2),
+				"capacity": cint(doc.capacity or 0),
+				"busy": [],
+				"free_gaps": [],
+				"is_staff": is_staff,
+				"message": f"{doc.amenity_name} is closed on {closed_label}",
+			}
+
+		open_t = hours["open_time"]
+		close_t = hours["close_time"]
 		step = max(1, cint(getattr(doc, "booking_time_step_mins", None) or doc.slot_duration_mins or 30))
 		# No post-booking grace period — next booking may start at previous end.
 		buffer_mins = 0
@@ -265,6 +334,10 @@ def get_amenity_day_availability(amenity=None, booking_date=None):
 			"amenity": doc.name,
 			"amenity_name": doc.amenity_name,
 			"booking_date": str(target_date),
+			"day_of_week": hours.get("day_of_week"),
+			"is_closed": 0,
+			"is_holiday": 1 if hours.get("is_holiday") else 0,
+			"holiday_description": hours.get("holiday_description"),
 			"open_time": open_t,
 			"close_time": close_t,
 			"booking_time_step_mins": step,

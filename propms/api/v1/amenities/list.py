@@ -51,8 +51,10 @@ def _amenity_list_fields():
 		"facilities",
 		"cover_image",
 		"capacity",
-		"open_time",
-		"close_time",
+		"holiday_list",
+		"holiday_hours",
+		"holiday_open_time",
+		"holiday_close_time",
 		"slot_duration_mins",
 		"booking_time_step_mins",
 		"cleanup_buffer_mins",
@@ -105,6 +107,37 @@ def get_amenities(category=None, published=None):
 			ignore_permissions=True,
 		)
 
+		from propms.api.v1.amenities.hours import (
+			WEEKDAY_NAMES,
+			_time_hms,
+			summary_open_close,
+		)
+
+		meta_fields = {f.fieldname for f in frappe.get_meta("Amenity").fields}
+		day_hours_by_parent = {}
+		if amenities and frappe.db.exists("DocType", "Amenity Day Hours"):
+			for row in frappe.get_all(
+				"Amenity Day Hours",
+				filters={
+					"parent": ["in", [a.name for a in amenities]],
+					"parenttype": "Amenity",
+				},
+				fields=["parent", "day_of_week", "is_open", "open_time", "close_time", "idx"],
+				order_by="idx asc",
+				ignore_permissions=True,
+			):
+				day_hours_by_parent.setdefault(row.parent, []).append(
+					{
+						"day_of_week": row.day_of_week,
+						"is_open": 1 if cint(row.is_open) else 0,
+						"open_time": _time_hms(row.open_time) if row.open_time else None,
+						"close_time": _time_hms(row.close_time) if row.close_time else None,
+					}
+				)
+			order = {name: i for i, name in enumerate(WEEKDAY_NAMES)}
+			for parent, rows in day_hours_by_parent.items():
+				rows.sort(key=lambda r: order.get(r.get("day_of_week") or "", 99))
+
 		for a in amenities:
 			gallery = _load_amenity_gallery(a.name)
 			a["gallery_images"] = gallery
@@ -112,6 +145,31 @@ def get_amenities(category=None, published=None):
 			a["is_active"] = 1 if a.get("is_active") else 0
 			if not a.get("cover_image") and gallery:
 				a["cover_image"] = gallery[0].get("image")
+			a["day_hours"] = day_hours_by_parent.get(a.name) or []
+			# Derived summary for older mobile clients (not stored on Amenity anymore)
+			open_s, close_s = summary_open_close(a["day_hours"])
+			a["open_time"] = open_s
+			a["close_time"] = close_s
+			if "holiday_hours" not in meta_fields:
+				a["holiday_list"] = None
+				a["holiday_hours"] = None
+				a["holiday_open_time"] = None
+				a["holiday_close_time"] = None
+			else:
+				if not a.get("holiday_list"):
+					a["holiday_hours"] = None
+					a["holiday_open_time"] = None
+					a["holiday_close_time"] = None
+				else:
+					a["holiday_hours"] = a.get("holiday_hours") or None
+					if a.get("holiday_hours") == "Custom":
+						if a.get("holiday_open_time"):
+							a["holiday_open_time"] = _time_hms(a.get("holiday_open_time"))
+						if a.get("holiday_close_time"):
+							a["holiday_close_time"] = _time_hms(a.get("holiday_close_time"))
+					else:
+						a["holiday_open_time"] = None
+						a["holiday_close_time"] = None
 
 		return {
 			"status": "success",
@@ -148,14 +206,27 @@ def get_amenity_detail(amenity=None):
 		if not cint(doc.is_published) and not is_staff:
 			return {"status": "error", "message": _("Amenity is not published yet")}
 
+		from propms.api.v1.amenities.hours import (
+			serialize_day_hours,
+			serialize_holiday_hours,
+			summary_open_close,
+		)
+
 		gallery = _load_amenity_gallery(doc.name)
 		cover_img = doc.cover_image or (gallery[0].get("image") if gallery else None)
 
 		amenity_data = doc.as_dict()
+		amenity_data.pop("open_time", None)
+		amenity_data.pop("close_time", None)
 		amenity_data["cover_image"] = cover_img
 		amenity_data["gallery_images"] = gallery
 		amenity_data["is_published"] = 1 if cint(doc.is_published) else 0
 		amenity_data["is_active"] = 1 if cint(doc.is_active) else 0
+		amenity_data["day_hours"] = serialize_day_hours(doc)
+		open_s, close_s = summary_open_close(amenity_data["day_hours"])
+		amenity_data["open_time"] = open_s
+		amenity_data["close_time"] = close_s
+		amenity_data.update(serialize_holiday_hours(doc))
 
 		return {
 			"status": "success",

@@ -30,7 +30,9 @@
   "livekit_enabled",
   "livekit_url",
   "livekit_api_key",
-  "livekit_api_secret"
+  "livekit_api_secret",
+  "id_card_settings_tab",
+  "id_card_fee_item"
  ],
  "fields": [
   {
@@ -173,6 +175,19 @@
    "fieldname": "livekit_api_secret",
    "fieldtype": "Password",
    "label": "LiveKit API Secret"
+  },
+  {
+   "fieldname": "id_card_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "ID Card"
+  },
+  {
+   "default": "Staff ID Card",
+   "description": "ERPNext Item charged for ID Card applications (resident or staff). Rename or replace the Item as needed; amount comes from Item Price.",
+   "fieldname": "id_card_fee_item",
+   "fieldtype": "Link",
+   "label": "ID Card Fee Item",
+   "options": "Item"
   }
  ],
  "grid_page_length": 50,

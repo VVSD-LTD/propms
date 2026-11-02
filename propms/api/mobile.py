@@ -1211,12 +1211,16 @@ def get_my_amenity_bookings(
 
 
 @frappe.whitelist(methods=["POST"])
-def cancel_amenity_booking(booking_id=None, cancellation_reason=None, request_id=None):
+def cancel_amenity_booking(
+    booking_id=None, cancellation_reason=None, request_id=None, cancel_all=None
+):
+    """Cancel one day (booking_id / next day via request_id) or all remaining (cancel_all=1)."""
     from propms.api.v1.amenities import cancel_booking as v1_cancel_booking
     return v1_cancel_booking(
         booking_id=booking_id,
         cancellation_reason=cancellation_reason,
         request_id=request_id,
+        cancel_all=cancel_all,
     )
 
 
@@ -1359,6 +1363,200 @@ def reject_amenity_booking_series(series_id=None, rejection_reason=None):
 
 
 # -------------------------------------------------------------------------
+# Feedback / Complaints API Wrappers (v1)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def get_feedback_categories():
+    from propms.api.v1.feedback import get_feedback_categories as v1
+    return v1()
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_feedback_departments():
+    """Active Feedback Departments for the Flutter picker."""
+    from propms.api.v1.feedback import get_feedback_departments as v1
+    return v1()
+
+
+@frappe.whitelist(methods=["POST"])
+def create_feedback(
+    subject=None,
+    message=None,
+    feedback_type=None,
+    category=None,
+    priority=None,
+    attachments=None,
+    property_unit=None,
+    lease=None,
+    department=None,
+):
+    """Create Feedback. department required (Feedback Department). Old type/category/priority ignored."""
+    from propms.api.v1.feedback import create_feedback as v1
+    return v1(
+        subject=subject,
+        message=message,
+        feedback_type=feedback_type,
+        category=category,
+        priority=priority,
+        attachments=attachments,
+        property_unit=property_unit,
+        lease=lease,
+        department=department,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_my_feedback(
+    status="all",
+    feedback_type=None,
+    category=None,
+    page=1,
+    page_length=20,
+):
+    """List Feedback. feedback_type/category ignored (removed)."""
+    from propms.api.v1.feedback import get_my_feedback as v1
+    return v1(
+        status=status,
+        page=page,
+        page_length=page_length,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_feedback_detail(feedback_id=None):
+    from propms.api.v1.feedback import get_feedback_detail as v1
+    return v1(feedback_id=feedback_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_feedback(feedback_id=None):
+    from propms.api.v1.feedback import cancel_feedback as v1
+    return v1(feedback_id=feedback_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def update_feedback_status(
+    feedback_id=None,
+    status=None,
+    staff_reply=None,
+    internal_notes=None,
+    priority=None,
+):
+    """Staff: update Feedback status / reply. priority ignored (removed)."""
+    from propms.api.v1.feedback import update_feedback_status as v1
+    return v1(
+        feedback_id=feedback_id,
+        status=status,
+        staff_reply=staff_reply,
+        internal_notes=internal_notes,
+    )
+
+
+# -------------------------------------------------------------------------
+# Staff ID Card API Wrappers (v1)
+# -------------------------------------------------------------------------
+@frappe.whitelist(methods=["GET", "POST"])
+def get_staff_id_options():
+    from propms.api.v1.staff_id_card import get_staff_id_options as v1
+    return v1()
+
+
+@frappe.whitelist(methods=["POST"])
+def create_staff_id_card(
+    staff_full_name=None,
+    nationality=None,
+    gender=None,
+    date_of_birth=None,
+    staff_mobile=None,
+    job_role=None,
+    job_role_other=None,
+    passport_photo=None,
+    id_copy=None,
+    other_document=None,
+    declaration_accepted=None,
+    property_unit=None,
+    lease=None,
+    resident_mobile=None,
+    resident_email=None,
+    applicant_type=None,
+    full_name=None,
+    mobile=None,
+):
+    from propms.api.v1.staff_id_card import create_staff_id_card as v1
+    return v1(
+        staff_full_name=staff_full_name,
+        nationality=nationality,
+        gender=gender,
+        date_of_birth=date_of_birth,
+        staff_mobile=staff_mobile,
+        job_role=job_role,
+        job_role_other=job_role_other,
+        passport_photo=passport_photo,
+        id_copy=id_copy,
+        other_document=other_document,
+        declaration_accepted=declaration_accepted,
+        property_unit=property_unit,
+        lease=lease,
+        resident_mobile=resident_mobile,
+        resident_email=resident_email,
+        applicant_type=applicant_type,
+        full_name=full_name,
+        mobile=mobile,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_my_staff_id_cards(status="all", page=1, page_length=20):
+    from propms.api.v1.staff_id_card import get_my_staff_id_cards as v1
+    return v1(status=status, page=page, page_length=page_length)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def get_staff_id_card_detail(card_id=None):
+    from propms.api.v1.staff_id_card import get_staff_id_card_detail as v1
+    return v1(card_id=card_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def cancel_staff_id_card(card_id=None):
+    from propms.api.v1.staff_id_card import cancel_staff_id_card as v1
+    return v1(card_id=card_id)
+
+
+@frappe.whitelist(methods=["POST"])
+def checkout_staff_id_card(
+    card_id=None, payment_method="MOBILE_MONEY", phone_number=None, amount=None
+):
+    """Selcom checkout for Staff ID fee (not POS Store)."""
+    from propms.api.v1.staff_id_card import checkout_staff_id_card as v1
+    return v1(
+        card_id=card_id,
+        payment_method=payment_method,
+        phone_number=phone_number,
+        amount=amount,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def approve_staff_id_card(
+    card_id=None, id_card_no=None, issue_date=None, scanned_id_image=None
+):
+    from propms.api.v1.staff_id_card import approve_staff_id_card as v1
+    return v1(
+        card_id=card_id,
+        id_card_no=id_card_no,
+        issue_date=issue_date,
+        scanned_id_image=scanned_id_image,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def reject_staff_id_card(card_id=None, rejection_reason=None):
+    from propms.api.v1.staff_id_card import reject_staff_id_card as v1
+    return v1(card_id=card_id, rejection_reason=rejection_reason)
+
+
+# -------------------------------------------------------------------------
 # Viva Emergency Incidents API Wrappers (v1)
 # -------------------------------------------------------------------------
 @frappe.whitelist(methods=["POST"])
@@ -1482,14 +1680,15 @@ def abort_upload_session(session_id=None):
 
 
 @frappe.whitelist()
-def upload_attachment(file_data=None, filename=None, ticket_id=None):
-    """Upload a single file (base64) matching vsd_helpdesk mobile API."""
+def upload_attachment(file_data=None, filename=None, ticket_id=None, feedback_id=None):
+    """Upload a single file (base64) for tickets or Feedback."""
     try:
         import base64
         req = getattr(frappe, "form_dict", None) or {}
         file_data = file_data or req.get("file_data")
         filename = filename or req.get("filename") or "upload.bin"
         ticket_id = ticket_id or req.get("ticket_id")
+        feedback_id = feedback_id or req.get("feedback_id")
 
         if not file_data:
             return {"status": "error", "message": "file_data is required"}
@@ -1501,10 +1700,26 @@ def upload_attachment(file_data=None, filename=None, ticket_id=None):
             "content": file_content,
             "is_private": 0,
         })
-        if ticket_id:
+        if feedback_id and frappe.db.exists("Feedback", feedback_id):
+            file_doc.attached_to_doctype = "Feedback"
+            file_doc.attached_to_name = feedback_id
+        elif ticket_id:
             file_doc.attached_to_doctype = "Viva Job Card" if frappe.db.exists("DocType", "Viva Job Card") else "Job Card"
             file_doc.attached_to_name = ticket_id
         file_doc.insert(ignore_permissions=True)
+
+        # Append to Feedback child table when attaching to existing doc
+        if feedback_id and frappe.db.exists("Feedback", feedback_id):
+            fb = frappe.get_doc("Feedback", feedback_id)
+            fb.append(
+                "attachments",
+                {
+                    "file_url": file_doc.file_url,
+                    "file_name": filename,
+                },
+            )
+            fb.save(ignore_permissions=True)
+
         frappe.db.commit()
 
         return {
@@ -1519,8 +1734,13 @@ def upload_attachment(file_data=None, filename=None, ticket_id=None):
 
 
 @frappe.whitelist()
-def upload_mobile_image(file_data=None, filename=None, ticket_id=None):
-    return upload_attachment(file_data=file_data, filename=filename, ticket_id=ticket_id)
+def upload_mobile_image(file_data=None, filename=None, ticket_id=None, feedback_id=None):
+    return upload_attachment(
+        file_data=file_data,
+        filename=filename,
+        ticket_id=ticket_id,
+        feedback_id=feedback_id,
+    )
 
 
 # Ticket Status Lifecycle Endpoints

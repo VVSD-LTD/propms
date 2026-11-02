@@ -8,21 +8,31 @@
   "booking_details_section",
   "amenity",
   "series_type",
-  "booking_date",
-  "end_time",
+  "guests_count",
   "column_break_book1",
   "status",
-  "guests_count",
+  "booking_date",
+  "series_end_date",
   "start_time",
+  "end_time",
+  "weekdays_section",
+  "week_mon",
+  "week_tue",
+  "week_wed",
+  "week_thu",
+  "column_break_week",
+  "week_fri",
+  "week_sat",
+  "week_sun",
   "occurrences_section",
   "occurrences",
   "tenant_unit_section",
   "tenant",
   "tenant_name",
-  "series",
   "column_break_ten1",
   "property_unit",
   "lease",
+  "series",
   "booking",
   "notes_section",
   "notes",
@@ -49,6 +59,7 @@
   },
   {
    "default": "One Time",
+   "description": "One Time = single day. Recurring = From/Until + weekdays, then Fill Requested Dates.",
    "fieldname": "series_type",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -58,13 +69,44 @@
    "reqd": 1
   },
   {
-   "description": "First / primary occurrence date (summary for list views)",
+   "default": "1",
+   "fieldname": "guests_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Guests Count"
+  },
+  {
+   "fieldname": "column_break_book1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Open",
+   "description": "Use Approve / Reject / Cancel buttons. Do not edit status by hand.",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nOpen\nApproved\nRejected\nCancelled\nExpired",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "description": "One Time: booking day. Recurring: first day of the range (From Date).",
    "fieldname": "booking_date",
    "fieldtype": "Date",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "First Date",
+   "label": "From Date",
    "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.series_type==\"Recurring\"",
+   "description": "Last day of the recurring range.",
+   "fieldname": "series_end_date",
+   "fieldtype": "Date",
+   "label": "Until Date",
+   "mandatory_depends_on": "eval:doc.series_type==\"Recurring\""
   },
   {
    "fieldname": "start_time",
@@ -81,27 +123,67 @@
    "reqd": 1
   },
   {
-   "fieldname": "column_break_book1",
+   "depends_on": "eval:doc.series_type==\"Recurring\"",
+   "fieldname": "weekdays_section",
+   "fieldtype": "Section Break",
+   "label": "Weekdays"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.series_type==\"Recurring\"",
+   "fieldname": "week_mon",
+   "fieldtype": "Check",
+   "label": "Mon"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.series_type==\"Recurring\"",
+   "fieldname": "week_tue",
+   "fieldtype": "Check",
+   "label": "Tue"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.series_type==\"Recurring\"",
+   "fieldname": "week_wed",
+   "fieldtype": "Check",
+   "label": "Wed"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.series_type==\"Recurring\"",
+   "fieldname": "week_thu",
+   "fieldtype": "Check",
+   "label": "Thu"
+  },
+  {
+   "depends_on": "eval:doc.series_type==\"Recurring\"",
+   "fieldname": "column_break_week",
    "fieldtype": "Column Break"
   },
   {
-   "default": "Open",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Status",
-   "options": "\nOpen\nApproved\nRejected\nCancelled\nExpired",
-   "reqd": 1
+   "default": "0",
+   "depends_on": "eval:doc.series_type==\"Recurring\"",
+   "fieldname": "week_fri",
+   "fieldtype": "Check",
+   "label": "Fri"
   },
   {
-   "default": "1",
-   "fieldname": "guests_count",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Guests Count"
+   "default": "0",
+   "depends_on": "eval:doc.series_type==\"Recurring\"",
+   "fieldname": "week_sat",
+   "fieldtype": "Check",
+   "label": "Sat"
   },
   {
+   "default": "0",
+   "depends_on": "eval:doc.series_type==\"Recurring\"",
+   "fieldname": "week_sun",
+   "fieldtype": "Check",
+   "label": "Sun"
+  },
+  {
+   "description": "One Time: one row (auto). Recurring: click Fill Requested Dates after setting From/Until and weekdays.",
    "fieldname": "occurrences_section",
    "fieldtype": "Section Break",
    "label": "Requested Dates"
@@ -119,6 +201,7 @@
    "label": "Resident & Apartment Details"
   },
   {
+   "description": "Resident who owns this booking (required for desk walk-ins).",
    "fieldname": "tenant",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -128,10 +211,12 @@
    "reqd": 1
   },
   {
+   "fetch_from": "tenant.full_name",
    "fieldname": "tenant_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Resident Name"
+   "label": "Resident Name",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_ten1",
@@ -162,7 +247,7 @@
    "fieldname": "booking",
    "fieldtype": "Link",
    "in_standard_filter": 1,
-   "label": "Booking",
+   "label": "Primary Booking",
    "options": "Amenity Booking",
    "read_only": 1
   },
@@ -177,9 +262,11 @@
    "label": "Notes"
   },
   {
+   "depends_on": "eval:doc.status==\"Rejected\"",
    "fieldname": "rejection_reason",
    "fieldtype": "Small Text",
-   "label": "Rejection Reason"
+   "label": "Rejection Reason",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_notes1",
@@ -214,7 +301,7 @@
    "link_fieldname": "request"
   }
  ],
- "modified": "2026-10-12 11:25:03.335228",
+ "modified": "2026-10-13 10:25:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Amenity Booking Request",
@@ -247,16 +334,6 @@
   },
   {
    "create": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Mobile VIVA Tenant",
-   "write": 1
-  },
-  {
-   "create": 1,
    "delete": 1,
    "email": 1,
    "export": 1,
@@ -279,6 +356,16 @@
    "write": 1
   },
   {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Mobile VIVA Tenant",
+   "write": 1
+  },
+  {
    "export": 1,
    "print": 1,
    "read": 1,
@@ -286,10 +373,34 @@
    "role": "All"
   }
  ],
+ "quick_entry": 0,
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
+ "search_fields": "amenity,tenant_name,property_unit,status",
  "sort_field": "creation",
  "sort_order": "DESC",
- "states": [],
+ "states": [
+  {
+   "color": "Orange",
+   "title": "Open"
+  },
+  {
+   "color": "Green",
+   "title": "Approved"
+  },
+  {
+   "color": "Red",
+   "title": "Rejected"
+  },
+  {
+   "color": "Gray",
+   "title": "Cancelled"
+  },
+  {
+   "color": "Dark Grey",
+   "title": "Expired"
+  }
+ ],
+ "title_field": "amenity",
  "track_changes": 1
 }

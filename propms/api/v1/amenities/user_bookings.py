@@ -265,6 +265,54 @@ def _check_cancel_deadline(doc, is_staff):
 	return None
 
 
+def _mark_request_item_cancelled(booking_name, request_name=None):
+	"""Keep Request Item row in sync when a day booking is cancelled."""
+	if not booking_name:
+		return
+	filters = {"booking": booking_name}
+	if request_name:
+		filters["parent"] = request_name
+	if not frappe.db.exists("DocType", "Amenity Booking Request Item"):
+		return
+	for row in frappe.get_all(
+		"Amenity Booking Request Item",
+		filters=filters,
+		fields=["name", "parent"],
+		ignore_permissions=True,
+	):
+		frappe.db.set_value(
+			"Amenity Booking Request Item",
+			row.name,
+			"status",
+			"Cancelled",
+			update_modified=False,
+		)
+
+
+def _retarget_request_primary_booking(request_name):
+	"""If Request.booking points at a cancelled day, point at next Confirmed day."""
+	if not request_name or not frappe.db.exists(AMENITY_BOOKING_REQUEST, request_name):
+		return
+	current = frappe.db.get_value(AMENITY_BOOKING_REQUEST, request_name, "booking")
+	if current and frappe.db.get_value(AMENITY_BOOKING, current, "status") == "Confirmed":
+		return
+	nxt = frappe.get_all(
+		AMENITY_BOOKING,
+		filters={"request": request_name, "status": "Confirmed"},
+		fields=["name"],
+		order_by="booking_date asc, start_time asc",
+		limit=1,
+		ignore_permissions=True,
+	)
+	frappe.db.set_value(
+		AMENITY_BOOKING_REQUEST,
+		request_name,
+		"booking",
+		nxt[0].name if nxt else None,
+		update_modified=False,
+	)
+
+
 def _cancel_booking_doc(doc, reason, current_user, is_staff, notify=True, commit=True):
 	"""Apply existing Confirmed/Pending booking cancel rules. Returns result dict."""
 	if doc.status == "Cancelled":
@@ -280,6 +328,11 @@ def _cancel_booking_doc(doc, reason, current_user, is_staff, notify=True, commit
 	if reason:
 		doc.cancellation_reason = reason
 	doc.save(ignore_permissions=True)
+
+	req_name = getattr(doc, "request", None)
+	_mark_request_item_cancelled(doc.name, req_name)
+	_retarget_request_primary_booking(req_name)
+
 	if commit:
 		frappe.db.commit()
 
@@ -295,8 +348,10 @@ def _cancel_booking_doc(doc, reason, current_user, is_staff, notify=True, commit
 		"status": "success",
 		"message": "Booking cancelled successfully",
 		"booking_id": doc.name,
-		"request_id": None,
+		"request_id": req_name or None,
+		"series_id": getattr(doc, "series", None) or None,
 		"kind": "booking",
+		"booking_date": str(doc.booking_date or ""),
 	}
 
 
@@ -355,26 +410,192 @@ def _cancel_open_request(req, reason, current_user, is_staff, notify=True, commi
 	}
 
 
-def _cancel_approved_request(req, reason, current_user, is_staff):
-	"""Approved Request → cancel linked Booking if allowed; Request stays Approved."""
+def _maybe_mark_series_cancelled(series_id):
+	if not series_id or not frappe.db.exists(AMENITY_BOOKING_SERIES, series_id):
+		return
+	still = frappe.db.count(
+		AMENITY_BOOKING, {"series": series_id, "status": "Confirmed"}
+	)
+	if still == 0:
+		frappe.db.set_value(
+			AMENITY_BOOKING_SERIES,
+			series_id,
+			"status",
+			"Cancelled",
+			update_modified=True,
+		)
+
+
+def _cancel_many_request_bookings(req, rows, reason, current_user, is_staff):
+	"""Cancel many Confirmed day bookings for one request (cancel-all path)."""
+	cancelled = []
+	failed = []
+	for row in rows:
+		doc = frappe.get_doc(AMENITY_BOOKING, row.name)
+		if not is_staff and doc.tenant != current_user:
+			failed.append({"booking_id": doc.name, "message": "Not permitted"})
+			continue
+		result = _cancel_booking_doc(
+			doc, reason, current_user, is_staff, notify=False, commit=False
+		)
+		if result.get("status") == "success":
+			cancelled.append(
+				{
+					"booking_id": doc.name,
+					"booking_date": str(doc.booking_date or ""),
+				}
+			)
+		else:
+			failed.append(
+				{
+					"booking_id": doc.name,
+					"booking_date": str(row.booking_date or ""),
+					"message": result.get("message") or "cancel failed",
+				}
+			)
+
+	if not cancelled and failed:
+		frappe.db.rollback()
+		return {
+			"status": "error",
+			"message": failed[0].get("message") or _("Could not cancel bookings"),
+			"request_id": req.name,
+			"series_id": getattr(req, "series", None) or None,
+			"failed": failed,
+		}
+
+	series_id = getattr(req, "series", None)
+	_maybe_mark_series_cancelled(series_id)
+	frappe.db.commit()
+
+	try:
+		from propms.api.v1.amenities.notify import notify_amenity_booking_cancelled
+
+		if cancelled:
+			notify_amenity_booking_cancelled(
+				frappe.get_doc(AMENITY_BOOKING, cancelled[-1]["booking_id"]),
+				cancelled_by=current_user,
+			)
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "cancel_approved_request.notify")
+
+	msg = _("Cancelled {0} remaining day(s)").format(len(cancelled))
+	if failed:
+		msg = _("{0}; {1} day(s) could not be cancelled").format(msg, len(failed))
+
+	return {
+		"status": "success",
+		"message": msg,
+		"request_id": req.name,
+		"series_id": series_id,
+		"kind": "request",
+		"cancelled_bookings": cancelled,
+		"failed": failed,
+		"remaining_count": frappe.db.count(
+			AMENITY_BOOKING, {"request": req.name, "status": "Confirmed"}
+		),
+		"booking_id": cancelled[0]["booking_id"] if cancelled else None,
+	}
+
+
+def _cancel_approved_request(
+	req, reason, current_user, is_staff, booking_id=None, cancel_all=False
+):
+	"""Approved Request cancel — one day or all remaining days.
+
+	- ``booking_id``: cancel that specific day (one-by-one).
+	- ``cancel_all``: cancel every remaining Confirmed day.
+	- ``request_id`` only: cancel the **next upcoming** Confirmed day (one-by-one
+	  without requiring booking_id from older app builds).
+	"""
 	if not is_staff and req.tenant != current_user:
 		frappe.throw(_("Not permitted to cancel this booking"), frappe.PermissionError)
 
-	if not req.booking or not frappe.db.exists(AMENITY_BOOKING, req.booking):
+	confirmed = frappe.get_all(
+		AMENITY_BOOKING,
+		filters={"request": req.name, "status": "Confirmed"},
+		fields=["name", "booking_date", "start_time", "end_time"],
+		order_by="booking_date asc, start_time asc",
+		ignore_permissions=True,
+	)
+
+	# 1) Explicit day
+	target_booking = (booking_id or "").strip() or None
+	if target_booking:
+		if not frappe.db.exists(AMENITY_BOOKING, target_booking):
+			return {"status": "error", "message": f"Booking {target_booking} not found"}
+		booking = frappe.get_doc(AMENITY_BOOKING, target_booking)
+		if booking.request and booking.request != req.name:
+			return {
+				"status": "error",
+				"message": _("Booking does not belong to this request"),
+			}
+		if not is_staff and booking.tenant != current_user:
+			frappe.throw(_("Not permitted to cancel this booking"), frappe.PermissionError)
+		result = _cancel_booking_doc(booking, reason, current_user, is_staff)
+		if result.get("status") == "success":
+			_maybe_mark_series_cancelled(getattr(req, "series", None))
+			frappe.db.commit()
+			remaining = frappe.db.count(
+				AMENITY_BOOKING, {"request": req.name, "status": "Confirmed"}
+			)
+			result["request_id"] = req.name
+			result["kind"] = "booking"
+			result["remaining_count"] = remaining
+			result["message"] = _(
+				"Cancelled {0}. {1} day(s) still booked."
+			).format(result.get("booking_date") or booking.booking_date, remaining)
+		return result
+
+	if not confirmed:
 		return {
 			"status": "error",
-			"message": "Approved request has no linked booking to cancel",
+			"message": _("No remaining confirmed days to cancel"),
+			"request_id": req.name,
+			"series_id": getattr(req, "series", None) or None,
+			"remaining_count": 0,
 		}
 
-	booking = frappe.get_doc(AMENITY_BOOKING, req.booking)
+	# 2) Cancel all remaining days
+	if cancel_all:
+		return _cancel_many_request_bookings(
+			req, confirmed, reason, current_user, is_staff
+		)
+
+	# 3) One-by-one: next upcoming Confirmed day only
+	booking = frappe.get_doc(AMENITY_BOOKING, confirmed[0].name)
 	if not is_staff and booking.tenant != current_user:
 		frappe.throw(_("Not permitted to cancel this booking"), frappe.PermissionError)
 
 	result = _cancel_booking_doc(booking, reason, current_user, is_staff)
 	if result.get("status") == "success":
+		_maybe_mark_series_cancelled(getattr(req, "series", None))
+		frappe.db.commit()
+		remaining = frappe.db.count(
+			AMENITY_BOOKING, {"request": req.name, "status": "Confirmed"}
+		)
 		result["request_id"] = req.name
+		result["series_id"] = getattr(req, "series", None) or None
 		result["kind"] = "booking"
-		result["message"] = "Linked booking cancelled successfully"
+		result["remaining_count"] = remaining
+		result["remaining_bookings"] = [
+			{
+				"booking_id": r.name,
+				"booking_date": str(r.booking_date),
+				"start_time": str(r.start_time or ""),
+			}
+			for r in frappe.get_all(
+				AMENITY_BOOKING,
+				filters={"request": req.name, "status": "Confirmed"},
+				fields=["name", "booking_date", "start_time"],
+				order_by="booking_date asc",
+				ignore_permissions=True,
+			)
+		]
+		result["message"] = _(
+			"Cancelled {0}. {1} day(s) still booked — cancel again for the next day, "
+			"or pass cancel_all=1 to remove all."
+		).format(result.get("booking_date") or booking.booking_date, remaining)
 	return result
 
 
@@ -543,11 +764,16 @@ def get_my_bookings(
 
 
 @frappe.whitelist(methods=["POST"])
-def cancel_booking(booking_id=None, cancellation_reason=None, request_id=None):
-	"""Cancel an Open Request, Confirmed Booking, or linked Booking of an Approved Request.
+def cancel_booking(
+	booking_id=None, cancellation_reason=None, request_id=None, cancel_all=None
+):
+	"""Cancel Open Request, one Confirmed day, or all remaining days.
 
-	``booking_id`` may be an Amenity Booking name or Amenity Booking Request name
-	(Flutter compat). ``request_id`` is also accepted.
+	Recurring flexibility:
+	- ``booking_id`` → cancel that one day
+	- ``request_id`` only → cancel next upcoming day (one-by-one)
+	- ``request_id`` + ``cancel_all=1`` → cancel all remaining days
+	- or ``cancel_remaining_amenity_booking_series`` for series-level cancel-all
 	"""
 	try:
 		if frappe.session.user == "Guest":
@@ -558,26 +784,63 @@ def cancel_booking(booking_id=None, cancellation_reason=None, request_id=None):
 				"booking_id": booking_id,
 				"request_id": request_id,
 				"cancellation_reason": cancellation_reason,
+				"cancel_all": cancel_all,
 			}
 		)
-		target_id = (
-			payload.get("request_id") or payload.get("booking_id") or ""
-		).strip()
+		bid = (payload.get("booking_id") or "").strip()
+		rid = (payload.get("request_id") or "").strip()
 		reason = (payload.get("cancellation_reason") or "").strip() or None
+		do_all = cint(payload.get("cancel_all") or 0) == 1
 
-		if not target_id:
+		if not bid and not rid:
 			return {"status": "error", "message": "booking_id or request_id is required"}
 
 		current_user = frappe.session.user
 		is_staff = _is_amenity_staff(current_user)
 
-		# Prefer Request when id exists as both (unlikely given naming)
-		if frappe.db.exists(AMENITY_BOOKING_REQUEST, target_id):
-			req = frappe.get_doc(AMENITY_BOOKING_REQUEST, target_id)
+		# 1) Explicit Amenity Booking id = cancel that day
+		if bid and frappe.db.exists(AMENITY_BOOKING, bid):
+			doc = frappe.get_doc(AMENITY_BOOKING, bid)
+			if not is_staff and doc.tenant != current_user:
+				frappe.throw(
+					_("Not permitted to cancel this booking"), frappe.PermissionError
+				)
+			# cancel_all with a booking_id → cancel all days on that booking's request
+			if do_all and getattr(doc, "request", None):
+				req = frappe.get_doc(AMENITY_BOOKING_REQUEST, doc.request)
+				return _cancel_approved_request(
+					req, reason, current_user, is_staff, cancel_all=True
+				)
+			result = _cancel_booking_doc(doc, reason, current_user, is_staff)
+			if result.get("status") == "success" and getattr(doc, "request", None):
+				_maybe_mark_series_cancelled(getattr(doc, "series", None))
+				frappe.db.commit()
+				remaining = frappe.db.count(
+					AMENITY_BOOKING,
+					{"request": doc.request, "status": "Confirmed"},
+				)
+				result["remaining_count"] = remaining
+				result["request_id"] = doc.request
+			return result
+
+		# 2) Request id
+		req_name = rid if (rid and frappe.db.exists(AMENITY_BOOKING_REQUEST, rid)) else None
+		if not req_name and bid and frappe.db.exists(AMENITY_BOOKING_REQUEST, bid):
+			req_name = bid
+
+		if req_name:
+			req = frappe.get_doc(AMENITY_BOOKING_REQUEST, req_name)
 			if req.status == "Open":
 				return _cancel_open_request(req, reason, current_user, is_staff)
 			if req.status == "Approved":
-				return _cancel_approved_request(req, reason, current_user, is_staff)
+				return _cancel_approved_request(
+					req,
+					reason,
+					current_user,
+					is_staff,
+					booking_id=None,
+					cancel_all=do_all,
+				)
 			if req.status == "Cancelled":
 				return {"status": "error", "message": "Request is already cancelled"}
 			return {
@@ -585,15 +848,10 @@ def cancel_booking(booking_id=None, cancellation_reason=None, request_id=None):
 				"message": f"Cannot cancel request in status {req.status}",
 			}
 
-		if frappe.db.exists(AMENITY_BOOKING, target_id):
-			doc = frappe.get_doc(AMENITY_BOOKING, target_id)
-			if not is_staff and doc.tenant != current_user:
-				frappe.throw(
-					_("Not permitted to cancel this booking"), frappe.PermissionError
-				)
-			return _cancel_booking_doc(doc, reason, current_user, is_staff)
-
-		return {"status": "error", "message": f"Booking {target_id} not found"}
+		return {
+			"status": "error",
+			"message": f"Booking {bid or rid} not found",
+		}
 	except Exception as e:
 		frappe.log_error(frappe.get_traceback(), "cancel_booking")
 		return {"status": "error", "message": str(e)}

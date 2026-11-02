@@ -99,13 +99,66 @@ def _iter_occurrence_dates(start_date, end_date, weekdays):
 
 def _build_occurrence_plan(amenity_doc, start_date, end_date, weekdays, start_time, end_time):
 	"""Return free and conflict occurrence dicts (no DB writes)."""
+	from propms.api.v1.amenities.slots import optional_positive_days
+
 	today = getdate(nowdate())
+	max_advance = optional_positive_days(getattr(amenity_doc, "max_advance_days", None))
+	max_date = getdate(add_days(today, max_advance)) if max_advance is not None else None
 	s_time = _parse_time_str(start_time).strftime("%H:%M:%S")
 	e_time = _parse_time_str(end_time).strftime("%H:%M:%S")
 	free = []
 	conflicts = []
+	from propms.api.v1.amenities.hours import get_operating_hours_for_date
+
 	for d in _iter_occurrence_dates(start_date, end_date, weekdays):
 		if d < today:
+			continue
+		if max_date is not None and d > max_date:
+			conflicts.append(
+				{
+					"booking_date": str(d),
+					"start_time": s_time,
+					"end_time": e_time,
+					"reason": "beyond_advance",
+					"label": f"Beyond {max_advance}-day advance limit",
+				}
+			)
+			continue
+		hours = get_operating_hours_for_date(amenity_doc, d)
+		if not hours.get("is_open"):
+			label = (
+				hours.get("holiday_description")
+				if hours.get("is_holiday")
+				else hours.get("day_of_week")
+			)
+			conflicts.append(
+				{
+					"booking_date": str(d),
+					"start_time": s_time,
+					"end_time": e_time,
+					"reason": "closed",
+					"is_holiday": 1 if hours.get("is_holiday") else 0,
+					"label": f"Closed on {label}",
+				}
+			)
+			continue
+		open_s, close_s = hours["open_time"], hours["close_time"]
+		if s_time < open_s or e_time > close_s:
+			label = (
+				hours.get("holiday_description") or "Holiday"
+				if hours.get("is_holiday")
+				else hours.get("day_of_week")
+			)
+			conflicts.append(
+				{
+					"booking_date": str(d),
+					"start_time": s_time,
+					"end_time": e_time,
+					"reason": "outside_hours",
+					"is_holiday": 1 if hours.get("is_holiday") else 0,
+					"label": f"{label} hours {open_s}–{close_s}",
+				}
+			)
 			continue
 		if d == today:
 			start_dt = get_datetime(f"{d} {s_time}")
@@ -199,13 +252,8 @@ def _validate_series_inputs(amenity_doc, payload, is_staff=False):
 	if not is_time_on_step(s_time, step) or not is_time_on_step(e_time, step):
 		frappe.throw(_("Start and end times must align to {0}-minute steps").format(step), frappe.ValidationError)
 
-	open_s = _parse_time_str(amenity_doc.open_time).strftime("%H:%M:%S")
-	close_s = _parse_time_str(amenity_doc.close_time).strftime("%H:%M:%S")
-	if s_time < open_s or e_time > close_s:
-		frappe.throw(
-			_("Booking must be within operating hours ({0}–{1})").format(open_s, close_s),
-			frappe.ValidationError,
-		)
+	# Per-day hours are enforced per occurrence in _build_occurrence_plan
+	# (weekdays vs weekends may differ, e.g. Court).
 
 	return weekdays, start_date, end_date, s_time, e_time
 
@@ -469,6 +517,7 @@ def create_recurring_amenity_booking(
 				"occurrences": occurrence_children,
 			}
 		)
+		req.flags.skip_auto_fulfill = True
 		req.insert(ignore_permissions=True)
 
 		booking_ids = []

@@ -67,8 +67,15 @@ def get_my_bookings(status="all", page=1, page_length=20):
 
 
 @frappe.whitelist(methods=["POST"])
-def cancel_booking(booking_id=None, cancellation_reason=None):
-	return _cancel_booking(booking_id=booking_id, cancellation_reason=cancellation_reason)
+def cancel_booking(
+	booking_id=None, cancellation_reason=None, request_id=None, cancel_all=None
+):
+	return _cancel_booking(
+		booking_id=booking_id,
+		cancellation_reason=cancellation_reason,
+		request_id=request_id,
+		cancel_all=cancel_all,
+	)
 
 
 @frappe.whitelist(methods=["GET", "POST"])

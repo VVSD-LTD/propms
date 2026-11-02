@@ -3,8 +3,11 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
+
 import frappe
 from frappe.model.document import Document
+
+from propms.api.v1.amenities.hours import validate_day_hours
 
 
 class Amenity(Document):
@@ -21,3 +24,4 @@ class Amenity(Document):
 					self.cover_image = img.image
 					break
 
+		validate_day_hours(self)

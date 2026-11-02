@@ -1,7 +1,7 @@
 {
  "charts": [],
- "content": "[{\"id\":\"maHdr001\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Mobile App</span>\",\"col\":12}},{\"id\":\"maSetup001\",\"type\":\"card\",\"data\":{\"card_name\":\"Setup\",\"col\":4}},{\"id\":\"maBuild002\",\"type\":\"card\",\"data\":{\"card_name\":\"Building & Services\",\"col\":4}},{\"id\":\"maPay003\",\"type\":\"card\",\"data\":{\"card_name\":\"Payments & Alerts\",\"col\":4}}]",
- "creation": "2026-10-06 14:55:21.686564",
+ "content": "[{\"id\":\"maHdr001\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Mobile App</span>\",\"col\":12}},{\"id\":\"maSetup001\",\"type\":\"card\",\"data\":{\"card_name\":\"Setup & Devices\",\"col\":4}},{\"id\":\"maSelcom002\",\"type\":\"card\",\"data\":{\"card_name\":\"Selcom Payments\",\"col\":4}},{\"id\":\"maAfri003\",\"type\":\"card\",\"data\":{\"card_name\":\"Afritrack & Meters\",\"col\":4}},{\"id\":\"maPos004\",\"type\":\"card\",\"data\":{\"card_name\":\"Mobile POS Services\",\"col\":4}},{\"id\":\"maAmen005\",\"type\":\"card\",\"data\":{\"card_name\":\"Amenities\",\"col\":4}},{\"id\":\"maAccess006\",\"type\":\"card\",\"data\":{\"card_name\":\"Access & ID Card\",\"col\":4}},{\"id\":\"maRes007\",\"type\":\"card\",\"data\":{\"card_name\":\"Resident Feedback & Safety\",\"col\":4}}]",
+ "creation": "2026-10-19 09:31:03.061095",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
@@ -16,47 +16,8 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Payments & Alerts",
-   "link_count": 3,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Selcom Payment Transaction Log",
-   "link_count": 0,
-   "link_to": "Selcom Payment Transaction Log",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Afritrack Top-up Log",
-   "link_count": 0,
-   "link_to": "Afritrack Top-up Log",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mobile Notifications",
-   "link_count": 0,
-   "link_to": "Mobile Notifications",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Setup",
-   "link_count": 8,
+   "label": "Setup & Devices",
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -74,9 +35,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Terms and Conditions",
+   "label": "Terms and Conditions Mobile",
    "link_count": 0,
-   "link_to": "Terms and Conditions",
+   "link_to": "Terms and Conditions Mobile",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -84,9 +45,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Selcom Settings",
+   "label": "Mobile Notifications",
    "link_count": 0,
-   "link_to": "Selcom Settings",
+   "link_to": "Mobile Notifications",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -94,9 +55,9 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Afritrack Settings",
+   "label": "User Device",
    "link_count": 0,
-   "link_to": "Afritrack Settings",
+   "link_to": "User Device",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -124,28 +85,8 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Afritrack Meter Sync",
-   "link_count": 0,
-   "link_to": "Afritrack Meter Sync",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Mobile POS Service",
-   "link_count": 0,
-   "link_to": "Mobile POS Service",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Building & Services",
-   "link_count": 6,
+   "label": "Amenities",
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -193,9 +134,28 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Access & ID Card",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Visitor Gate Pass",
    "link_count": 0,
    "link_to": "Visitor Gate Pass",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "ID Card",
+   "link_count": 0,
+   "link_to": "Staff ID Card",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -209,9 +169,155 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Resident Feedback & Safety",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Feedback",
+   "link_count": 0,
+   "link_to": "Feedback",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Feedback Department",
+   "link_count": 0,
+   "link_to": "Feedback Department",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Emergency Incident",
+   "link_count": 0,
+   "link_to": "Emergency Incident",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mobile POS Services",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Mobile POS Service",
+   "link_count": 0,
+   "link_to": "Mobile POS Service",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Afritrack & Meters",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Afritrack Settings",
+   "link_count": 0,
+   "link_to": "Afritrack Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Afritrack Meter Sync",
+   "link_count": 0,
+   "link_to": "Afritrack Meter Sync",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Afritrack Top-up Log",
+   "link_count": 0,
+   "link_to": "Afritrack Top-up Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Meter",
+   "link_count": 0,
+   "link_to": "Meter",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Selcom Payments",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Selcom Settings",
+   "link_count": 0,
+   "link_to": "Selcom Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Selcom Payment Transaction Log",
+   "link_count": 0,
+   "link_to": "Selcom Payment Transaction Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Viva Payment Transaction",
+   "link_count": 0,
+   "link_to": "Viva Payment Transaction",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-10-12 11:58:00.416000",
+ "modified": "2026-11-02 10:15:24.265313",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Mobile App",

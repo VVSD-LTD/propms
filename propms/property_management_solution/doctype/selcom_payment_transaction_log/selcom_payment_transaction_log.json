@@ -124,7 +124,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Payment Workflow",
-   "options": "sales_invoice_payment\nsales_order_pos\nelectricity_pos\nmaintenance_pos",
+   "options": "sales_invoice_payment\nsales_order_pos\nelectricity_pos\nmaintenance_pos\namount_pos\nstaff_id_pos",
    "reqd": 1
   },
   {

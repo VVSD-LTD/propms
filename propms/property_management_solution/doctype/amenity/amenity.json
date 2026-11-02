@@ -18,8 +18,11 @@
   "audience",
   "capacity",
   "hours_section",
-  "open_time",
-  "close_time",
+  "day_hours",
+  "holiday_list",
+  "holiday_hours",
+  "holiday_open_time",
+  "holiday_close_time",
   "column_break_hours",
   "booking_time_step_mins",
   "max_advance_days",
@@ -126,23 +129,47 @@
    "label": "Capacity (Persons)"
   },
   {
+   "description": "Weekday hours (Mon–Sun) plus public-holiday rules. Booking uses the hours for the selected date.",
    "fieldname": "hours_section",
    "fieldtype": "Section Break",
    "label": "Operating Hours"
   },
   {
-   "default": "06:00:00",
-   "fieldname": "open_time",
-   "fieldtype": "Time",
-   "label": "Open Time",
-   "reqd": 1
+   "fieldname": "day_hours",
+   "fieldtype": "Table",
+   "label": "Hours by Day (Mon–Sun)",
+   "options": "Amenity Day Hours"
   },
   {
-   "default": "22:00:00",
-   "fieldname": "close_time",
+   "description": "Frappe Holiday List. Only public holidays (weekly_off = 0) — not weekly offs already covered above.",
+   "fieldname": "holiday_list",
+   "fieldtype": "Link",
+   "label": "Holiday List",
+   "options": "Holiday List"
+  },
+  {
+   "depends_on": "eval:doc.holiday_list",
+   "description": "Required after choosing a Holiday List. Court: Same as Saturday.",
+   "fieldname": "holiday_hours",
+   "fieldtype": "Select",
+   "label": "On Public Holiday",
+   "options": "\nClosed\nSame as Saturday\nSame as Sunday\nCustom"
+  },
+  {
+   "default": "06:00:00",
+   "depends_on": "eval:doc.holiday_list && doc.holiday_hours==\"Custom\"",
+   "fieldname": "holiday_open_time",
    "fieldtype": "Time",
-   "label": "Close Time",
-   "reqd": 1
+   "label": "Holiday Open Time",
+   "mandatory_depends_on": "eval:doc.holiday_list && doc.holiday_hours==\"Custom\""
+  },
+  {
+   "default": "23:00:00",
+   "depends_on": "eval:doc.holiday_list && doc.holiday_hours==\"Custom\"",
+   "fieldname": "holiday_close_time",
+   "fieldtype": "Time",
+   "label": "Holiday Close Time",
+   "mandatory_depends_on": "eval:doc.holiday_list && doc.holiday_hours==\"Custom\""
   },
   {
    "fieldname": "column_break_hours",
@@ -253,7 +280,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-12 12:30:00.000000",
+ "modified": "2026-10-15 13:42:00.000000",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Amenity",
