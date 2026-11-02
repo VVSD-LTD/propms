@@ -10,6 +10,7 @@
   "days_after_overdue",
   "days_to_divide_percent",
   "penalty_percent",
+  "penalty_item",
   "column_break_formula",
   "formula",
   "section_break_excluded_days",
@@ -46,6 +47,14 @@
    "fieldtype": "Percent",
    "in_list_view": 1,
    "label": "Penalty Percent (%)",
+   "reqd": 1
+  },
+  {
+   "description": "Item billed on the draft Sales Invoice created by Create Penalty Invoice.",
+   "fieldname": "penalty_item",
+   "fieldtype": "Link",
+   "label": "Penalty Item",
+   "options": "Item",
    "reqd": 1
   },
   {

@@ -1,0 +1,24 @@
+[
+    {
+        "name": "Notify Customer-custom_email_setting",
+        "dt": "Notify Customer",
+        "label": "Email Setting",
+        "fieldname": "email_setting",
+        "insert_after": "invoice_no",
+        "fieldtype": "Link",
+        "options": "Property Management Email Setting",
+        "read_only": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "name": "Notify Customer-custom_reminder_audience",
+        "dt": "Notify Customer",
+        "label": "Reminder Audience",
+        "fieldname": "reminder_audience",
+        "insert_after": "email_setting",
+        "fieldtype": "Select",
+        "options": "Standard\nWithholding",
+        "read_only": 1,
+        "doctype": "Custom Field"
+    }
+]

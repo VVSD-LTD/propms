@@ -153,6 +153,7 @@ doc_events = {
     "Sales Invoice": {
         "validate": "propms.api.v1.electricity.manual_pos_topup.on_sales_invoice_validate",
         "before_save": "propms.custom.custom.before_save",
+        "before_update_after_submit": "propms.custom.custom.before_update_after_submit",
         "on_submit": [
             "propms.api.v1.invoices.invoices.on_sales_invoice_submit",
             "propms.api.v1.electricity.manual_pos_topup.enqueue_manual_electricity_pos_topup",
@@ -180,6 +181,7 @@ scheduler_events = {
         ],
         "50 23 * * *": [
             "propms.custom.sales_invoice_penalty.process_daily_sales_invoice_penalties",
+            "propms.auto_custom.closeExpiredLeasesAndReleaseProperties",
         ],
         "00 00 * * *": ["propms.lease_invoice_schedule.make_lease_invoice_schedule"],
         "00 12 * * *": ["propms.lease_invoice.enqueue_lease_invoice_auto_create"],

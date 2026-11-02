@@ -1,0 +1,216 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "GYM-CHKIN-.MM.-.YYYY.-.######",
+ "creation": "2026-10-07 17:12:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "gym_member",
+  "person_name",
+  "pin",
+  "last_name",
+  "log_type",
+  "column_break_main",
+  "event_time",
+  "external_id",
+  "dept_name",
+  "card_no",
+  "device_section",
+  "reader_name",
+  "reader_state",
+  "door_name",
+  "door_number",
+  "event_point_name",
+  "column_break_device",
+  "dev_name",
+  "dev_sn",
+  "area_name",
+  "event_name",
+  "verify_mode_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "gym_member",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Gym Member",
+   "options": "Gym Member",
+   "search_index": 1
+  },
+  {
+   "fieldname": "person_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Person Name"
+  },
+  {
+   "fieldname": "pin",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "PIN",
+   "search_index": 1
+  },
+  {
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "label": "Last Name / Unit"
+  },
+  {
+   "fieldname": "log_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Log Type",
+   "options": "\nIN\nOUT"
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "event_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Event Time",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "external_id",
+   "fieldtype": "Data",
+   "label": "External ID",
+   "reqd": 1,
+   "search_index": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "dept_name",
+   "fieldtype": "Data",
+   "label": "Department"
+  },
+  {
+   "fieldname": "card_no",
+   "fieldtype": "Data",
+   "label": "Card No"
+  },
+  {
+   "fieldname": "device_section",
+   "fieldtype": "Section Break",
+   "label": "Device"
+  },
+  {
+   "fieldname": "reader_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Reader"
+  },
+  {
+   "fieldname": "reader_state",
+   "fieldtype": "Int",
+   "label": "Reader State"
+  },
+  {
+   "fieldname": "door_name",
+   "fieldtype": "Data",
+   "label": "Door"
+  },
+  {
+   "fieldname": "door_number",
+   "fieldtype": "Int",
+   "label": "Door Number"
+  },
+  {
+   "fieldname": "event_point_name",
+   "fieldtype": "Data",
+   "label": "Event Point"
+  },
+  {
+   "fieldname": "column_break_device",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dev_name",
+   "fieldtype": "Data",
+   "label": "Device Name"
+  },
+  {
+   "fieldname": "dev_sn",
+   "fieldtype": "Data",
+   "label": "Device Serial"
+  },
+  {
+   "fieldname": "area_name",
+   "fieldtype": "Data",
+   "label": "Area"
+  },
+  {
+   "fieldname": "event_name",
+   "fieldtype": "Data",
+   "label": "Event"
+  },
+  {
+   "fieldname": "verify_mode_name",
+   "fieldtype": "Small Text",
+   "label": "Verify Mode"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-07 17:12:00.000000",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Gym Checkin",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "event_time",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "person_name",
+ "track_changes": 1
+}

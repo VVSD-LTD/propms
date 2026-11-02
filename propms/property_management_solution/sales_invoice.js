@@ -2,6 +2,38 @@ frappe.ui.form.on('Sales Invoice', {
 	refresh: function(frm) {
 		// Do NOT autofill on refresh — clearing/setting fields marks the form dirty ("Not Saved")
 		propms_electricity_topup.refresh(frm);
+
+		// Penalty invoice button (from version-15)
+		if (frm.doc.docstatus === 1 && cint(frm.doc.penalty_paid) && !frm.doc.penalty_invoice) {
+			frm.add_custom_button(__('Create Penalty Invoice'), function() {
+				frappe.confirm(
+					__('Create a draft Sales Invoice for the accrued penalty on {0}?', [frm.doc.name]),
+					function() {
+						frappe.call({
+							method: 'propms.custom.sales_invoice_penalty.create_penalty_invoice',
+							args: { sales_invoice: frm.doc.name },
+							freeze: true,
+							freeze_message: __('Creating penalty invoice...'),
+							callback: function(r) {
+								if (!r.message || !r.message.penalty_invoice) {
+									return;
+								}
+								frm.reload_doc();
+								frappe.msgprint({
+									title: __('Penalty Invoice'),
+									indicator: 'green',
+									message: __('Draft penalty invoice {0} created.', [
+										'<a href="/app/sales-invoice/' + r.message.penalty_invoice + '">' +
+											r.message.penalty_invoice +
+										'</a>'
+									]),
+								});
+							},
+						});
+					}
+				);
+			}).addClass('btn-primary');
+		}
 	},
 	lease: function(frm) {
 		propms_electricity_autofill.from_lease(frm, true);

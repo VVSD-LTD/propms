@@ -96,8 +96,8 @@ def get_data(filters):
                 item_code, 
                 base_net_amount as item_total, 
                 net_amount as item_foreign_total,
-                service_start_date as from_date, 
-                service_end_date as to_date, 
+                subscription_start_date as from_date, 
+                subscription_end_date as to_date, 
                 qty as quantity, 
                 net_rate
             FROM
@@ -422,8 +422,8 @@ def calculate_monthly_ammount(
         elif floor(days / 30) != (days / 30) and floor(days / 30) * 30 < days:
             days = floor(days / 30) * 30
 
-        daily_ammount = ammount / (days)
-        daily_ammount_foreign = foreign_ammount / (days)
+        daily_ammount = 0 if days == 0 else ammount / (days)
+        daily_ammount_foreign = 0 if days == 0 else foreign_ammount / (days)
 
         m = 1
         for i in field_list:

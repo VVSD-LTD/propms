@@ -1,0 +1,40 @@
+[
+    {
+        "name":"Sales Invoice Item-section_subscription_dates",
+        "dt":"Sales Invoice Item",
+        "label":"Subscription",
+        "fieldname":"section_subscription_dates",
+        "insert_after":"brand",
+        "fieldtype":"Section Break",
+        "doctype":"Custom Field"
+    },
+    {
+        "name": "Sales Invoice Item-subscription_start_date",
+        "dt": "Sales Invoice Item",
+        "label": "Subscription Start Date",
+        "fieldname": "subscription_start_date",
+        "insert_after": "section_subscription_dates",
+        "no_copy": 1,
+        "fieldtype": "Date",
+        "doctype": "Custom Field"
+    },
+    {
+        "name": "Sales Invoice Item-column_break_subscription_dates",
+        "dt": "Sales Invoice Item",
+        "label": "",
+        "fieldname": "column_break_subscription_dates",
+        "insert_after": "subscription_start_date",
+        "fieldtype": "Column Break",
+        "doctype": "Custom Field"
+    },
+    {
+        "name": "Sales Invoice Item-subscription_end_date",
+        "dt": "Sales Invoice Item",
+        "label": "Subscription End Date",
+        "fieldname": "subscription_end_date",
+        "insert_after": "column_break_subscription_dates",
+        "no_copy": 1,
+        "fieldtype": "Date",
+        "doctype": "Custom Field"
+    }
+]

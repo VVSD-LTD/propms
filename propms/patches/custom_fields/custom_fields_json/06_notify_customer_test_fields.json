@@ -1,0 +1,24 @@
+[
+    {
+        "name": "Notify Customer-custom_bcc",
+        "dt": "Notify Customer",
+        "label": "BCC",
+        "fieldname": "bcc",
+        "insert_after": "customer_email",
+        "fieldtype": "Data",
+        "options": "Email",
+        "read_only": 1,
+        "doctype": "Custom Field"
+    },
+    {
+        "name": "Notify Customer-custom_is_test",
+        "dt": "Notify Customer",
+        "label": "Is Test",
+        "fieldname": "is_test",
+        "insert_after": "reminder_audience",
+        "fieldtype": "Check",
+        "read_only": 1,
+        "default": "0",
+        "doctype": "Custom Field"
+    }
+]

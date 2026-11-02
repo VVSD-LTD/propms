@@ -36,6 +36,27 @@ frappe.query_reports["VIVA Property Report"] = {
             },
             "reqd": 0,
         },
+        {
+            "fieldname": "marketing_status",
+            "label": __("Marketing Status"),
+            "fieldtype": "MultiSelectList",
+            "get_data": function(txt) {
+                return frappe.db.get_list('Property Status', {
+                    fields: ['name'],
+                    filters: txt ? {
+                        name: ['like', '%' + txt + '%']
+                    } : {},
+                    order_by: 'name asc',
+                    limit_page_length: 50
+                }).then(r => {
+                    return r.map(d => ({
+                        value: d.name,
+                        description: d.name
+                    }));
+                });
+            },
+            "reqd": 0,
+        },
     ],
     
     "formatter": function(value, row, column, data, default_formatter) {

@@ -160,7 +160,7 @@
    "default": "0",
    "fieldname": "enable_due_invoice_email_sending",
    "fieldtype": "Check",
-   "label": "Enable Due Invoice Email Sending"
+   "label": "Enable Invoice Email Reminders"
   }
  ],
  "index_web_pages_for_search": 1,
