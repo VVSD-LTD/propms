@@ -26,7 +26,7 @@ from frappe.utils.pdf import get_pdf
 from frappe.utils.xlsxutils import make_xlsx
 
 
-class AttendanceSettings(Document):
+class DynamicAutoEmailReport(Document):
 	def validate(self):
 		self.validate_schedules()
 
@@ -82,13 +82,28 @@ def parse_email_addresses(email_str):
 	return valid_emails
 
 
+def coerce_filter_value(value):
+	"""Turn a pasted JSON list into a list. Multi-select reports expect a list."""
+	if not isinstance(value, str):
+		return value
+	text = value.strip()
+	if text.startswith("[") and text.endswith("]"):
+		try:
+			parsed = json.loads(text)
+		except Exception:
+			return value
+		if isinstance(parsed, list):
+			return [item for item in parsed if item not in (None, "")]
+	return value
+
+
 def render_jinja_template(template_str, context):
 	if not template_str:
 		return ""
 	try:
 		return frappe.render_template(template_str, context)
 	except Exception as e:
-		frappe.log_error(f"Jinja template error in Attendance Settings: {str(e)}")
+		frappe.log_error(f"Jinja template error in Dynamic Auto Email Report: {str(e)}")
 		return template_str
 
 
@@ -99,7 +114,14 @@ def get_report_data(report_name, filters=None):
 	if "to_date" not in filters:
 		filters["to_date"] = today()
 
-	report_result = run(report_name, filters=filters)
+	# Prepared reports only return a previously saved file. Generate the report
+	# now, and keep the filters from this schedule instead of the report's saved defaults.
+	report_result = run(
+		report_name,
+		filters=filters,
+		ignore_prepared_report=True,
+		are_default_filters=False,
+	)
 	return report_result
 
 
@@ -226,8 +248,8 @@ def queue_attendance_report_email(
 	message_id = schedule_email_message_id(reference_name)
 
 	communication = make_communication(
-		doctype="Attendance Settings",
-		name="Attendance Settings",
+		doctype="Dynamic Auto Email Report",
+		name="Dynamic Auto Email Report",
 		content=message,
 		subject=subject,
 		recipients=recipients,
@@ -250,8 +272,8 @@ def queue_attendance_report_email(
 		subject=subject,
 		message=message,
 		attachments=attachments,
-		reference_doctype="Attendance Settings",
-		reference_name="Attendance Settings",
+		reference_doctype="Dynamic Auto Email Report",
+		reference_name="Dynamic Auto Email Report",
 		expose_recipients="header",
 		communication=communication,
 		message_id=message_id,
@@ -343,7 +365,7 @@ def send_single_scheduled_report(row_doc, force=False):
 	}
 
 	# Read per-report filters from the separate Report Filters child table on parent doc
-	parent_doc = frappe.get_single("Attendance Settings")
+	parent_doc = frappe.get_single("Dynamic Auto Email Report")
 	report_fields = get_report_filter_fields(report_name)
 	field_map = {}
 	for f in report_fields:
@@ -358,7 +380,7 @@ def send_single_scheduled_report(row_doc, force=False):
 			rendered_val = render_jinja_template(raw_val, jinja_ctx)
 			raw_fn = str(f_item.fieldname).strip()
 			target_field = (getattr(f_item, "raw_fieldname", None) or field_map.get(raw_fn, raw_fn)).strip()
-			filters[target_field] = rendered_val
+			filters[target_field] = coerce_filter_value(rendered_val)
 
 	report_result = get_report_data(report_name, filters)
 
@@ -429,10 +451,10 @@ def send_single_scheduled_report(row_doc, force=False):
 
 def send_scheduled_reports():
 	"""Called by scheduler to send scheduled attendance reports."""
-	if not frappe.db.exists("DocType", "Attendance Settings"):
+	if not frappe.db.exists("DocType", "Dynamic Auto Email Report"):
 		return
 
-	doc = frappe.get_single("Attendance Settings")
+	doc = frappe.get_single("Dynamic Auto Email Report")
 	for row in doc.get("scheduled_reports") or []:
 		try:
 			send_single_scheduled_report(row, force=False)
@@ -444,7 +466,7 @@ def send_scheduled_reports():
 def trigger_send_now():
 	"""Whitelisted method for desk button to send enabled reports immediately."""
 	frappe.only_for("System Manager")
-	doc = frappe.get_single("Attendance Settings")
+	doc = frappe.get_single("Dynamic Auto Email Report")
 	sent_count = 0
 	for row in doc.get("scheduled_reports") or []:
 		if row.enabled:
@@ -592,8 +614,8 @@ def get_all_scheduled_report_filter_fields(reports=None):
 
 	reports_set = set(reports or [])
 
-	if frappe.db.exists("DocType", "Attendance Settings"):
-		doc = frappe.get_single("Attendance Settings")
+	if frappe.db.exists("DocType", "Dynamic Auto Email Report"):
+		doc = frappe.get_single("Dynamic Auto Email Report")
 		for row in (doc.get("scheduled_reports") or []):
 			if row.report:
 				reports_set.add(row.report)
@@ -615,5 +637,5 @@ def get_scheduled_report_names():
 	Scheduled Reports child table, so the Report Filters table
 	can restrict its report dropdown.
 	"""
-	doc = frappe.get_single("Attendance Settings")
+	doc = frappe.get_single("Dynamic Auto Email Report")
 	return list({row.report for row in (doc.get("scheduled_reports") or []) if row.report})

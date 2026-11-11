@@ -38,7 +38,7 @@ function load_all_filter_options(frm, callback_fn) {
 	}
 
 	frappe.call({
-		method: "propms.property_management_solution.doctype.attendance_settings.attendance_settings.get_all_scheduled_report_filter_fields",
+		method: "propms.property_management_solution.doctype.dynamic_auto_email_report.dynamic_auto_email_report.get_all_scheduled_report_filter_fields",
 		args: { reports: current_reports },
 		callback: function (r) {
 			if (r.message) {
@@ -90,10 +90,7 @@ function set_options_for_specific_row(frm, cdt, cdn) {
 	const grid_row = grid.get_row(cdn);
 
 	if (!row.report) {
-		if (grid_row && grid_row.fields_dict && grid_row.fields_dict.fieldname) {
-			grid_row.fields_dict.fieldname.df.options = "";
-			grid_row.fields_dict.fieldname.refresh();
-		}
+		apply_fieldname_options(grid_row, "");
 		return;
 	}
 
@@ -101,14 +98,32 @@ function set_options_for_specific_row(frm, cdt, cdn) {
 	const labels = fields.map(f => f.label).filter(Boolean);
 	const sorted_row_labels = labels.sort((a, b) => a.localeCompare(b));
 	const options_str = [""].concat(sorted_row_labels).join("\n");
+	apply_fieldname_options(grid_row, options_str);
+}
 
-	if (grid_row) {
-		if (grid_row.fields_dict && grid_row.fields_dict.fieldname) {
-			grid_row.fields_dict.fieldname.df.options = options_str;
-			grid_row.fields_dict.fieldname.refresh();
-		}
-		frappe.meta.get_docfield("Attendance Report Filter", "fieldname", cdn).options = options_str;
+function apply_fieldname_options(grid_row, options_str) {
+	if (!grid_row || !grid_row.doc) return;
+
+	const df = frappe.meta.get_docfield("Attendance Report Filter", "fieldname", grid_row.doc.name);
+	if (df) {
+		df.options = options_str;
 	}
+	if (grid_row.columns && grid_row.columns.fieldname && grid_row.columns.fieldname.df) {
+		grid_row.columns.fieldname.df.options = options_str;
+	}
+
+	// The grid dropdown is a different control from the row edit form.
+	const targets = [];
+	if (grid_row.on_grid_fields_dict && grid_row.on_grid_fields_dict.fieldname) {
+		targets.push(grid_row.on_grid_fields_dict.fieldname);
+	}
+	if (grid_row.grid_form && grid_row.grid_form.fields_dict && grid_row.grid_form.fields_dict.fieldname) {
+		targets.push(grid_row.grid_form.fields_dict.fieldname);
+	}
+	targets.forEach(field => {
+		field.df.options = options_str;
+		field.refresh();
+	});
 }
 
 function handle_row_report_change(frm, cdt, cdn, reset_val) {
@@ -131,7 +146,7 @@ function handle_row_report_change(frm, cdt, cdn, reset_val) {
 	}
 
 	frappe.call({
-		method: "propms.property_management_solution.doctype.attendance_settings.attendance_settings.get_report_filter_fields",
+		method: "propms.property_management_solution.doctype.dynamic_auto_email_report.dynamic_auto_email_report.get_report_filter_fields",
 		args: { report_name: row.report },
 		callback: function (r) {
 			const fields = r.message || [];
@@ -158,7 +173,7 @@ function handle_fieldname_change(frm, cdt, cdn) {
 	}
 }
 
-frappe.ui.form.on("Attendance Settings", {
+frappe.ui.form.on("Dynamic Auto Email Report", {
 	onload: function (frm) {
 		set_report_filter_queries(frm);
 		load_all_filter_options(frm);
@@ -172,7 +187,7 @@ frappe.ui.form.on("Attendance Settings", {
 				__("Are you sure you want to trigger sending all enabled scheduled reports immediately?"),
 				function () {
 					frappe.call({
-						method: "propms.property_management_solution.doctype.attendance_settings.attendance_settings.trigger_send_now",
+						method: "propms.property_management_solution.doctype.dynamic_auto_email_report.dynamic_auto_email_report.trigger_send_now",
 						freeze: true,
 						freeze_message: __("Sending scheduled reports..."),
 						callback: function (r) {

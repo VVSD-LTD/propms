@@ -60,15 +60,19 @@ frappe.ui.form.on('Meter Reading Detail', {
 	},
 	current_meter_reading: function(frm, cdt, cdn) {
 		var doc = locals[cdt][cdn]
-		if (parseFloat(doc.current_meter_reading) <= parseFloat(doc.previous_meter_reading)) {
+		if (doc.current_meter_reading === '' || doc.current_meter_reading === null || doc.current_meter_reading === undefined) {
+			return
+		}
+		var current = parseFloat(doc.current_meter_reading)
+		var previous = parseFloat(doc.previous_meter_reading) || 0
+		if (current < previous) {
 			frappe.model.set_value(cdt, cdn, "current_meter_reading", '')
 			frappe.throw(__("Current Meter Reading Must Be Greater Than Previous Reading"))
 		}
-		// frappe.msgprint("Current meter reading value is: " + String(doc.current_meter_reading))
-		if (doc.current_meter_reading) {
-			console.log(parseFloat(doc.current_meter_reading) - parseFloat(doc.previous_meter_reading))
-			frappe.model.set_value(cdt, cdn, "reading_difference", parseFloat(doc.current_meter_reading) - parseFloat(doc.previous_meter_reading))
+		if (current === previous) {
+			frappe.model.set_value(cdt, cdn, "do_not_create_invoice", 1)
 		}
+		frappe.model.set_value(cdt, cdn, "reading_difference", current - previous)
 	}
 })
 

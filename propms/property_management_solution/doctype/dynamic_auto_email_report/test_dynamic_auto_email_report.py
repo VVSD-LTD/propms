@@ -8,17 +8,17 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import now
 
-from propms.property_management_solution.doctype.attendance_settings.attendance_settings import (
+from propms.property_management_solution.doctype.dynamic_auto_email_report.dynamic_auto_email_report import (
 	schedule_email_message_id,
 	send_single_scheduled_report,
 )
 
 
-class TestAttendanceSettings(FrappeTestCase):
+class TestDynamicAutoEmailReport(FrappeTestCase):
 	def setUp(self):
 		frappe.db.delete("Email Queue Recipient")
 		frappe.db.delete("Email Queue")
-		frappe.db.delete("Communication", {"reference_doctype": "Attendance Settings"})
+		frappe.db.delete("Communication", {"reference_doctype": "Dynamic Auto Email Report"})
 		frappe.db.delete("Communication", {"reference_doctype": "Attendance Report Schedule"})
 
 	def _schedule_row(self, **overrides):
@@ -49,7 +49,7 @@ class TestAttendanceSettings(FrappeTestCase):
 		}
 
 	def _enter_report_patches(self, stack):
-		mod = "propms.property_management_solution.doctype.attendance_settings.attendance_settings"
+		mod = "propms.property_management_solution.doctype.dynamic_auto_email_report.dynamic_auto_email_report"
 		stack.enter_context(patch(f"{mod}.get_report_data", return_value=self._fake_report_result()))
 		stack.enter_context(patch(f"{mod}.build_report_pdf_html", return_value="<html></html>"))
 		stack.enter_context(patch(f"{mod}.get_pdf", return_value=b"pdf-bytes"))
@@ -66,7 +66,7 @@ class TestAttendanceSettings(FrappeTestCase):
 
 		communications = frappe.get_all(
 			"Communication",
-			filters={"reference_doctype": "Attendance Settings", "subject": "Attendance Report"},
+			filters={"reference_doctype": "Dynamic Auto Email Report", "subject": "Attendance Report"},
 			fields=["name", "recipients", "cc", "bcc", "message_id"],
 		)
 		self.assertEqual(len(communications), 1, "Frappe creates one Communication per send")
@@ -104,7 +104,7 @@ class TestAttendanceSettings(FrappeTestCase):
 	def test_email_failure_still_marks_last_sent_so_next_run_does_not_recreate(self):
 		"""If queueing fails, last_sent_at must still be set so the next cron does not create another email."""
 		row = self._schedule_row()
-		mod = "propms.property_management_solution.doctype.attendance_settings.attendance_settings"
+		mod = "propms.property_management_solution.doctype.dynamic_auto_email_report.dynamic_auto_email_report"
 
 		with ExitStack() as stack:
 			self._enter_report_patches(stack)
@@ -129,7 +129,7 @@ class TestAttendanceSettings(FrappeTestCase):
 	def test_existing_todays_email_is_not_recreated_when_last_sent_at_missing(self):
 		"""A Communication already created today must not be duplicated if last_sent_at never got saved."""
 		row = self._schedule_row()
-		mod = "propms.property_management_solution.doctype.attendance_settings.attendance_settings"
+		mod = "propms.property_management_solution.doctype.dynamic_auto_email_report.dynamic_auto_email_report"
 		frappe.get_doc(
 			{
 				"doctype": "Communication",
@@ -138,8 +138,8 @@ class TestAttendanceSettings(FrappeTestCase):
 				"communication_medium": "Email",
 				"sent_or_received": "Sent",
 				"communication_type": "Automated Message",
-				"reference_doctype": "Attendance Settings",
-				"reference_name": "Attendance Settings",
+				"reference_doctype": "Dynamic Auto Email Report",
+				"reference_name": "Dynamic Auto Email Report",
 				"recipients": "to@example.com",
 				"message_id": schedule_email_message_id(row.name),
 			}

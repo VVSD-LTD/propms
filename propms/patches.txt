@@ -1,4 +1,5 @@
 [pre_model_sync]
+propms.patches.data_population.rename_attendance_settings_to_dynamic_auto_email_report
 
 [post_model_sync]
 propms.patches.data_population.populate_data

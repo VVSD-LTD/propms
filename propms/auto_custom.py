@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from datetime import datetime
 from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import add_days, today, date_diff, getdate, add_months
+from frappe.utils import add_days, today, date_diff, getdate, add_months, cint, flt
 from propms.lease_invoice import getDueDate
 import calendar
 import frappe
@@ -646,39 +646,129 @@ def get_previous_meter_reading(meter_number, property_id, meter_type):
             return 0
 
 
+def get_active_lease_for_reading(property_id, reading_date):
+    """Active lease covering reading_date whose end has not already passed today.
+
+    Leases left Active after end_date are ignored so billing does not use a stale tenant.
+    Blank / skipped end_date is treated as still open.
+    """
+    if not property_id or not reading_date:
+        return None
+
+    reading_date = getdate(reading_date)
+    today_date = getdate(today())
+    leases = frappe.get_all(
+        "Lease",
+        filters={
+            "property": property_id,
+            "lease_status": "Active",
+            "docstatus": ["<", 2],
+            "start_date": ["<=", reading_date],
+        },
+        fields=["name", "customer", "start_date", "end_date", "skip_end_date"],
+        order_by="start_date desc, creation desc",
+    )
+    for lease in leases:
+        end_date = None if lease.get("skip_end_date") or not lease.get("end_date") else getdate(
+            lease.end_date
+        )
+        if end_date:
+            if end_date < today_date:
+                continue
+            if reading_date > end_date:
+                continue
+        return lease
+    return None
+
+
+def get_meter_invoice_customer(property_id, meter_type, meter_number=None, reading_date=None):
+    """Customer for a meter invoice: Active lease, then meter Invoice Customer, then Unit Owner."""
+    lease = get_active_lease_for_reading(property_id, reading_date)
+    if lease and lease.get("customer"):
+        return lease.customer, lease.name
+
+    meter_filters = {
+        "parent": property_id,
+        "meter_type": meter_type,
+        "status": "Active",
+    }
+    if meter_number:
+        meter_filters["meter_number"] = meter_number
+
+    meter_customer = frappe.db.get_value(
+        "Property Meter Reading", meter_filters, "invoice_customer"
+    )
+    if not meter_customer and meter_number:
+        meter_customer = frappe.db.get_value(
+            "Property Meter Reading",
+            {
+                "parent": property_id,
+                "meter_type": meter_type,
+                "status": "Active",
+            },
+            "invoice_customer",
+        )
+    if meter_customer:
+        return meter_customer, lease.name if lease else ""
+
+    unit_owner = frappe.db.get_value("Property", property_id, "unit_owner")
+    return unit_owner or "", lease.name if lease else ""
+
+
 @frappe.whitelist()
 def make_invoice_meter_reading(self, method):
     for meter_row in self.meter_reading_detail:
-        if int(meter_row.do_not_create_invoice) != 1:
-            item_detail = get_item_details(
-                self.meter_type,
-                meter_row.reading_difference,
-                meter_row.previous_reading_date,
-                add_days(self.reading_date, -1),
+        if cint(meter_row.do_not_create_invoice) == 1:
+            continue
+        if flt(meter_row.reading_difference) <= 0:
+            frappe.throw(
+                _(
+                    "Row {0}: Cannot create invoice when reading difference is zero. Tick Do not create invoice or enter a higher current reading."
+                ).format(meter_row.idx)
             )
-            # Changed from propert/meter customer lookup to pos cusotmer lookup as per conversation with Vimal on 2019-11-08
-            leasename = get_latest_active_lease(meter_row.property)
-            lease = frappe.get_doc("Lease", leasename)
-            # customer = get_active_meter_customer_from_property(meter_row.property,self.meter_type)
-            customer = lease.customer
-            if customer:
-                meter_row.invoice_number = make_invoice(
-                    self.reading_date,
-                    customer,
-                    meter_row.property,
-                    item_detail,
-                    self.meter_type,
-                    meter_row.previous_reading_date,
-                    add_days(self.reading_date, -1),
-                )
-                # meter_row.invoice_number = si_no
-                # frappe.db.set_value("Meter Reading Detail",meter_row.name,"invoice_number",si_no)
+
+        item_detail = get_item_details(
+            self.meter_type,
+            meter_row.reading_difference,
+            meter_row.previous_reading_date,
+            add_days(self.reading_date, -1),
+        )
+        customer, lease_name = get_meter_invoice_customer(
+            meter_row.property,
+            self.meter_type,
+            meter_row.meter_number,
+            self.reading_date,
+        )
+        if not customer:
+            frappe.throw(
+                _(
+                    "Row {0}: No customer found for property {1}. Set an Active lease covering the reading date (with end date not already passed), an Active meter Invoice Customer, or the Property Unit Owner."
+                ).format(meter_row.idx, meter_row.property)
+            )
+
+        meter_row.invoice_number = make_invoice(
+            self.reading_date,
+            customer,
+            meter_row.property,
+            item_detail,
+            self.meter_type,
+            meter_row.previous_reading_date,
+            add_days(self.reading_date, -1),
+            lease=lease_name,
+        )
     self.db_update()
 
 
 @frappe.whitelist()
 def make_invoice(
-    meter_date, customer, property_id, items, lease_item, from_date=None, to_date=None
+    meter_date,
+    customer,
+    property_id,
+    items,
+    lease_item,
+    from_date=None,
+    to_date=None,
+    lease=None,
 ):
     company = frappe.db.get_value("Property", property_id, "company")
     try:
@@ -688,7 +778,7 @@ def make_invoice(
                 company=company,
                 posting_date=meter_date,
                 items=items,
-                lease=get_latest_active_lease(property_id),
+                lease=lease or get_latest_active_lease(property_id),
                 lease_item=lease_item,
                 customer=str(customer),
                 due_date=getDueDate(meter_date, str(customer)),
