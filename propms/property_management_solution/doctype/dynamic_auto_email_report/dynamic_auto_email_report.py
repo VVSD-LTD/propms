@@ -12,7 +12,9 @@ from frappe import _
 from frappe.desk.query_report import build_xlsx_data, run
 from frappe.model.document import Document
 from frappe.utils import (
+	add_days,
 	cint,
+	formatdate,
 	get_datetime,
 	get_time,
 	getdate,
@@ -28,40 +30,30 @@ from frappe.utils.xlsxutils import make_xlsx
 
 class DynamicAutoEmailReport(Document):
 	def validate(self):
-		self.validate_schedules()
+		if not self.report:
+			frappe.throw(_("Report is mandatory."))
 
-	def validate_schedules(self):
-		for idx, row in enumerate(self.get("scheduled_reports") or [], start=1):
-			if not row.report:
-				frappe.throw(_("Row #{0}: Report is mandatory.").format(idx))
+		if not self.recipients:
+			frappe.throw(_("To (Recipients) is mandatory."))
 
-			if not row.recipients:
-				frappe.throw(_("Row #{0}: To (Recipients) is mandatory.").format(idx))
+		recipients = parse_email_addresses(self.recipients)
+		if not recipients:
+			frappe.throw(_("Please provide at least one valid recipient email address."))
+		self.recipients = "\n".join(recipients)
 
-			# Validate emails
-			recipients = parse_email_addresses(row.recipients)
-			if not recipients:
-				frappe.throw(_("Row #{0}: Please provide at least one valid recipient email address.").format(idx))
-			row.recipients = "\n".join(recipients)
+		if self.cc:
+			self.cc = "\n".join(parse_email_addresses(self.cc))
 
-			if row.cc:
-				row.cc = "\n".join(parse_email_addresses(row.cc))
+		if self.bcc:
+			self.bcc = "\n".join(parse_email_addresses(self.bcc))
 
-			if row.bcc:
-				row.bcc = "\n".join(parse_email_addresses(row.bcc))
+		if self.frequency == "Weekly" and not self.day_of_week:
+			frappe.throw(_("Day of Week is required for a Weekly schedule."))
 
-			if row.frequency == "Weekly" and not row.day_of_week:
-				frappe.throw(_("Row #{0}: Day of Week is required for Weekly schedule.").format(idx))
-
-			if row.frequency == "Monthly":
-				dom = cint(row.day_of_month)
-				if dom < 1 or dom > 28:
-					frappe.throw(_("Row #{0}: Day of Month must be between 1 and 28.").format(idx))
-
-		scheduled_reports = {row.report for row in (self.get("scheduled_reports") or []) if row.report}
-		for idx, row in enumerate(self.get("report_filters") or [], start=1):
-			if row.report and row.report not in scheduled_reports:
-				frappe.throw(_("Row #{0} in Report Filters: Report '{1}' is not configured in Scheduled Reports.").format(idx, row.report))
+		if self.frequency == "Monthly":
+			dom = cint(self.day_of_month)
+			if dom < 1 or dom > 28:
+				frappe.throw(_("Day of Month must be between 1 and 28."))
 
 
 def parse_email_addresses(email_str):
@@ -95,6 +87,42 @@ def coerce_filter_value(value):
 		if isinstance(parsed, list):
 			return [item for item in parsed if item not in (None, "")]
 	return value
+
+
+def yesterday(as_of=None):
+	"""Date string for the day before as_of, or before today."""
+	return add_days(as_of or today(), -1)
+
+
+class DateFormatter:
+	"""{{ date }} is today. {{ date(yesterday(), "dd MMMM yyyy") }} formats a day."""
+
+	def __call__(self, value=None, fmt="dd-mm-yyyy"):
+		if value in (None, ""):
+			return today()
+		return formatdate(value, fmt)
+
+	def __str__(self):
+		return today()
+
+	def __html__(self):
+		return today()
+
+
+render_date = DateFormatter()
+
+
+def template_context(row_doc, **extra):
+	context = {
+		"today": today,
+		"yesterday": yesterday,
+		"nowdate": nowdate,
+		"date": DateFormatter(),
+		"frappe": frappe,
+		"doc": row_doc,
+	}
+	context.update(extra)
+	return context
 
 
 def render_jinja_template(template_str, context):
@@ -249,7 +277,7 @@ def queue_attendance_report_email(
 
 	communication = make_communication(
 		doctype="Dynamic Auto Email Report",
-		name="Dynamic Auto Email Report",
+		name=reference_name,
 		content=message,
 		subject=subject,
 		recipients=recipients,
@@ -273,7 +301,7 @@ def queue_attendance_report_email(
 		message=message,
 		attachments=attachments,
 		reference_doctype="Dynamic Auto Email Report",
-		reference_name="Dynamic Auto Email Report",
+		reference_name=reference_name,
 		expose_recipients="header",
 		communication=communication,
 		message_id=message_id,
@@ -288,7 +316,7 @@ def mark_schedule_attempted(row_name):
 	"""Stamp last_sent_at even when queueing fails, so the next cron tick cannot recreate."""
 	if not row_name:
 		return
-	frappe.db.set_value("Attendance Report Schedule", row_name, "last_sent_at", now())
+	frappe.db.set_value("Dynamic Auto Email Report", row_name, "last_sent_at", now())
 
 
 def todays_schedule_email_exists(row_name):
@@ -311,14 +339,14 @@ def send_single_scheduled_report(row_doc, force=False):
 	current_dom = now_dt.day
 
 	if not force:
-		# Lock the child row so overlapping */5 cron ticks cannot double-send.
-		if row_doc.name and frappe.db.exists("Attendance Report Schedule", row_doc.name):
+		# Lock this document so overlapping */5 cron ticks cannot double-send.
+		if row_doc.name and frappe.db.exists("Dynamic Auto Email Report", row_doc.name):
 			frappe.db.sql(
-				"SELECT name FROM `tabAttendance Report Schedule` WHERE name=%s FOR UPDATE",
+				"SELECT name FROM `tabDynamic Auto Email Report` WHERE name=%s FOR UPDATE",
 				row_doc.name,
 			)
 			row_doc.last_sent_at = frappe.db.get_value(
-				"Attendance Report Schedule", row_doc.name, "last_sent_at"
+				"Dynamic Auto Email Report", row_doc.name, "last_sent_at"
 			)
 
 		# Check frequency
@@ -355,17 +383,8 @@ def send_single_scheduled_report(row_doc, force=False):
 	report_name = row_doc.report or "Employee & Sub Contractor Checking Summary"
 	filters = {"from_date": today(), "to_date": today()}
 
-	# Build Jinja context for filter value rendering
-	jinja_ctx = {
-		"today": today,
-		"nowdate": nowdate,
-		"date": today(),
-		"frappe": frappe,
-		"doc": row_doc,
-	}
+	jinja_ctx = template_context(row_doc)
 
-	# Read per-report filters from the separate Report Filters child table on parent doc
-	parent_doc = frappe.get_single("Dynamic Auto Email Report")
 	report_fields = get_report_filter_fields(report_name)
 	field_map = {}
 	for f in report_fields:
@@ -374,21 +393,22 @@ def send_single_scheduled_report(row_doc, force=False):
 		if f.get("fieldname"):
 			field_map[f["fieldname"].strip()] = f["fieldname"]
 
-	for f_item in parent_doc.get("report_filters") or []:
-		if f_item.report == report_name and f_item.fieldname:
+	for f_item in row_doc.get("report_filters") or []:
+		if f_item.fieldname:
 			raw_val = f_item.value or ""
 			rendered_val = render_jinja_template(raw_val, jinja_ctx)
 			raw_fn = str(f_item.fieldname).strip()
 			target_field = (getattr(f_item, "raw_fieldname", None) or field_map.get(raw_fn, raw_fn)).strip()
 			filters[target_field] = coerce_filter_value(rendered_val)
 
+	filters.pop("custom_format", None)
 	report_result = get_report_data(report_name, filters)
 
 	# Check if 'Don't Send If No Data' is enabled and report result is empty
 	result_data = report_result.get("result") or []
 	if row_doc.get("dont_send_if_no_data") and not result_data:
 		frappe.logger().info(f"Skipping scheduled report '{report_name}': No data found and 'Don't Send If No Data' is enabled.")
-		frappe.db.set_value("Attendance Report Schedule", row_doc.name, "last_sent_at", now())
+		frappe.db.set_value("Dynamic Auto Email Report", row_doc.name, "last_sent_at", now())
 		return False
 
 	# Format content
@@ -396,7 +416,9 @@ def send_single_scheduled_report(row_doc, force=False):
 	clean_report_name = report_name.replace(" ", "_").replace("&", "and")
 	fname = f"{clean_report_name}_{today()}.{file_ext}"
 
-	if row_doc.format == "PDF":
+	if row_doc.get("use_custom_format"):
+		attachment_content = custom_report_attachment(report_name, file_ext, filters)
+	elif row_doc.format == "PDF":
 		html_content = build_report_pdf_html(report_name, report_result, filters)
 		attachment_content = get_pdf(html_content)
 	else:
@@ -404,17 +426,12 @@ def send_single_scheduled_report(row_doc, force=False):
 
 	attachments = [{"fname": fname, "fcontent": attachment_content}]
 
-	# Prepare Jinja Context
-	context = {
-		"today": today,
-		"nowdate": nowdate,
-		"date": today(),
-		"report_name": report_name,
-		"filters": filters,
-		"summary": report_result.get("report_summary") or [],
-		"frappe": frappe,
-		"doc": row_doc,
-	}
+	context = template_context(
+		row_doc,
+		report_name=report_name,
+		filters=filters,
+		summary=report_result.get("report_summary") or [],
+	)
 
 	default_subject = f"{report_name} - {today()}"
 	default_message = f"<p>Hello,</p><p>Please find attached the scheduled report: <strong>{report_name}</strong> for {today()}.</p>"
@@ -450,30 +467,177 @@ def send_single_scheduled_report(row_doc, force=False):
 
 
 def send_scheduled_reports():
-	"""Called by scheduler to send scheduled attendance reports."""
+	"""Called by scheduler to send each enabled Dynamic Auto Email Report."""
 	if not frappe.db.exists("DocType", "Dynamic Auto Email Report"):
 		return
+	if cint(frappe.db.get_value("DocType", "Dynamic Auto Email Report", "issingle")):
+		return
 
-	doc = frappe.get_single("Dynamic Auto Email Report")
-	for row in doc.get("scheduled_reports") or []:
+	for name in frappe.get_all("Dynamic Auto Email Report", filters={"enabled": 1}, pluck="name"):
 		try:
-			send_single_scheduled_report(row, force=False)
+			send_single_scheduled_report(frappe.get_doc("Dynamic Auto Email Report", name), force=False)
 		except Exception as e:
-			frappe.log_error(f"Error sending scheduled report {row.name}: {str(e)}")
+			frappe.log_error(f"Error sending scheduled report {name}: {str(e)}")
 
 
 @frappe.whitelist()
-def trigger_send_now():
-	"""Whitelisted method for desk button to send enabled reports immediately."""
+def trigger_send_now(name):
+	"""Send this document immediately, ignoring the schedule clock."""
 	frappe.only_for("System Manager")
-	doc = frappe.get_single("Dynamic Auto Email Report")
-	sent_count = 0
-	for row in doc.get("scheduled_reports") or []:
-		if row.enabled:
-			res = send_single_scheduled_report(row, force=True)
-			if res:
-				sent_count += 1
-	return {"sent_count": sent_count}
+	doc = frappe.get_doc("Dynamic Auto Email Report", name)
+	if not doc.enabled:
+		frappe.throw(_("Enable this report before sending."))
+	return {"sent": bool(send_single_scheduled_report(doc, force=True))}
+
+
+def _load_report_script(report_name):
+	script_content = ""
+	try:
+		script_data = frappe.desk.query_report.get_script(report_name)
+		script_content = (script_data or {}).get("script") or ""
+	except Exception:
+		script_content = ""
+
+	if script_content:
+		return script_content
+
+	try:
+		report_doc = frappe.get_doc("Report", report_name)
+	except Exception:
+		return ""
+
+	if not report_doc.module:
+		return ""
+
+	try:
+		module_path = frappe.get_module_path(report_doc.module)
+		scrubbed = (
+			frappe.scrub(report_name),
+			report_name.lower().replace(" ", "_"),
+			report_name.lower().replace(" ", "_").replace("&", "and"),
+		)
+		for name in scrubbed:
+			js_path = os.path.join(module_path, "report", name, f"{name}.js")
+			if os.path.exists(js_path):
+				with open(js_path, "r", encoding="utf-8") as handle:
+					script_content = handle.read()
+				if script_content:
+					return script_content
+	except Exception:
+		return ""
+	return ""
+
+
+def _filter_object_texts(script):
+	"""Top-level objects inside a report script's filters array."""
+	if not script:
+		return []
+	match = re.search(r"filters\s*:\s*\[", script)
+	if not match:
+		return []
+
+	start = script.find("[", match.start())
+	array_depth = 0
+	object_depth = 0
+	objects = []
+	buffer = []
+	collecting = False
+	for char in script[start:]:
+		if char == "[":
+			array_depth += 1
+		elif char == "]":
+			array_depth -= 1
+			if array_depth == 0:
+				break
+
+		if char == "{":
+			if object_depth == 0 and array_depth == 1:
+				collecting = True
+				buffer = ["{"]
+				object_depth = 1
+				continue
+			object_depth += 1
+		elif char == "}":
+			object_depth -= 1
+			if collecting:
+				buffer.append(char)
+			if object_depth == 0 and collecting:
+				objects.append("".join(buffer))
+				collecting = False
+			continue
+
+		if collecting:
+			buffer.append(char)
+	return objects
+
+
+def _parse_js_filter(text):
+	fieldname = re.search(r"fieldname\s*:\s*[\"']([^\"']+)[\"']", text)
+	if not fieldname:
+		return None
+	label = re.search(r"label\s*:\s*(?:__\()?[\"']([^\"']+)[\"']", text)
+	fieldtype = re.search(r"fieldtype\s*:\s*[\"']([^\"']+)[\"']", text)
+	default = re.search(r"default\s*:\s*[\"']([^\"']+)[\"']", text)
+	name = fieldname.group(1)
+	return {
+		"fieldname": name,
+		"label": label.group(1) if label else name.replace("_", " ").title(),
+		"fieldtype": fieldtype.group(1) if fieldtype else "Data",
+		"hidden": bool(re.search(r"\bhidden\s*:\s*(?:1|true)\b", text)),
+		"default": default.group(1) if default else "",
+	}
+
+
+def report_custom_format_method(report_name):
+	"""Python path from a hidden report filter named custom_format."""
+	if not report_name:
+		return None
+	for text in _filter_object_texts(_load_report_script(report_name)):
+		parsed = _parse_js_filter(text)
+		if not parsed:
+			continue
+		if parsed["fieldname"] == "custom_format" and parsed["hidden"] and parsed["default"]:
+			return parsed["default"]
+
+	try:
+		report_doc = frappe.get_doc("Report", report_name)
+		if report_doc.json:
+			for filt in json.loads(report_doc.json).get("filters") or []:
+				if (
+					isinstance(filt, dict)
+					and filt.get("fieldname") == "custom_format"
+					and filt.get("hidden")
+					and filt.get("default")
+				):
+					return filt.get("default")
+	except Exception:
+		return None
+	return None
+
+
+def _allowed_report_method(method):
+	if not method or not re.match(r"^[A-Za-z_][A-Za-z0-9_.]*$", method):
+		return False
+	root = method.split(".", 1)[0]
+	return root in set(frappe.get_installed_apps())
+
+
+def custom_report_attachment(report_name, file_format, filters):
+	"""Call the report's own download builder. file_format is pdf or xlsx."""
+	method = report_custom_format_method(report_name)
+	if not _allowed_report_method(method):
+		frappe.throw(_("This report has no custom format. Add a hidden custom_format filter."))
+	payload = dict(filters or {})
+	payload.pop("custom_format", None)
+	content = frappe.get_attr(method)(report_name, file_format, payload)
+	if not isinstance(content, (bytes, bytearray)):
+		frappe.throw(_("Custom format did not return a file."))
+	return bytes(content)
+
+
+@frappe.whitelist()
+def get_custom_format_method(report_name):
+	return report_custom_format_method(report_name) or ""
 
 
 @frappe.whitelist()
@@ -489,8 +653,8 @@ def get_report_filter_fields(report_name):
 	result = []
 	seen = set()
 
-	def add_field(fn, label=None):
-		if not fn or fn in seen:
+	def add_field(fn, label=None, fieldtype=None, hidden=False):
+		if not fn or fn in seen or hidden or fn == "custom_format":
 			return
 		seen.add(fn)
 		lbl = (label or fn).strip()
@@ -498,6 +662,7 @@ def get_report_filter_fields(report_name):
 			"fieldname": fn,
 			"label": lbl,
 			"display": lbl,
+			"fieldtype": fieldtype or "Data",
 		})
 
 	try:
@@ -505,57 +670,37 @@ def get_report_filter_fields(report_name):
 	except Exception:
 		return []
 
-	# 1. Try JS script file first (for standard and script reports)
-	script_content = ""
-	try:
-		script_data = frappe.desk.query_report.get_script(report_name)
-		script_content = (script_data or {}).get("script") or ""
-	except Exception:
-		pass
-
-	if not script_content and report_doc.module:
-		try:
-			module_path = frappe.get_module_path(report_doc.module)
-			scrubbed1 = frappe.scrub(report_name)
-			scrubbed2 = report_name.lower().replace(" ", "_")
-			scrubbed3 = report_name.lower().replace(" ", "_").replace("&", "and")
-
-			for s in (scrubbed1, scrubbed2, scrubbed3):
-				js_path = os.path.join(module_path, "report", s, f"{s}.js")
-				if os.path.exists(js_path):
-					with open(js_path, "r", encoding="utf-8") as f:
-						script_content = f.read()
-					if script_content:
-						break
-		except Exception:
-			pass
-
+	script_content = _load_report_script(report_name)
 	if script_content:
 		try:
-			filters_match = re.search(r'["\']?filters["\']?\s*:\s*\[', script_content)
-			if filters_match:
-				start_idx = filters_match.start()
-				target_script = script_content[start_idx:]
-			else:
-				target_script = script_content
-
-			fn_matches = re.findall(r'["\']?fieldname["\']?\s*:\s*["\']([^"\']+)["\']', target_script)
-			for fn in fn_matches:
-				lbl_match = re.search(
-					r'["\']?fieldname["\']?\s*:\s*["\']' + re.escape(fn) + r'["\'][^{}]*?["\']?label["\']?\s*:\s*(?:__\()?["\']([^"\']+)["\']',
-					target_script,
-					re.DOTALL
-				)
-				if not lbl_match:
-					lbl_match = re.search(
-						r'["\']?label["\']?\s*:\s*(?:__\()?["\']([^"\']+)["\'][^{}]*?["\']?fieldname["\']?\s*:\s*["\']' + re.escape(fn) + r'["\']',
-						target_script,
-						re.DOTALL
-					)
-				lbl = lbl_match.group(1) if lbl_match else fn.replace("_", " ").title()
-				add_field(fn, lbl)
+			for text in _filter_object_texts(script_content):
+				parsed = _parse_js_filter(text)
+				if parsed:
+					add_field(parsed["fieldname"], parsed["label"], parsed["fieldtype"], parsed["hidden"])
 		except Exception:
 			pass
+
+		if not result:
+			try:
+				filters_match = re.search(r'["\']?filters["\']?\s*:\s*\[', script_content)
+				target_script = script_content[filters_match.start():] if filters_match else script_content
+				fn_matches = re.findall(r'["\']?fieldname["\']?\s*:\s*["\']([^"\']+)["\']', target_script)
+				for fn in fn_matches:
+					lbl_match = re.search(
+						r'["\']?fieldname["\']?\s*:\s*["\']' + re.escape(fn) + r'["\'][^{}]*?["\']?label["\']?\s*:\s*(?:__\()?["\']([^"\']+)["\']',
+						target_script,
+						re.DOTALL,
+					)
+					if not lbl_match:
+						lbl_match = re.search(
+							r'["\']?label["\']?\s*:\s*(?:__\()?["\']([^"\']+)["\'][^{}]*?["\']?fieldname["\']?\s*:\s*["\']' + re.escape(fn) + r'["\']',
+							target_script,
+							re.DOTALL,
+						)
+					lbl = lbl_match.group(1) if lbl_match else fn.replace("_", " ").title()
+					add_field(fn, lbl)
+			except Exception:
+				pass
 
 	# 2. If no JS filters were found, try report.json or get_columns_or_filter_meta
 	if not result:
@@ -564,7 +709,7 @@ def get_report_filter_fields(report_name):
 				json_data = json.loads(report_doc.json)
 				for f in (json_data.get("filters") or []):
 					if isinstance(f, dict) and f.get("fieldname"):
-						add_field(f["fieldname"], f.get("label"))
+						add_field(f["fieldname"], f.get("label"), f.get("fieldtype"), bool(f.get("hidden")))
 			except Exception:
 				pass
 
@@ -572,7 +717,7 @@ def get_report_filter_fields(report_name):
 			meta_filters = report_doc.get_columns_or_filter_meta() or []
 			for f in meta_filters:
 				if isinstance(f, dict) and f.get("fieldname"):
-					add_field(f["fieldname"], f.get("label"))
+					add_field(f["fieldname"], f.get("label"), f.get("fieldtype"), bool(f.get("hidden")))
 		except Exception:
 			pass
 
@@ -614,15 +759,6 @@ def get_all_scheduled_report_filter_fields(reports=None):
 
 	reports_set = set(reports or [])
 
-	if frappe.db.exists("DocType", "Dynamic Auto Email Report"):
-		doc = frappe.get_single("Dynamic Auto Email Report")
-		for row in (doc.get("scheduled_reports") or []):
-			if row.report:
-				reports_set.add(row.report)
-		for r_row in (doc.get("report_filters") or []):
-			if r_row.report:
-				reports_set.add(r_row.report)
-
 	data = {}
 	for r in reports_set:
 		if r:
@@ -637,5 +773,6 @@ def get_scheduled_report_names():
 	Scheduled Reports child table, so the Report Filters table
 	can restrict its report dropdown.
 	"""
-	doc = frappe.get_single("Dynamic Auto Email Report")
-	return list({row.report for row in (doc.get("scheduled_reports") or []) if row.report})
+	if cint(frappe.db.get_value("DocType", "Dynamic Auto Email Report", "issingle")):
+		return []
+	return [name for name in frappe.get_all("Dynamic Auto Email Report", pluck="report") if name]

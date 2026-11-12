@@ -5,3 +5,4 @@ propms.patches.data_population.rename_attendance_settings_to_dynamic_auto_email_
 propms.patches.data_population.populate_data
 propms.patches.data_population.set_legacy_email_settings_pre_due
 propms.patches.data_population.remap_email_setting_payment_terms_template
+propms.patches.data_population.split_dynamic_auto_email_report_single

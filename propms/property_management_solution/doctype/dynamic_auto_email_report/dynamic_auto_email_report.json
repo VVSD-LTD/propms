@@ -1,52 +1,237 @@
 {
  "actions": [],
- "creation": "2026-08-07 11:20:00.000000",
+ "autoname": "naming_series:",
+ "creation": "2026-11-12 16:10:49.450130",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "scheduled_reports_section",
-  "scheduled_reports",
-  "report_filters_section",
-  "report_filters"
+  "section_break_unqx",
+  "naming_series",
+  "details_section",
+  "enabled",
+  "dont_send_if_no_data",
+  "column_break_details",
+  "report",
+  "format",
+  "use_custom_format",
+  "schedule_section",
+  "frequency",
+  "day_of_week",
+  "day_of_month",
+  "column_break_schedule",
+  "send_time",
+  "last_sent_at",
+  "recipients_section",
+  "recipients",
+  "bcc",
+  "column_break_recipients",
+  "cc",
+  "message_section",
+  "subject",
+  "message",
+  "filters_section",
+  "report_filters",
+  "examples_section",
+  "examples",
+  "legacy_schedule"
  ],
  "fields": [
   {
-   "fieldname": "scheduled_reports_section",
+   "default": "DAER-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Series",
+   "options": "DAER-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Enabled"
+  },
+  {
+   "default": "0",
+   "fieldname": "dont_send_if_no_data",
+   "fieldtype": "Check",
+   "label": "Don't Send If No Data"
+  },
+  {
+   "fieldname": "column_break_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "report",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Report",
+   "options": "Report",
+   "reqd": 1
+  },
+  {
+   "default": "PDF",
+   "fieldname": "format",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Format",
+   "options": "PDF\nExcel",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "description": "Send this report's own Excel or PDF download. Shown when the report has a hidden custom_format filter.",
+   "fieldname": "use_custom_format",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Custom Format Attachment"
+  },
+  {
+   "fieldname": "schedule_section",
    "fieldtype": "Section Break",
-   "label": "Dynamic Auto Email Reports",
-   "permlevel": 0
+   "label": "Schedule"
   },
   {
-   "description": "Configure automated email schedules for attendance checkin summary reports.",
-   "fieldname": "scheduled_reports",
-   "fieldtype": "Table",
-   "label": "Scheduled Reports",
-   "options": "Attendance Report Schedule",
-   "permlevel": 0
+   "default": "Daily",
+   "fieldname": "frequency",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Frequency",
+   "options": "Daily\nWeekly\nMonthly",
+   "reqd": 1
   },
   {
-   "fieldname": "report_filters_section",
+   "depends_on": "eval:doc.frequency=='Weekly'",
+   "fieldname": "day_of_week",
+   "fieldtype": "Select",
+   "label": "Day of Week",
+   "mandatory_depends_on": "eval:doc.frequency=='Weekly'",
+   "options": "Monday\nTuesday\nWednesday\nThursday\nFriday\nSaturday\nSunday"
+  },
+  {
+   "depends_on": "eval:doc.frequency=='Monthly'",
+   "fieldname": "day_of_month",
+   "fieldtype": "Int",
+   "label": "Day of Month",
+   "mandatory_depends_on": "eval:doc.frequency=='Monthly'"
+  },
+  {
+   "fieldname": "column_break_schedule",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "08:00:00",
+   "fieldname": "send_time",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Send Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "last_sent_at",
+   "fieldtype": "Datetime",
+   "label": "Last Sent At",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "recipients_section",
    "fieldtype": "Section Break",
-   "label": "Report Filters",
-   "permlevel": 0
+   "label": "Recipients"
   },
   {
-   "description": "Define per-report filter values. Select a report from the Scheduled Reports table above, then choose a filter field and set a value (Jinja expressions supported).",
+   "description": "Comma or newline separated email addresses",
+   "fieldname": "recipients",
+   "fieldtype": "Small Text",
+   "label": "To (Recipients)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_recipients",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Comma or newline separated email addresses",
+   "fieldname": "cc",
+   "fieldtype": "Small Text",
+   "label": "CC"
+  },
+  {
+   "description": "Comma or newline separated email addresses",
+   "fieldname": "bcc",
+   "fieldtype": "Small Text",
+   "label": "BCC"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "message_section",
+   "fieldtype": "Section Break",
+   "label": "Message"
+  },
+  {
+   "description": "Jinja is rendered. Yesterday in words: {{ date(yesterday(), \"dd MMMM yyyy\") }}",
+   "fieldname": "subject",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Subject"
+  },
+  {
+   "description": "Jinja is rendered.",
+   "fieldname": "message",
+   "fieldtype": "Text Editor",
+   "label": "Message"
+  },
+  {
+   "fieldname": "filters_section",
+   "fieldtype": "Section Break",
+   "label": "Filters"
+  },
+  {
    "fieldname": "report_filters",
    "fieldtype": "Table",
    "label": "Report Filters",
-   "options": "Attendance Report Filter",
-   "permlevel": 0
+   "options": "Attendance Report Filter"
+  },
+  {
+   "fieldname": "examples_section",
+   "fieldtype": "Section Break",
+   "label": "Samples"
+  },
+  {
+   "fieldname": "examples",
+   "fieldtype": "HTML",
+   "label": "Samples",
+   "options": "<div style=\"line-height:1.55;\"><h5>Dates</h5><pre>{{ today() }}\n{{ yesterday() }}\n{{ date(today(), \"dd-mm-yyyy\") }}\n{{ date(yesterday(), \"dd MMMM yyyy\") }}\n{{ yesterday() }} 00:00:00\n[\"Viva Empty\", \"Vasta Empty\"]</pre><p>Subject, message, and filter values use these tags. Set Filters writes them for you.</p><h5>Custom format attachment</h5><p>Add a hidden filter named <code>custom_format</code> on the report. Its default is the Python path that builds the file. The Custom Format Attachment box then appears here. Excel uses that download's workbook. PDF uses that download's PDF.</p><pre>{\n  fieldname: \"custom_format\",\n  fieldtype: \"Data\",\n  hidden: 1,\n  default: \"propms.property_management_solution.report.viva_report_export.build_report_file\"\n}</pre></div>"
+  },
+  {
+   "fieldname": "legacy_schedule",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Legacy Schedule",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_unqx",
+   "fieldtype": "Section Break",
+   "hidden": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "issingle": 1,
  "links": [],
- "modified": "2026-08-07 12:31:00.000000",
+ "modified": "2026-11-12 16:21:32.957925",
  "modified_by": "Administrator",
  "module": "Property Management Solution",
  "name": "Dynamic Auto Email Report",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -55,16 +240,17 @@
    "email": 1,
    "print": 1,
    "read": 1,
+   "report": 1,
    "role": "System Manager",
    "share": 1,
    "write": 1
   },
   {
    "create": 1,
-   "delete": 0,
    "email": 1,
    "print": 1,
    "read": 1,
+   "report": 1,
    "role": "HR Manager",
    "share": 1,
    "write": 1
@@ -72,8 +258,10 @@
  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
+ "search_fields": "report,subject",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "report",
  "track_changes": 1
 }
