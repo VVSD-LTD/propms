@@ -88,6 +88,14 @@ frappe.query_reports["VIVA Apartment List"] = {
 			label: __("Lease End Date"),
 			fieldtype: "Date",
 		},
+		{
+			fieldname: "custom_format",
+			label: "Custom Format",
+			fieldtype: "Data",
+			hidden: 1,
+			read_only: 1,
+			default: "propms.property_management_solution.report.viva_report_export.build_report_file",
+		},
 	],
 	onload: function (report) {
 		report.page.add_inner_button(__("Download Excel"), () => viva_download("VIVA Apartment List", "xlsx"));

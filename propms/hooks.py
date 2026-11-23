@@ -185,7 +185,7 @@ scheduler_events = {
         ],
         "00 00 * * *": ["propms.lease_invoice_schedule.make_lease_invoice_schedule"],
         "00 12 * * *": ["propms.lease_invoice.enqueue_lease_invoice_auto_create"],
-        "*/5 * * * *": ["propms.property_management_solution.doctype.attendance_settings.attendance_settings.send_scheduled_reports"],
+        "*/5 * * * *": ["propms.property_management_solution.doctype.dynamic_auto_email_report.dynamic_auto_email_report.send_scheduled_reports"],
         "*/15 * * * *": [
             "propms.property_management_solution.doctype.afritrack_meter_sync.afritrack_meter_sync.scheduled_afritrack_meter_sync"
         ],

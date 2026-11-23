@@ -139,17 +139,24 @@ def download_viva_report(report_name, file_format, filters=None):
 		frappe.throw(frappe._("Not permitted"), frappe.PermissionError)
 	if isinstance(filters, str) and filters:
 		filters = frappe.parse_json(filters)
-	filters = filters or {}
 	file_format = (file_format or "xlsx").lower()
-	if file_format == "pdf":
-		content = get_pdf(_html_for(report_name, filters), {"orientation": "Landscape", "page-size": "A4"})
-		extension = "pdf"
-	else:
-		content = _xlsx_for(report_name, filters)
-		extension = "xlsx"
+	content = build_report_file(report_name, file_format, filters)
+	extension = "pdf" if file_format == "pdf" else "xlsx"
 	frappe.local.response.filename = f"{report_name}.{extension}"
 	frappe.local.response.filecontent = content
 	frappe.local.response.type = "download"
+
+
+def build_report_file(report_name, file_format, filters=None):
+	"""Return the custom Excel or PDF bytes used by Download Excel and Download PDF."""
+	if isinstance(filters, str) and filters:
+		filters = frappe.parse_json(filters)
+	filters = dict(filters or {})
+	filters.pop("custom_format", None)
+	file_format = (file_format or "xlsx").lower()
+	if file_format == "pdf":
+		return get_pdf(_html_for(report_name, filters), {"orientation": "Landscape", "page-size": "A4"})
+	return _xlsx_for(report_name, filters)
 
 
 def _xlsx_for(report_name, filters):
@@ -214,6 +221,18 @@ def _html_for(report_name, filters):
 	return "".join(parts)
 
 
+def _has_narrowing_filter(filters, ignore=()):
+	"""True when a filter would hide rows. Entire Building and All do not."""
+	skip = {"custom_format", *ignore}
+	for key, value in (filters or {}).items():
+		if key in skip or value in (None, [], {}):
+			continue
+		if isinstance(value, str) and value.strip() in ("", "All", "Entire Building"):
+			continue
+		return True
+	return False
+
+
 def _sheets(report_name, filters):
 	if report_name == "VIVA Commercial Occupancy":
 		return _commercial_sheets(filters)
@@ -238,12 +257,18 @@ def _commercial_sheets(filters):
 		COMMERCIAL_STATUSES,
 		"COMMERCIAL RENTED STATUS",
 	)
-	return [detail, _commercial_bar_sheet(rows)]
+	groups = COMMERCIAL_GROUPS
+	if _has_narrowing_filter(filters):
+		groups = tuple(group for group in COMMERCIAL_GROUPS if any(row["property_group"] == group for row in rows))
+	if not groups:
+		return [detail]
+	return [detail, _commercial_bar_sheet(rows, groups)]
 
 
-def _commercial_bar_sheet(rows):
+def _commercial_bar_sheet(rows, groups=None):
+	groups = groups or COMMERCIAL_GROUPS
 	matrix = []
-	for group in COMMERCIAL_GROUPS:
+	for group in groups:
 		matrix.append(
 			{
 				"floor": group,
@@ -264,7 +289,7 @@ def _commercial_bar_sheet(rows):
 		"chart": {
 			"type": "bar",
 			"title": "COMMERCIAL SPACE CHART",
-			"categories": list(COMMERCIAL_GROUPS),
+			"categories": list(groups),
 			"series": [
 				{"name": status, "values": [row[status] for row in matrix]} for status in COMMERCIAL_STATUSES
 			],
@@ -281,9 +306,17 @@ def _residential_sheets(filters):
 		("REDCROSS", "RedCross"),
 		("INVESTOR", "Investor"),
 	)
+	chosen = (filters or {}).get("portfolio")
+	if chosen in (None, "", "Entire Building"):
+		chosen = None
+	narrowed = _has_narrowing_filter(filters)
 	sheets = []
 	for title, portfolio in names:
+		if chosen and portfolio != chosen:
+			continue
 		subset = number_rows([row for row in rows if row["portfolio"] == portfolio])
+		if narrowed and not chosen and not subset:
+			continue
 		sheets.append(
 			_status_sheet(
 				title,
@@ -294,6 +327,8 @@ def _residential_sheets(filters):
 				f"RESIDENTIAL STATUS - {title}",
 			)
 		)
+	if chosen or len(sheets) <= 1:
+		return sheets
 	sheets.append(
 		_status_sheet(
 			"SUMMARY",
@@ -309,7 +344,7 @@ def _residential_sheets(filters):
 
 def _area_sheets(filters):
 	rows = [row for row in area_records() if keep_row(row, filters, AREA_FILTERS)]
-	sheets = []
+	floor = (filters or {}).get("floor")
 	floor_names = {
 		"Warehouse": "BASEMENT",
 		"Ground Floor": "GROUND FLOOR",
@@ -317,53 +352,66 @@ def _area_sheets(filters):
 		"Second Floor": "SECOND FLOOR",
 		"Other": "OTHER",
 	}
-	for group in COMMERCIAL_GROUPS:
-		subset = number_rows([row for row in rows if row["floor"] == group])
-		sheets.append({"title": floor_names[group], "headers": AREA_HEADERS, "rows": subset})
-	sheets.append(
-		{
-			"title": "EMPTY OFFICES",
-			"headers": AREA_HEADERS,
-			"rows": number_rows([row for row in rows if row["occupancy_status"] == "Empty"]),
-		}
-	)
+	if floor and floor != "All":
+		subset = number_rows([row for row in rows if row["floor"] == floor])
+		return [{"title": floor_names.get(floor, floor), "headers": AREA_HEADERS, "rows": subset}]
+	groups = COMMERCIAL_GROUPS
+	narrowed = _has_narrowing_filter(filters)
+	sheets = []
+	chart_groups = []
+	for group in groups:
+		subset = [row for row in rows if row["floor"] == group]
+		if narrowed and not subset:
+			continue
+		chart_groups.append(group)
+		sheets.append({"title": floor_names[group], "headers": AREA_HEADERS, "rows": number_rows(subset)})
+	empty_rows = number_rows([row for row in rows if row["occupancy_status"] == "Empty"])
+	if not narrowed or empty_rows:
+		sheets.append({"title": "EMPTY OFFICES", "headers": AREA_HEADERS, "rows": empty_rows})
 	built = [
 		round(sum((row["builtup_area"] or 0) for row in rows if row["floor"] == group), 2)
-		for group in COMMERCIAL_GROUPS
+		for group in chart_groups
 	]
-	sheets.insert(
-		0,
-		{
-			"title": "AREA CHART",
-			"headers": [("floor", "Floor"), ("builtup_area", "Built Up")],
-			"rows": [
-				{"floor": group, "builtup_area": value} for group, value in zip(COMMERCIAL_GROUPS, built)
-			],
-			"chart_title": "BUILT UP AREA BY FLOOR",
-			"chart": {
-				"type": "bar",
-				"title": "BUILT UP AREA BY FLOOR",
-				"categories": list(COMMERCIAL_GROUPS),
-				"series": [{"name": "Built Up", "values": built}],
+	if chart_groups:
+		sheets.insert(
+			0,
+			{
+				"title": "AREA CHART",
+				"headers": [("floor", "Floor"), ("builtup_area", "Built Up")],
+				"rows": [
+					{"floor": group, "builtup_area": value} for group, value in zip(chart_groups, built)
+				],
+				"chart_title": "BUILT UP AREA BY FLOOR",
+				"chart": {
+					"type": "bar",
+					"title": "BUILT UP AREA BY FLOOR",
+					"categories": list(chart_groups),
+					"series": [{"name": "Built Up", "values": built}],
+				},
+				"summary": [],
 			},
-			"summary": [],
-		},
-	)
+		)
 	return sheets
 
 
 def _contact_sheets(filters):
+	chosen = (filters or {}).get("portfolio")
+	narrowed = _has_narrowing_filter(filters, ignore=("portfolio",))
 	sheets = []
-	commercial = number_rows(
-		[row for row in contact_records("Commercial") if keep_row(row, filters, COMMERCIAL_FILTERS)]
-	)
-	sheets.append({"title": "COMMERCIAL", "headers": CONTACT_COMMERCIAL_HEADERS, "rows": commercial})
+	if not chosen or chosen == "Commercial":
+		commercial = number_rows(
+			[row for row in contact_records("Commercial") if keep_row(row, filters, COMMERCIAL_FILTERS)]
+		)
+		if chosen == "Commercial" or not narrowed or commercial:
+			sheets.append({"title": "COMMERCIAL", "headers": CONTACT_COMMERCIAL_HEADERS, "rows": commercial})
 	for title, portfolio in (
 		("VIRGIN PLAZA", "Virgin Plaza"),
 		("VASTA", "Vasta"),
 		("REDCROSS", "RedCross"),
 		("INVESTOR", "Investor"),
 	):
+		if chosen and chosen != portfolio:
+			continue
 		rows = number_rows(
 			[
 				row
@@ -371,6 +419,8 @@ def _contact_sheets(filters):
 				if keep_row(row, filters, CONTACT_RESIDENTIAL_FILTERS)
 			]
 		)
+		if not chosen and narrowed and not rows:
+			continue
 		headers = CONTACT_RESIDENTIAL_HEADERS
 		if portfolio != "Investor":
 			headers = [item for item in headers if item[0] != "owner_email"]
@@ -380,28 +430,35 @@ def _contact_sheets(filters):
 
 def _apartment_sheets(filters):
 	rows = [row for row in apartment_records() if keep_row(row, filters, APARTMENT_FILTERS)]
+	view = (filters or {}).get("view")
+	view_match = {
+		"Tower A": ("tower", "Tower A"),
+		"Tower B": ("tower", "Tower B"),
+		"Virgin Plaza": ("portfolio", "Virgin Plaza"),
+		"Vasta": ("portfolio", "Vasta"),
+		"RedCross": ("portfolio", "RedCross"),
+		"Investor": ("portfolio", "Investor"),
+	}
+	if view in view_match:
+		key, value = view_match[view]
+		rows = [row for row in rows if row.get(key) == value]
+	narrowed = _has_narrowing_filter(filters)
 	sheets = []
-	for title, tower in (("TOWER A", "Tower A"), ("TOWER B", "Tower B")):
-		sheets.append(
-			{
-				"title": title,
-				"headers": APARTMENT_HEADERS,
-				"rows": [row for row in rows if row["tower"] == tower],
-			}
-		)
-	for title, portfolio in (
-		("VIRGIN", "Virgin Plaza"),
-		("VASTA", "Vasta"),
-		("REDCROSS", "RedCross"),
-		("INVESTOR", "Investor"),
-	):
-		sheets.append(
-			{
-				"title": title,
-				"headers": APARTMENT_HEADERS,
-				"rows": [row for row in rows if row["portfolio"] == portfolio],
-			}
-		)
+	catalog = (
+		("TOWER A", "tower", "Tower A"),
+		("TOWER B", "tower", "Tower B"),
+		("VIRGIN", "portfolio", "Virgin Plaza"),
+		("VASTA", "portfolio", "Vasta"),
+		("REDCROSS", "portfolio", "RedCross"),
+		("INVESTOR", "portfolio", "Investor"),
+	)
+	for title, key, value in catalog:
+		if view in view_match and view_match[view] != (key, value):
+			continue
+		subset = [row for row in rows if row.get(key) == value]
+		if narrowed and not view and not subset:
+			continue
+		sheets.append({"title": title, "headers": APARTMENT_HEADERS, "rows": subset})
 	return sheets
 
 

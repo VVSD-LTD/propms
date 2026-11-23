@@ -1,6 +1,7 @@
 [pre_model_sync]
 propms.patches.v15_0.rename_pos_amount_service_to_mobile_pos_service
 propms.patches.v15_0.convert_afritrack_meter_sync_to_single_pre
+propms.patches.data_population.rename_attendance_settings_to_dynamic_auto_email_report
 
 [post_model_sync]
 propms.patches.data_population.populate_data
@@ -28,3 +29,4 @@ propms.patches.v15_0.rename_pos_amount_service_handler_other
 propms.patches.v15_0.migrate_mobile_pos_service_hub
 propms.patches.v15_0.convert_afritrack_meter_sync_to_single
 propms.patches.v15_0.seed_staff_id_fee_item
+propms.patches.data_population.split_dynamic_auto_email_report_single

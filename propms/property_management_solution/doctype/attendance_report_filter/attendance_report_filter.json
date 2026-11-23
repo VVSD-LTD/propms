@@ -6,24 +6,13 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "report",
   "fieldname",
   "raw_fieldname",
   "value"
  ],
  "fields": [
   {
-   "description": "Select from reports configured in the Scheduled Reports table above",
-   "fieldname": "report",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Report",
-   "options": "Report",
-   "reqd": 1,
-   "permlevel": 0
-  },
-  {
-   "description": "Select a filter field from the chosen report",
+   "description": "Select a filter field from this document's report",
    "fieldname": "fieldname",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -39,7 +28,7 @@
    "permlevel": 0
   },
   {
-   "description": "Supports Jinja rendering, e.g. {{ today() }} 07:00:00",
+   "description": "Jinja is supported. Yesterday: {{ yesterday() }}. A format: {{ date(yesterday(), \"dd MMMM yyyy\") }}. With a time: {{ yesterday() }} 00:00:00. Multi-select: [\"Status A\", \"Status B\"].",
    "fieldname": "value",
    "fieldtype": "Data",
    "in_list_view": 1,

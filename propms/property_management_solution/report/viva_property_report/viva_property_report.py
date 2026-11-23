@@ -1,5 +1,7 @@
 import frappe
 
+from propms.property_management_solution.report.viva_report_data import filter_values
+
 
 def execute(filters=None):
     columns = get_columns(filters)
@@ -130,6 +132,11 @@ def get_data(filters):
     #     return get_empty_properties_data(filters, property_type)
 
 
+def sql_in_values(values):
+    """Quote filter values for an SQL IN list."""
+    return ", ".join("'" + frappe.db.escape(str(value))[1:-1] + "'" for value in values)
+
+
 def get_active_properties_data(filters, property_type):
     """Query for active properties with leases"""
     from_date = filters.get("from_date")
@@ -139,13 +146,13 @@ def get_active_properties_data(filters, property_type):
     if property_type and property_type != "All":
         conditions.append(f"p.type = '{property_type}'")
 
-    if filters.get("property_status"):
-        statuses = [f'"{status}"' for status in filters.get('property_status')]
-        conditions.append(f"p.status IN ({', '.join(statuses)})")
+    statuses = filter_values(filters, "property_status")
+    if statuses:
+        conditions.append(f"p.status IN ({sql_in_values(statuses)})")
 
-    if filters.get("marketing_status"):
-        marketing_statuses = [f'"{status}"' for status in filters.get('marketing_status')]
-        conditions.append(f"p.marketing_status IN ({', '.join(marketing_statuses)})")
+    marketing_statuses = filter_values(filters, "marketing_status")
+    if marketing_statuses:
+        conditions.append(f"p.marketing_status IN ({sql_in_values(marketing_statuses)})")
 
     where_clause = f"AND {' AND '.join(conditions)}" if conditions else ""
 
