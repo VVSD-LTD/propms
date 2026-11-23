@@ -76,14 +76,33 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
         return {"status": "error", "message": "invoice_name is required"}
 
     inv = _check_invoice_access(invoice_name)
-    outstanding = flt(inv.outstanding_amount)
+    from propms.api.v1.payments.invoice_amount import (
+        invoice_due_breakdown,
+        money,
+        payment_limits,
+        resolve_invoice_pay_amount,
+        split_payment_toward_principal_and_penalty,
+    )
+    from frappe.utils import cint
 
-    if outstanding <= 0:
-        return {"status": "error", "message": f"Invoice {inv.name} is already fully paid."}
-
-    pay_amount = flt(amount_val) if (amount_val and flt(amount_val) > 0) else outstanding
-    if pay_amount <= 0 or pay_amount > outstanding:
-        return {"status": "error", "message": f"Payment amount must be between 1 and {outstanding:,.2f}"}
+    due = invoice_due_breakdown(inv.name)
+    if cint(due.get("outstanding_withholding")) and money(due.get("principal_outstanding")) > 0:
+        return {
+            "status": "error",
+            "message": _(
+                "This balance is marked as withholding (W/H). "
+                "It cannot be paid in the app — contact management."
+            ),
+            "mobile_status": "withholding",
+            "allow_payment": 0,
+        }
+    outstanding = due["total_amount_due"]
+    pay_amount, amount_err = resolve_invoice_pay_amount(
+        amount_val, outstanding, invoice_name=inv.name
+    )
+    if amount_err:
+        return {"status": "error", "message": str(amount_err)}
+    pay_split = split_payment_toward_principal_and_penalty(pay_amount, inv.name)
 
     # Normalize phone
     clean_phone = _normalize_phone_number(phone_number)
@@ -130,10 +149,31 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
             "amount": pay_amount,
             "method": payment_method,
             "phone": clean_phone,
+            "principal_outstanding": due["principal_outstanding"],
+            "penalty_amount_due": due["penalty_amount_due"],
+            "total_amount_due": due["total_amount_due"],
+            "to_principal": pay_split["to_principal"],
+            "to_penalty": pay_split["to_penalty"],
+            "available_to_pay_at_initiate": payment_limits(inv.name).get("available_to_pay"),
+            "is_partial": 1 if money(pay_amount) < outstanding else 0,
         }),
     })
     txn.insert(ignore_permissions=True)
     frappe.db.commit()
+
+    limits_after_reserve = payment_limits(inv.name)
+
+    def _invoice_pay_success_extra():
+        return {
+            "is_partial": 1 if money(pay_amount) < outstanding else 0,
+            "outstanding_before": due["principal_outstanding"],
+            "penalty_before": due["penalty_amount_due"],
+            "total_amount_due": due["total_amount_due"],
+            "principal_amount": pay_split["to_principal"],
+            "penalty_amount": pay_split["to_penalty"],
+            "remaining_after_payment": money(max(0.0, outstanding - money(pay_amount))),
+            "payment_limits": limits_after_reserve,
+        }
 
     # 1. Step 1: Create Order with Selcom
     name_parts = (buyer_name or "Viva Tenant").strip().split(" ", 1)
@@ -261,7 +301,7 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
         if wallet_result in ("SUCCESS", "PENDING", "000") or wallet_code in ("000", "200"):
             txn.save(ignore_permissions=True)
             frappe.db.commit()
-            return {
+            out = {
                 "status": "success",
                 "message": f"USSD PIN prompt sent to {clean_phone}. Please enter your PIN on your phone to complete payment.",
                 "order_id": order_id,
@@ -273,6 +313,8 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
                 "phone_number": clean_phone,
                 "action": "WAIT_FOR_USSD_PIN",
             }
+            out.update(_invoice_pay_success_extra())
+            return out
         else:
             err = wallet_res.get("message") or "Failed to trigger USSD push on mobile wallet"
             txn.error_message = err
@@ -288,7 +330,7 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
     elif payment_method in ("CARD", "HOSTED"):
         txn.save(ignore_permissions=True)
         frappe.db.commit()
-        return {
+        out = {
             "status": "success",
             "message": "Payment session initialized. Please complete payment on the secure gateway.",
             "order_id": order_id,
@@ -300,6 +342,8 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
             "gateway_url": gateway_url,
             "action": "OPEN_WEBVIEW",
         }
+        out.update(_invoice_pay_success_extra())
+        return out
 
     elif payment_method == "QR_CODE":
         # TanQR EMVCo raw string from Selcom
@@ -307,7 +351,7 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
         txn.qr_data = qr_string
         txn.save(ignore_permissions=True)
         frappe.db.commit()
-        return {
+        out = {
             "status": "success",
             "message": "Dynamic TanQR code generated. Scan with your banking app or M-Pesa.",
             "order_id": order_id,
@@ -321,11 +365,13 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
             "gateway_url": gateway_url,
             "action": "DISPLAY_QR",
         }
+        out.update(_invoice_pay_success_extra())
+        return out
 
     txn.save(ignore_permissions=True)
     frappe.db.commit()
 
-    return {
+    out = {
         "status": "success",
         "order_id": order_id,
         "transaction_id": txn.name,
@@ -334,6 +380,8 @@ def initiate_payment(invoice_name=None, amount=None, payment_method="MOBILE_MONE
         "currency": inv.currency or "TZS",
         "gateway_url": gateway_url,
     }
+    out.update(_invoice_pay_success_extra())
+    return out
 
 
 @frappe.whitelist(methods=["GET", "POST"])
@@ -376,17 +424,24 @@ def get_payment_status(order_id=None, transaction_id=None):
         status_res = client.get("/v1/checkout/order-status", {"order_id": txn.order_id})
         data = status_res.get("data")
         payment_status = None
+        # Selcom puts transid inside data[0], not on the top-level payload
+        selcom_transid = None
         if isinstance(data, list) and len(data) > 0:
-            payment_status = data[0].get("payment_status") or data[0].get("order_status")
+            row0 = data[0] or {}
+            payment_status = row0.get("payment_status") or row0.get("order_status")
+            selcom_transid = row0.get("transid") or row0.get("reference")
         elif isinstance(data, dict):
             payment_status = data.get("payment_status") or data.get("order_status")
+            selcom_transid = data.get("transid") or data.get("reference")
+        if not selcom_transid:
+            selcom_transid = status_res.get("transid") or status_res.get("reference")
 
         if payment_status in ("COMPLETED", "SUCCESS", "PAID"):
             # Trigger reconciliation if not yet reconciled
             from propms.api.v1.payments.webhook import process_successful_payment
             process_successful_payment(
                 order_id=txn.order_id,
-                selcom_ref=status_res.get("transid") or txn.order_id,
+                selcom_ref=selcom_transid or txn.order_id,
                 amount=txn.amount,
                 raw_payload=status_res,
             )
@@ -628,12 +683,21 @@ def pay_with_stored_card(invoice_name=None, card_token=None, amount=None, cvv=No
         contact_mobile = None
     elif is_si:
         inv = _check_invoice_access(candidate)
-        outstanding = flt(inv.outstanding_amount)
-        if outstanding <= 0:
-            return {"status": "error", "message": f"Invoice {inv.name} is already fully paid."}
-        pay_amount = flt(amount_val) if (amount_val and flt(amount_val) > 0) else outstanding
-        if pay_amount <= 0 or pay_amount > outstanding:
-            return {"status": "error", "message": f"Payment amount must be between 1 and {outstanding:,.2f}"}
+        from propms.api.v1.payments.invoice_amount import (
+            invoice_due_breakdown,
+            money,
+            resolve_invoice_pay_amount,
+            split_payment_toward_principal_and_penalty,
+        )
+
+        due = invoice_due_breakdown(inv.name)
+        outstanding = due["total_amount_due"]
+        pay_amount, amount_err = resolve_invoice_pay_amount(
+            amount_val, outstanding, invoice_name=inv.name
+        )
+        if amount_err:
+            return {"status": "error", "message": str(amount_err)}
+        pay_split = split_payment_toward_principal_and_penalty(pay_amount, inv.name)
 
         ref_doctype = "Sales Invoice"
         ref_name = inv.name
@@ -642,7 +706,15 @@ def pay_with_stored_card(invoice_name=None, card_token=None, amount=None, cvv=No
         currency = inv.currency or "TZS"
         buyer_remarks = f"Invoice {inv.name}"
         sales_invoice_link = inv.name
-        extra_raw = {"invoice": inv.name}
+        extra_raw = {
+            "invoice": inv.name,
+            "principal_outstanding": due["principal_outstanding"],
+            "penalty_amount_due": due["penalty_amount_due"],
+            "total_amount_due": due["total_amount_due"],
+            "to_principal": pay_split["to_principal"],
+            "to_penalty": pay_split["to_penalty"],
+            "is_partial": 1 if money(pay_amount) < outstanding else 0,
+        }
         contact_mobile = inv.contact_mobile
     else:
         return {"status": "error", "message": f"Sales Invoice {candidate} not found."}

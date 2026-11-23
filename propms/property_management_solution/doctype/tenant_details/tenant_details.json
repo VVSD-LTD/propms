@@ -10,7 +10,6 @@
   "full_name",
   "user_email",
   "user_password",
-  "app_use_terms_and_conditions",
   "is_first_login",
   "user"
  ],
@@ -54,18 +53,11 @@
   {
    "columns": 1,
    "default": "0",
-   "fieldname": "app_use_terms_and_conditions",
-   "fieldtype": "Check",
-   "in_list_view": 1,
-   "label": "App Use Terms and Conditions"
-  },
-  {
-   "columns": 1,
-   "default": "0",
    "fieldname": "is_first_login",
    "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Is First Login"
+   "label": "Is First Login",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

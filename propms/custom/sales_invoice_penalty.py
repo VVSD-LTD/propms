@@ -228,6 +228,43 @@ def assert_can_create_penalty_invoice(source, settings):
         frappe.throw(_("This invoice has no penalty amount to bill"))
 
 
+def find_source_invoice_for_penalty_si(penalty_invoice_name):
+    """Return the principal Sales Invoice that links to this penalty SI."""
+    if not penalty_invoice_name:
+        return None
+    return frappe.db.get_value(
+        "Sales Invoice", {"penalty_invoice": penalty_invoice_name}, "name"
+    )
+
+
+def sync_penalty_paid_flag(source_invoice_name=None, penalty_invoice_name=None):
+    """Ensure ``penalty_paid`` is ticked after the penalty SI is fully cleared.
+
+    Does **not** untick desk/manual ``penalty_paid`` (staff use that to authorize
+    Create Penalty Invoice). Mobile status ignores this flag when a penalty SI
+    still has outstanding — see ``invoice_due_breakdown``.
+    """
+    if not source_invoice_name and penalty_invoice_name:
+        source_invoice_name = find_source_invoice_for_penalty_si(penalty_invoice_name)
+    if not source_invoice_name or not frappe.db.exists("Sales Invoice", source_invoice_name):
+        return None
+
+    source = frappe.get_doc("Sales Invoice", source_invoice_name)
+    pen_name = (source.get("penalty_invoice") or penalty_invoice_name or "").strip()
+    if pen_name and frappe.db.exists("Sales Invoice", pen_name):
+        psi = frappe.db.get_value(
+            "Sales Invoice",
+            pen_name,
+            ["docstatus", "outstanding_amount"],
+            as_dict=True,
+        ) or {}
+        if cint(psi.get("docstatus")) == 1 and flt(psi.get("outstanding_amount")) <= 0:
+            if not cint(source.penalty_paid):
+                source.db_set("penalty_paid", 1, update_modified=True)
+            return 1
+    return cint(source.penalty_paid)
+
+
 def penalty_invoice_tax_template(source):
     """Default Sales Taxes and Charges Template for the company, else the source invoice."""
     company = source.get("company")
@@ -292,12 +329,22 @@ def penalty_invoice_payload(source, settings):
     return payload
 
 
+def _ensure_penalty_item_non_stock(item_code):
+    """Penalty reimbursement must not require warehouse qty."""
+    if not item_code or not frappe.db.exists("Item", item_code):
+        return
+    if cint(frappe.db.get_value("Item", item_code, "is_stock_item")):
+        frappe.db.set_value("Item", item_code, "is_stock_item", 0, update_modified=False)
+
+
 @frappe.whitelist()
 def create_penalty_invoice(sales_invoice):
     """Create a draft Sales Invoice for accrued penalty and store its name."""
     source = frappe.get_doc("Sales Invoice", sales_invoice)
     settings = frappe.get_single("Sales Invoice Penalty Settings")
     assert_can_create_penalty_invoice(source, settings)
+
+    _ensure_penalty_item_non_stock(settings.get("penalty_item"))
 
     payload = penalty_invoice_payload(source, settings)
     if not payload.get("cost_center"):
@@ -306,6 +353,7 @@ def create_penalty_invoice(sales_invoice):
         payload["items"][0]["cost_center"] = company_cost_center
 
     invoice = frappe.get_doc(payload)
+    invoice.update_stock = 0
     if invoice.get("taxes_and_charges"):
         invoice.append_taxes_from_master()
     invoice.calculate_taxes_and_totals()

@@ -3,7 +3,7 @@ frappe.ui.form.on('Sales Invoice', {
 		// Do NOT autofill on refresh — clearing/setting fields marks the form dirty ("Not Saved")
 		propms_electricity_topup.refresh(frm);
 
-		// Penalty invoice button (from version-15)
+		// Penalty invoice button (desk / manual flow unchanged)
 		if (frm.doc.docstatus === 1 && cint(frm.doc.penalty_paid) && !frm.doc.penalty_invoice) {
 			frm.add_custom_button(__('Create Penalty Invoice'), function() {
 				frappe.confirm(

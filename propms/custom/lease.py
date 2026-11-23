@@ -269,6 +269,7 @@ def lease_before_insert(doc, method=None):
             )
         )
     for row in _get_tenant_detail_rows(doc):
+        _mark_new_tenant_first_login_done(row)
         if not row.user_email:
             continue
 
@@ -293,6 +294,29 @@ def lease_before_insert(doc, method=None):
             )
 
 
+def _first_login_disabled():
+    """True when Mobile App Settings is not forcing the first-login password screen."""
+    try:
+        if not frappe.db.exists("DocType", "Mobile App Settings"):
+            return True
+        if not frappe.get_meta("Mobile App Settings").has_field("enforce_first_login"):
+            return True
+        return not bool(frappe.utils.cint(frappe.db.get_single_value("Mobile App Settings", "enforce_first_login")))
+    except Exception:
+        return True
+
+
+def _mark_new_tenant_first_login_done(row):
+    """While first login is disabled, new Mobile VIVA tenant rows are already checked."""
+    if not _first_login_disabled():
+        return
+    is_new_row = bool(row.get("__islocal")) or not row.get("name") or not frappe.db.exists(
+        "Tenant Details", row.name
+    )
+    if is_new_row:
+        row.is_first_login = 1
+
+
 def lease_validate(doc, method=None):
     """Validate lease tenant rows.
 
@@ -308,6 +332,7 @@ def lease_validate(doc, method=None):
             )
         )
     for row in _get_tenant_detail_rows(doc):
+        _mark_new_tenant_first_login_done(row)
         if not row.user_email:
             continue
 

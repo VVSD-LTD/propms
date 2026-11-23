@@ -109,7 +109,6 @@ def execute():
 				"full_name": FULL_NAME,
 				"user_email": EMAIL,
 				"user_password": PASSWORD,
-				"app_use_terms_and_conditions": 1,
 				"is_first_login": 0,
 				"user": EMAIL,
 			},

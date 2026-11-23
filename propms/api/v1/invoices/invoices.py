@@ -211,7 +211,12 @@ def get_tenant_invoices(status="all", lease=None, page=1, page_length=20):
             si.currency,
             si.due_date,
             si.outstanding_amount,
-            si.grand_total
+            si.grand_total,
+            IFNULL(si.outstanding_penalty_amount, 0) AS outstanding_penalty_amount,
+            IFNULL(si.total_penalty_amount, 0) AS total_penalty_amount,
+            IFNULL(si.penalty_paid, 0) AS penalty_paid,
+            IFNULL(si.outstanding_withholding, 0) AS outstanding_withholding,
+            si.penalty_invoice
         FROM `tabSales Invoice` si
         WHERE {' AND '.join(where_conditions)}
     """
@@ -244,12 +249,66 @@ def get_tenant_invoices(status="all", lease=None, page=1, page_length=20):
 
     status_lower = (status or "all").strip().lower()
     if status_lower in ("outstanding", "pending", "unpaid"):
-        filter_conditions.append("si.outstanding_amount > 0 AND si.status != 'Paid'")
+        filter_conditions.append(
+            "si.outstanding_amount > 0 AND si.status != 'Paid' AND IFNULL(si.outstanding_withholding, 0) = 0"
+        )
     elif status_lower == "overdue":
-        filter_conditions.append("si.outstanding_amount > 0 AND si.status != 'Paid' AND si.due_date < %s")
+        filter_conditions.append(
+            "si.outstanding_amount > 0 AND si.status != 'Paid' AND IFNULL(si.outstanding_withholding, 0) = 0 AND si.due_date < %s"
+        )
         filter_params.append(today_date)
+    elif status_lower in ("wh", "withholding", "w/h"):
+        filter_conditions.append("si.outstanding_amount > 0 AND IFNULL(si.outstanding_withholding, 0) = 1")
+    elif status_lower in ("paid_penalty_pending", "penalty_pending"):
+        # Principal cleared; unpaid penalty SI or accrued not yet waived/billed
+        filter_conditions.append(
+            """
+            si.outstanding_amount <= 0
+            AND (
+                (
+                    IFNULL(si.penalty_invoice, '') != ''
+                    AND EXISTS (
+                        SELECT 1 FROM `tabSales Invoice` psi
+                        WHERE psi.name = si.penalty_invoice
+                          AND psi.docstatus = 1
+                          AND psi.outstanding_amount > 0
+                    )
+                )
+                OR (
+                    IFNULL(si.penalty_invoice, '') = ''
+                    AND IFNULL(si.penalty_paid, 0) = 0
+                    AND (
+                        IFNULL(si.outstanding_penalty_amount, 0) > 0
+                        OR IFNULL(si.total_penalty_amount, 0) > 0
+                    )
+                )
+            )
+            """
+        )
     elif status_lower == "paid":
-        filter_conditions.append("(si.status = 'Paid' OR si.outstanding_amount <= 0)")
+        # Fully settled: principal clear and no open penalty left
+        filter_conditions.append(
+            """
+            si.outstanding_amount <= 0
+            AND NOT (
+                IFNULL(si.penalty_invoice, '') != ''
+                AND EXISTS (
+                    SELECT 1 FROM `tabSales Invoice` psi
+                    WHERE psi.name = si.penalty_invoice
+                      AND psi.docstatus = 1
+                      AND psi.outstanding_amount > 0
+                )
+            )
+            AND NOT (
+                IFNULL(si.penalty_invoice, '') = ''
+                AND IFNULL(si.penalty_paid, 0) = 0
+                AND (
+                    IFNULL(si.outstanding_penalty_amount, 0) > 0
+                    OR IFNULL(si.total_penalty_amount, 0) > 0
+                )
+            )
+            """
+        )
 
     # Count filtered records
     count_sql = f"SELECT COUNT(*) FROM `tabSales Invoice` si WHERE {' AND '.join(filter_conditions)}"
@@ -273,9 +332,17 @@ def get_tenant_invoices(status="all", lease=None, page=1, page_length=20):
             si.due_date,
             si.grand_total,
             si.outstanding_amount,
+            IFNULL(si.outstanding_penalty_amount, 0) AS outstanding_penalty_amount,
+            IFNULL(si.total_penalty_amount, 0) AS total_penalty_amount,
+            IFNULL(si.penalty_paid, 0) AS penalty_paid,
+            IFNULL(si.outstanding_withholding, 0) AS outstanding_withholding,
+            si.outstanding_withholding_date,
+            si.penalty_invoice,
             si.currency,
             si.status,
-            si.is_pos
+            si.is_pos,
+            si.docstatus,
+            si.is_return
         FROM `tabSales Invoice` si
         LEFT JOIN `tabLease` l ON l.name = COALESCE(NULLIF(si.lease, ''), si.lease_name)
         WHERE {' AND '.join(filter_conditions)}
@@ -302,19 +369,17 @@ def get_tenant_invoices(status="all", lease=None, page=1, page_length=20):
         for it in items_rows:
             items_by_invoice.setdefault(it["parent"], []).append(it["item_name"] or it["description"] or "")
 
+    from propms.api.v1.payments.invoice_amount import (
+        compute_mobile_invoice_status,
+        payment_limits,
+    )
+
     invoices_list = []
     for r in rows:
         due_d = getdate(r["due_date"]) if r.get("due_date") else None
         out_amt = flt(r.get("outstanding_amount"))
         is_ovd = bool(out_amt > 0 and due_d and due_d < today_date)
         days_ovd = date_diff(today_date, due_d) if is_ovd else 0
-
-        # Normalise status display
-        display_status = r["status"]
-        if is_ovd and r["status"] != "Paid":
-            display_status = "Overdue"
-        elif out_amt <= 0:
-            display_status = "Paid"
 
         # Resolve apartment/unit name from lease, or from cost center if lease is empty
         apartment_name = (
@@ -329,6 +394,21 @@ def get_tenant_invoices(status="all", lease=None, page=1, page_length=20):
         item_names = items_by_invoice.get(r["name"], [])
         summary_str = ", ".join(item_names[:3]) + ("..." if len(item_names) > 3 else "")
 
+        limits = payment_limits(r["name"], outstanding=out_amt)
+        mobile = compute_mobile_invoice_status(
+            principal_outstanding=limits.get("principal_outstanding"),
+            penalty_amount_due=limits.get("penalty_amount_due"),
+            grand_total=r.get("grand_total"),
+            due_date=r.get("due_date"),
+            outstanding_withholding=r.get("outstanding_withholding"),
+            docstatus=r.get("docstatus"),
+            is_return=r.get("is_return"),
+            today_date=today_date,
+        )
+        # WH is not "overdue" for Flutter chips even if past due
+        is_wh = cint(r.get("outstanding_withholding")) and out_amt > 0
+        display_overdue = bool(is_ovd and not is_wh)
+
         invoices_list.append({
             "name": r["name"],
             "lease": r.get("lease"),
@@ -339,11 +419,29 @@ def get_tenant_invoices(status="all", lease=None, page=1, page_length=20):
             "due_date": str(r.get("due_date") or ""),
             "grand_total": flt(r.get("grand_total"), 2),
             "outstanding_amount": flt(out_amt, 2),
+            "outstanding_penalty_amount": flt(r.get("outstanding_penalty_amount"), 2),
+            "total_penalty_amount": flt(r.get("total_penalty_amount"), 2),
+            "penalty_amount_due": limits.get("penalty_amount_due"),
+            "penalty_paid": cint(limits.get("penalty_paid")),
+            "penalty_invoice": r.get("penalty_invoice") or None,
+            "outstanding_withholding": cint(r.get("outstanding_withholding")),
+            "outstanding_withholding_date": str(r.get("outstanding_withholding_date") or ""),
+            "principal_outstanding": limits.get("principal_outstanding"),
+            "total_amount_due": limits.get("total_amount_due"),
+            "allow_partial_payment": limits["allow_partial_payment"],
+            "allow_payment": limits.get("allow_payment", 1),
+            "min_payment_amount": limits["min_payment_amount"],
+            "max_payment_amount": limits["max_payment_amount"],
+            "available_to_pay": limits["available_to_pay"],
+            "open_payment_reserved": limits["open_payment_reserved"],
             "currency": r.get("currency") or "TZS",
-            "status": display_status,
+            "mobile_status": mobile["mobile_status"],
+            "mobile_status_label": mobile["mobile_status_label"],
+            "status": mobile["mobile_status_label"],
+            "erp_status": r.get("status"),
             "is_pos": bool(r.get("is_pos")),
-            "is_overdue": is_ovd,
-            "days_overdue": days_ovd,
+            "is_overdue": display_overdue,
+            "days_overdue": days_ovd if display_overdue else 0,
             "items_summary": summary_str or "Rent / Service Charge",
             "pdf_url": f"/api/method/propms.api.v1.invoices.invoices.download_invoice_pdf?invoice_name={r['name']}",
         })
@@ -428,12 +526,17 @@ def get_invoice_details(invoice_name=None):
         as_dict=True,
     )
     for p in pe_references:
+        pe_name = p["name"]
         payments_history.append({
-            "payment_entry": p["name"],
+            "payment_entry": pe_name,
             "posting_date": str(p["posting_date"]),
             "mode_of_payment": p.get("mode_of_payment") or "Direct Payment",
             "reference_no": p.get("reference_no") or "",
             "allocated_amount": flt(p.get("allocated_amount"), 2),
+            "receipt_pdf_url": (
+                f"/api/method/propms.api.v1.invoices.invoices.download_receipt_pdf"
+                f"?payment_entry_name={pe_name}&invoice_name={invoice_name}"
+            ),
         })
 
     # POS payments if any
@@ -445,10 +548,42 @@ def get_invoice_details(invoice_name=None):
                 "mode_of_payment": pay.mode_of_payment,
                 "reference_no": "",
                 "allocated_amount": flt(pay.amount, 2),
+                "receipt_pdf_url": None,
             })
 
     lease_ref = inv.get("lease") or inv.get("lease_name")
     property_name = frappe.db.get_value("Lease", lease_ref, "property") if lease_ref else None
+
+    from propms.api.v1.payments.invoice_amount import (
+        compute_mobile_invoice_status,
+        payment_limits,
+    )
+
+    limits = payment_limits(inv.name, outstanding=out_amt)
+    mobile = compute_mobile_invoice_status(
+        principal_outstanding=limits.get("principal_outstanding"),
+        penalty_amount_due=limits.get("penalty_amount_due"),
+        grand_total=inv.grand_total,
+        due_date=inv.due_date,
+        outstanding_withholding=getattr(inv, "outstanding_withholding", 0),
+        docstatus=inv.docstatus,
+        is_return=getattr(inv, "is_return", 0),
+        today_date=today_date,
+    )
+    is_wh = cint(getattr(inv, "outstanding_withholding", 0)) and out_amt > 0
+    display_overdue = bool(is_ovd and not is_wh)
+
+    penalty_rows = []
+    for row in getattr(inv, "sales_invoice_penalty_details", None) or []:
+        penalty_rows.append(
+            {
+                "date": str(row.date or ""),
+                "outstanding_amount": flt(row.outstanding_amount, 2),
+                "amount": flt(row.amount, 2),
+                "percent": flt(row.percent, 2),
+                "currency": row.currency or inv.currency or "TZS",
+            }
+        )
 
     return {
         "status": "success",
@@ -466,9 +601,29 @@ def get_invoice_details(invoice_name=None):
             "total_taxes_and_charges": flt(inv.total_taxes_and_charges, 2),
             "grand_total": flt(inv.grand_total, 2),
             "outstanding_amount": flt(out_amt, 2),
-            "status": "Overdue" if is_ovd else ("Paid" if out_amt <= 0 else inv.status),
-            "is_overdue": is_ovd,
-            "days_overdue": days_ovd,
+            "outstanding_penalty_amount": flt(getattr(inv, "outstanding_penalty_amount", 0), 2),
+            "total_penalty_amount": flt(getattr(inv, "total_penalty_amount", 0), 2),
+            "penalty_amount_due": limits.get("penalty_amount_due"),
+            "penalty_paid": cint(limits.get("penalty_paid")),
+            "penalty_invoice": getattr(inv, "penalty_invoice", None) or None,
+            "outstanding_withholding": cint(getattr(inv, "outstanding_withholding", 0)),
+            "outstanding_withholding_date": str(getattr(inv, "outstanding_withholding_date", None) or ""),
+            "penalty_details": penalty_rows,
+            "principal_outstanding": limits.get("principal_outstanding"),
+            "total_amount_due": limits.get("total_amount_due"),
+            "allow_partial_payment": limits["allow_partial_payment"],
+            "allow_payment": limits.get("allow_payment", 1),
+            "min_payment_amount": limits["min_payment_amount"],
+            "max_payment_amount": limits["max_payment_amount"],
+            "available_to_pay": limits["available_to_pay"],
+            "open_payment_reserved": limits["open_payment_reserved"],
+            "currency_precision": limits["currency_precision"],
+            "mobile_status": mobile["mobile_status"],
+            "mobile_status_label": mobile["mobile_status_label"],
+            "status": mobile["mobile_status_label"],
+            "erp_status": inv.status,
+            "is_overdue": display_overdue,
+            "days_overdue": days_ovd if display_overdue else 0,
             "from_date": str(getattr(inv, "from_date", None) or ""),
             "to_date": str(getattr(inv, "to_date", None) or ""),
             "items": items,
@@ -477,6 +632,88 @@ def get_invoice_details(invoice_name=None):
             "pdf_url": f"/api/method/propms.api.v1.invoices.invoices.download_invoice_pdf?invoice_name={inv.name}",
         },
     }
+
+
+def _payment_entry_print_format():
+    """Prefer VIVA PE voucher, then AV voucher, else ERPNext default."""
+    for name in ("AV Payment Entry Voucher VIVA", "AV Payment Entry Voucher"):
+        if frappe.db.exists("Print Format", name):
+            return name
+    return None
+
+
+def _resolve_receipt_payment_entry(invoice_name=None, payment_entry_name=None):
+    """Resolve a submitted Payment Entry the tenant may download as a receipt.
+
+    Returns ``(payment_entry_name, linked_invoice_name)``.
+    """
+    pe_name = (payment_entry_name or "").strip()
+    inv_name = (invoice_name or "").strip()
+
+    if pe_name:
+        if pe_name == "POS Payment":
+            frappe.throw(_("POS payments do not have a separate receipt PDF"))
+        if not frappe.db.exists("Payment Entry", pe_name):
+            frappe.throw(_("Payment Entry {0} not found").format(pe_name), frappe.DoesNotExistError)
+        pe = frappe.get_doc("Payment Entry", pe_name)
+        if cint(pe.docstatus) != 1:
+            frappe.throw(_("Payment Entry {0} is not submitted").format(pe_name))
+
+        linked_invoices = [
+            r.reference_name
+            for r in (pe.references or [])
+            if r.reference_doctype == "Sales Invoice" and r.reference_name
+        ]
+        if inv_name:
+            if inv_name not in linked_invoices:
+                frappe.throw(
+                    _("Payment Entry {0} is not linked to invoice {1}").format(pe_name, inv_name)
+                )
+            _check_invoice_access(inv_name)
+            return pe_name, inv_name
+
+        if not linked_invoices:
+            frappe.throw(_("Payment Entry {0} is not linked to a Sales Invoice").format(pe_name))
+
+        # Authorize via any linked invoice the tenant owns
+        authorized_inv = None
+        last_err = None
+        for candidate in linked_invoices:
+            try:
+                _check_invoice_access(candidate)
+                authorized_inv = candidate
+                break
+            except frappe.PermissionError as exc:
+                last_err = exc
+        if not authorized_inv:
+            if last_err:
+                raise last_err
+            frappe.throw(
+                _("You are not authorized to download receipt {0}").format(pe_name),
+                frappe.PermissionError,
+            )
+        return pe_name, authorized_inv
+
+    if not inv_name:
+        frappe.throw(_("payment_entry_name or invoice_name is required"))
+
+    _check_invoice_access(inv_name)
+    latest = frappe.db.sql(
+        """
+        SELECT pe.name
+        FROM `tabPayment Entry Reference` per
+        INNER JOIN `tabPayment Entry` pe ON pe.name = per.parent
+        WHERE per.reference_doctype = 'Sales Invoice'
+          AND per.reference_name = %s
+          AND pe.docstatus = 1
+        ORDER BY pe.posting_date DESC, pe.creation DESC
+        LIMIT 1
+        """,
+        (inv_name,),
+    )
+    if not latest:
+        frappe.throw(_("No payment receipt found for invoice {0}").format(inv_name))
+    return latest[0][0], inv_name
 
 
 @frappe.whitelist(methods=["GET"])
@@ -521,6 +758,55 @@ def download_invoice_pdf(invoice_name=None):
         frappe.set_user(current_user)
 
     frappe.response.filename = f"{invoice_name}.pdf"
+    frappe.response.filecontent = pdf_bytes
+    frappe.response.type = "pdf"
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def download_receipt_pdf(invoice_name=None, payment_entry_name=None):
+    """Stream a Payment Entry (receipt) PDF for the mobile app.
+
+    Prefer ``payment_entry_name`` (from ``payments_history``). If only
+    ``invoice_name`` is given, the latest submitted PE against that invoice is used.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+
+    req = getattr(frappe, "form_dict", None) or {}
+    invoice_name = invoice_name or req.get("invoice_name")
+    payment_entry_name = payment_entry_name or req.get("payment_entry_name") or req.get(
+        "payment_entry"
+    )
+
+    pe_name, _inv = _resolve_receipt_payment_entry(
+        invoice_name=invoice_name, payment_entry_name=payment_entry_name
+    )
+
+    print_format = _payment_entry_print_format()
+    current_user = frappe.session.user
+    try:
+        frappe.set_user("Administrator")
+        try:
+            html = frappe.get_print(
+                doctype="Payment Entry",
+                name=pe_name,
+                print_format=print_format,
+                no_letterhead=0,
+                as_pdf=False,
+            )
+            pdf_bytes = get_pdf(html)
+        except Exception:
+            html = frappe.get_print(
+                doctype="Payment Entry",
+                name=pe_name,
+                no_letterhead=0,
+                as_pdf=False,
+            )
+            pdf_bytes = get_pdf(html)
+    finally:
+        frappe.set_user(current_user)
+
+    frappe.response.filename = f"{pe_name}.pdf"
     frappe.response.filecontent = pdf_bytes
     frappe.response.type = "pdf"
 
@@ -616,9 +902,47 @@ def enqueue_invoice_push(user_email, invoice_name, title, body, notification_typ
         frappe.logger().error(f"FCM Invoice Push Error for user {user_email}, invoice {invoice_name}: {str(e)}")
 
 
+def is_penalty_reimbursement_invoice(doc):
+    """True for late-payment penalty Sales Invoices (not the source rent/service bill).
+
+    Used to skip "please pay" pushes/emails when the penalty SI is created during
+    settlement of a payment that already covers it (or is only a child of the source).
+    """
+    if not doc:
+        return False
+    remarks = str(doc.get("remarks") or "")
+    if "Late payment penalty for" in remarks:
+        return True
+    name = doc.get("name")
+    if name and frappe.db.exists("Sales Invoice", {"penalty_invoice": name}):
+        return True
+    try:
+        penalty_item = frappe.db.get_single_value(
+            "Sales Invoice Penalty Settings", "penalty_item"
+        )
+    except Exception:
+        penalty_item = None
+    if penalty_item:
+        for row in doc.get("items") or []:
+            if (row.get("item_code") if hasattr(row, "get") else getattr(row, "item_code", None)) == penalty_item:
+                return True
+    return False
+
+
 def on_sales_invoice_submit(doc, method=None):
     """Document hook on Sales Invoice submission."""
     if doc.docstatus != 1:
+        return
+
+    # Skip paid POS / mobile checkout receipts (ID Card fee, cart, top-ups, etc.).
+    # Those already charged the tenant; "New Invoice Issued" is for bills to pay.
+    if getattr(doc.flags, "ignore_push_and_realtime", False):
+        return
+    if cint(getattr(doc, "is_pos", 0)) and flt(getattr(doc, "outstanding_amount", 0)) <= 0:
+        return
+    # Never nudge tenants to "pay" a penalty reimbursement SI — it is billed from
+    # the source invoice / Selcom settle and is often paid in the same PE.
+    if is_penalty_reimbursement_invoice(doc):
         return
 
     # Realtime WebSocket
@@ -661,8 +985,22 @@ def on_payment_entry_submit(doc, method=None):
         if ref.reference_doctype == "Sales Invoice" and ref.reference_name:
             inv = frappe.get_doc("Sales Invoice", ref.reference_name)
 
-            # Realtime WebSocket
+            # Realtime WebSocket (including penalty SI outstanding refresh)
             publish_invoice_realtime(inv, event_type="invoice_paid")
+
+            # Skip separate FCM for penalty SI — principal/source confirmation is enough
+            # when one PE pays both (accountants' single-receipt model).
+            if is_penalty_reimbursement_invoice(inv):
+                # Mark source.penalty_paid only when the penalty SI is actually cleared
+                try:
+                    from propms.custom.sales_invoice_penalty import sync_penalty_paid_flag
+
+                    sync_penalty_paid_flag(penalty_invoice_name=inv.name)
+                except Exception:
+                    frappe.log_error(
+                        frappe.get_traceback(), "sync_penalty_paid_flag on PE submit"
+                    )
+                continue
 
             lease_ref = getattr(inv, "lease", None) or getattr(inv, "lease_name", None)
             if not lease_ref:
@@ -707,16 +1045,18 @@ def initiate_invoice_payment(invoice_name=None, amount=None, phone_number=None, 
 
     inv = _check_invoice_access(invoice_name)
 
-    outstanding = flt(inv.outstanding_amount)
-    if outstanding <= 0:
-        frappe.throw(_("Invoice {0} is already fully paid.").format(invoice_name))
+    from propms.api.v1.payments.invoice_amount import money, payment_limits, resolve_invoice_pay_amount
 
-    pay_amount = flt(amount) if amount else outstanding
-    if pay_amount <= 0 or pay_amount > outstanding:
-        frappe.throw(_("Payment amount must be between 1 and {0}").format(outstanding))
+    outstanding = money(inv.outstanding_amount)
+    pay_amount, amount_err = resolve_invoice_pay_amount(
+        amount, outstanding, invoice_name=inv.name
+    )
+    if amount_err:
+        frappe.throw(amount_err)
 
     import uuid
     transaction_ref = f"SEL-{inv.name}-{uuid.uuid4().hex[:8].upper()}"
+    limits = payment_limits(inv.name, outstanding=outstanding)
 
     return {
         "status": "success",
@@ -728,6 +1068,10 @@ def initiate_invoice_payment(invoice_name=None, amount=None, phone_number=None, 
         "currency": inv.currency or "TZS",
         "phone_number": phone_number,
         "payment_channel": payment_channel,
+        "is_partial": 1 if money(pay_amount) < outstanding else 0,
+        "outstanding_before": outstanding,
+        "remaining_after_payment": money(max(0.0, outstanding - money(pay_amount))),
+        "payment_limits": limits,
     }
 
 

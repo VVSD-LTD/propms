@@ -257,7 +257,7 @@ def _process_pre_due_reminder(setting_doc):
 
     _create_notify_customer_records(
         setting_doc,
-        invoices,
+        _exclude_penalty_reimbursement_invoices(invoices),
         audience="Standard",
         frequency="Daily",
     )
@@ -296,7 +296,7 @@ def _process_after_overdue_reminder(setting_doc):
 
     _create_notify_customer_records(
         setting_doc,
-        eligible_invoices,
+        _exclude_penalty_reimbursement_invoices(eligible_invoices),
         audience="Standard",
         frequency=setting_doc.frequency,
     )
@@ -348,10 +348,37 @@ def _process_withholding_tax_reminder(setting_doc):
 
     _create_notify_customer_records(
         setting_doc,
-        eligible_invoices,
+        _exclude_penalty_reimbursement_invoices(eligible_invoices),
         audience="Withholding",
         frequency=setting_doc.frequency,
     )
+
+
+def _exclude_penalty_reimbursement_invoices(invoices):
+    """Drop late-payment penalty SIs from pay-reminder emails.
+
+    Tenants are nudged on the source invoice / app status; the penalty
+    reimbursement SI must not trigger a separate "please pay" email,
+    especially when Selcom already paid it on the same Payment Entry.
+    """
+    if not invoices:
+        return []
+    from propms.api.v1.invoices.invoices import is_penalty_reimbursement_invoice
+
+    out = []
+    for inv in invoices:
+        name = inv.get("name") if hasattr(inv, "get") else getattr(inv, "name", None)
+        if not name:
+            continue
+        try:
+            doc = frappe.get_doc("Sales Invoice", name)
+        except Exception:
+            out.append(inv)
+            continue
+        if is_penalty_reimbursement_invoice(doc):
+            continue
+        out.append(inv)
+    return out
 
 
 def _get_after_overdue_invoices(payment_term, current_date, days_after_overdue, withholding=0):

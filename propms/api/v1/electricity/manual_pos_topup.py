@@ -195,8 +195,11 @@ def should_enqueue_manual_topup(doc):
 	return has_electricity_item_amounts(doc.name)
 
 
-def enqueue_manual_electricity_pos_topup(doc):
-	"""Schedule vendor load after SI commit. Never raises to caller."""
+def enqueue_manual_electricity_pos_topup(doc, method=None):
+	"""Schedule vendor load after SI commit. Never raises to caller.
+
+	``method`` is accepted because Frappe doc_events pass ``(doc, method)``.
+	"""
 	try:
 		if not should_enqueue_manual_topup(doc):
 			return

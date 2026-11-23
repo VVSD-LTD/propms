@@ -53,20 +53,19 @@ def _get_app_user_record(user_email, user_type):
 		rows = frappe.get_all(
 			"Tenant Details",
 			filters={"user_email": user_email, "parenttype": "Lease"},
-			fields=["name", "parent", "full_name", "app_use_terms_and_conditions", "is_first_login"],
+			fields=["name", "parent", "full_name", "is_first_login"],
 		)
 		if not rows:
 			# Backward compatibility: older records where Tenant Details were under Tenant.
 			rows = frappe.get_all(
 				"Tenant Details",
 				filters={"user_email": user_email, "parenttype": "Tenant"},
-				fields=["name", "parent", "full_name", "app_use_terms_and_conditions", "is_first_login"],
+				fields=["name", "parent", "full_name", "is_first_login"],
 			)
 		if not rows:
 			return None
 
-		# Aggregate states across all tenant detail rows for this user email
-		any_terms_accepted = any(bool(r.get("app_use_terms_and_conditions")) for r in rows)
+		# Mobile VIVA Tenant has no terms checkbox; treat terms as already accepted.
 		all_first_login_done = all(bool(r.get("is_first_login")) for r in rows)
 
 		# Choose the first row for display/tenant field purposes
@@ -86,7 +85,7 @@ def _get_app_user_record(user_email, user_type):
 			"doctype": "Tenant Details",
 			"name": row.name,
 			"display_name": display,
-			"app_use_terms_and_conditions": any_terms_accepted,
+			"app_use_terms_and_conditions": True,
 			# is_first_login field meaning: 1 means "already done". So we mark it as done only if all rows are done.
 			"is_first_login": all_first_login_done,
 			"tenant": tenant_name,
@@ -127,6 +126,18 @@ def _get_app_user_record(user_email, user_type):
 		}
 
 	return None
+
+
+def _first_login_enforced():
+	"""Mobile App Settings.enforce_first_login. Off means skip the first-login password screen."""
+	try:
+		if not frappe.db.exists("DocType", "Mobile App Settings"):
+			return False
+		if not frappe.get_meta("Mobile App Settings").has_field("enforce_first_login"):
+			return False
+		return bool(frappe.utils.cint(frappe.db.get_single_value("Mobile App Settings", "enforce_first_login")))
+	except Exception:
+		return False
 
 
 @frappe.whitelist(methods=["POST"])
@@ -277,27 +288,7 @@ def accept_terms_and_conditions(user_identifier: str = None):
 			frappe.throw("App user record not found for this login.")
 
 		if app_user_type == "Mobile VIVA Tenant":
-			# Update all tenant detail rows for this user email so onboarding state is consistent
-			rows = frappe.get_all(
-				"Tenant Details",
-				filters={"user_email": user_email, "parenttype": "Lease"},
-				fields=["name"],
-			)
-			if not rows:
-				rows = frappe.get_all(
-					"Tenant Details",
-					filters={"user_email": user_email, "parenttype": "Tenant"},
-					fields=["name"],
-				)
-			for r in rows or []:
-				frappe.db.set_value(
-					"Tenant Details",
-					r["name"],
-					"app_use_terms_and_conditions",
-					1,
-					update_modified=True,
-				)
-			frappe.db.commit()
+			# Terms checkbox removed from Tenant Details; nothing to store.
 			updated_value = 1
 		else:
 			frappe.db.set_value(
@@ -359,8 +350,12 @@ def check_first_login():
 		if not rec:
 			return {"status": "error", "message": "App user record not found for this login"}
 
-		# Doc is_first_login 0/None => first login (must change password); 1 => already set
-		is_first_login = not rec["is_first_login"]
+		# Doc is_first_login 0/None => first login (must change password); 1 => already set.
+		# While Enforce First Login is off, always report the password as already set.
+		if not _first_login_enforced():
+			is_first_login = False
+		else:
+			is_first_login = not rec["is_first_login"]
 
 		out = {
 			"status": "success",

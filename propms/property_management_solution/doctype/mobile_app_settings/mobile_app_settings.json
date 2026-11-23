@@ -32,7 +32,8 @@
   "livekit_api_key",
   "livekit_api_secret",
   "id_card_settings_tab",
-  "id_card_fee_item"
+  "id_card_fee_item",
+  "enforce_first_login"
  ],
  "fields": [
   {
@@ -188,6 +189,15 @@
    "fieldtype": "Link",
    "label": "ID Card Fee Item",
    "options": "Item"
+  },
+  {
+   "default": "0",
+   "description": "Hidden switch. Unchecked: check_first_login always says the password is already set. Checked: force the first-login password screen.",
+   "fieldname": "enforce_first_login",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Enforce First Login",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
