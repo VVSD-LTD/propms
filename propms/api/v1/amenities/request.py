@@ -9,7 +9,7 @@ from __future__ import unicode_literals
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, get_datetime, getdate, now_datetime, nowdate
+from frappe.utils import add_days, cint, flt, get_datetime, getdate, now_datetime, nowdate
 
 from propms.api.v1.amenities.doctypes import (
 	AMENITY_BOOKING,
@@ -429,24 +429,143 @@ def create_booking_request(
 	notes=None,
 	lease=None,
 	property_unit=None,
+	seater_label=None,
+	duration_hours=None,
+	amenity_rate=None,
 ):
-	"""One-time path: Request + 1 occurrence; Series + Booking only on approve/auto."""
+	"""One-time path: Request + 1 occurrence; Series + Booking only on approve/auto.
+
+	When Amenity.require_payment=1, create an Unpaid Open request (holds the slot)
+	and skip auto-fulfill until Selcom settle (or staff approve after Paid).
+	"""
 	try:
 		if frappe.session.user == "Guest":
 			frappe.throw(_("Authentication required"), frappe.AuthenticationError)
 
-		payload = _parse_request_payload(
-			{
-				"amenity": amenity,
-				"booking_date": booking_date or nowdate(),
-				"start_time": start_time,
-				"end_time": end_time,
-				"guests_count": guests_count or 1,
-				"notes": notes,
-				"lease": lease,
-				"property_unit": property_unit,
-			}
+		# Only pass non-None kwargs as defaults so JSON/form keys (seater, rate, …)
+		# are not blocked; _parse_request_payload merges form_dict + JSON body.
+		defaults = {
+			"amenity": amenity,
+			"booking_date": booking_date or nowdate(),
+			"start_time": start_time,
+			"end_time": end_time,
+			"guests_count": guests_count or 1,
+			"notes": notes,
+			"lease": lease,
+			"property_unit": property_unit,
+		}
+		if seater_label is not None:
+			defaults["seater_label"] = seater_label
+		if duration_hours is not None:
+			defaults["duration_hours"] = duration_hours
+		if amenity_rate is not None:
+			defaults["amenity_rate"] = amenity_rate
+		payload = _parse_request_payload(defaults)
+
+		# Flutter aliases
+		if not payload.get("amenity_rate"):
+			payload["amenity_rate"] = payload.get("rate") or payload.get("amenity_rate_id")
+		if not payload.get("seater_label"):
+			payload["seater_label"] = payload.get("seater")
+		if payload.get("duration_hours") in (None, "", 0, "0"):
+			mins = payload.get("duration_mins")
+			if mins not in (None, ""):
+				payload["duration_hours"] = flt(mins) / 60.0
+
+		# Paid package: derive end_time from start + duration when needed
+		from propms.api.v1.amenities.payment import (
+			assert_amenity_ready_for_payment,
+			duration_hours_between,
+			end_time_from_start_and_hours,
+			find_amenity_rate,
 		)
+
+		pre_amenity = (payload.get("amenity") or "").strip()
+		paid_meta = {
+			"require_payment": 0,
+			"payment_status": "Not Required",
+			"seater_label": None,
+			"duration_hours": None,
+			"amount": 0.0,
+			"currency": "TZS",
+			"amenity_rate": None,
+		}
+		if pre_amenity and frappe.db.exists("Amenity", pre_amenity):
+			pre_doc = frappe.get_doc("Amenity", pre_amenity)
+			if cint(getattr(pre_doc, "require_payment", 0)):
+				cfg_err = assert_amenity_ready_for_payment(pre_doc)
+				if cfg_err:
+					return {"status": "error", "message": cfg_err}
+
+				hours = flt(payload.get("duration_hours"))
+				if hours <= 0 and payload.get("start_time") and payload.get("end_time"):
+					hours = duration_hours_between(
+						payload.get("start_time"), payload.get("end_time")
+					)
+
+				rate_id = (payload.get("amenity_rate") or "").strip()
+				seater = (
+					payload.get("seater_label") or payload.get("seater") or ""
+				).strip()
+				rate = find_amenity_rate(
+					pre_doc,
+					seater,
+					hours,
+					amenity_rate=rate_id,
+				)
+				if not rate:
+					return {
+						"status": "error",
+						"message": _(
+							"No rate found for amenity_rate={0}, seater={1}, hours={2}. "
+							"Pass rates[].name as amenity_rate (preferred)."
+						).format(rate_id or "-", seater or "-", hours),
+						"received": {
+							"amenity_rate": rate_id or None,
+							"seater": seater or None,
+							"duration_hours": hours,
+							"payload_keys": sorted(
+								[
+									k
+									for k in payload.keys()
+									if k
+									in (
+										"amenity",
+										"amenity_rate",
+										"rate",
+										"seater",
+										"seater_label",
+										"duration_hours",
+										"duration_mins",
+										"start_time",
+										"end_time",
+									)
+								]
+							),
+						},
+					}
+				hours = flt(rate.duration_hours)
+
+				if not payload.get("end_time") and payload.get("start_time"):
+					payload["end_time"] = end_time_from_start_and_hours(
+						payload.get("booking_date") or nowdate(),
+						payload.get("start_time"),
+						flt(rate.duration_hours),
+					)
+
+				# Cap guests to seater seats when set
+				if rate.seats and cint(payload.get("guests_count") or 1) > cint(rate.seats):
+					payload["guests_count"] = cint(rate.seats)
+
+				paid_meta = {
+					"require_payment": 1,
+					"payment_status": "Unpaid",
+					"seater_label": (rate.seater_label or "").strip() or None,
+					"duration_hours": flt(rate.duration_hours),
+					"amount": flt(rate.amount),
+					"currency": "TZS",
+					"amenity_rate": rate.name,
+				}
 
 		err, ctx = _validate_create_request_inputs(payload)
 		if err:
@@ -457,33 +576,47 @@ def create_booking_request(
 		s_time = ctx["s_time"]
 		e_time = ctx["e_time"]
 		auto = cint(getattr(amenity_doc, "auto_approval", 0))
+		# Never auto-fulfill unpaid paid bookings
+		if paid_meta.get("require_payment") and paid_meta.get("payment_status") != "Paid":
+			auto = 0
 
 		# 1) Amenity Booking Request + occurrence child (no Series yet)
-		req = frappe.get_doc(
-			{
-				"doctype": AMENITY_BOOKING_REQUEST,
-				"amenity": ctx["amenity_name"],
-				"series_type": "One Time",
-				"booking_date": str(target_date),
-				"start_time": s_time,
-				"end_time": e_time,
-				"status": "Open",
-				"tenant": ctx["current_user"],
-				"tenant_name": ctx["resident_name"],
-				"property_unit": ctx["prop_unit"],
-				"lease": ctx["lease_name"],
-				"guests_count": ctx["requested_guests"],
-				"notes": ctx["notes"],
-				"occurrences": [
-					{
-						"booking_date": str(target_date),
-						"start_time": s_time,
-						"end_time": e_time,
-						"status": "Pending",
-					}
-				],
-			}
-		)
+		req_dict = {
+			"doctype": AMENITY_BOOKING_REQUEST,
+			"amenity": ctx["amenity_name"],
+			"series_type": "One Time",
+			"booking_date": str(target_date),
+			"start_time": s_time,
+			"end_time": e_time,
+			"status": "Open",
+			"tenant": ctx["current_user"],
+			"tenant_name": ctx["resident_name"],
+			"property_unit": ctx["prop_unit"],
+			"lease": ctx["lease_name"],
+			"guests_count": ctx["requested_guests"],
+			"notes": ctx["notes"],
+			"occurrences": [
+				{
+					"booking_date": str(target_date),
+					"start_time": s_time,
+					"end_time": e_time,
+					"status": "Pending",
+				}
+			],
+		}
+		meta = frappe.get_meta(AMENITY_BOOKING_REQUEST)
+		if meta.has_field("require_payment"):
+			req_dict.update(
+				{
+					"require_payment": paid_meta["require_payment"],
+					"payment_status": paid_meta["payment_status"],
+					"seater_label": paid_meta["seater_label"],
+					"duration_hours": paid_meta["duration_hours"],
+					"amount": paid_meta["amount"],
+					"currency": paid_meta["currency"],
+				}
+			)
+		req = frappe.get_doc(req_dict)
 		# API owns fulfill + notify; desk after_insert must not double-run
 		req.flags.skip_auto_fulfill = True
 		req.insert(ignore_permissions=True)
@@ -526,7 +659,12 @@ def create_booking_request(
 
 		frappe.db.commit()
 
-		if auto:
+		if paid_meta.get("require_payment") and paid_meta.get("payment_status") != "Paid":
+			message = (
+				f"Booking held for {amenity_doc.amenity_name} on {target_date} "
+				f"({s_time} - {e_time}). Complete payment to confirm."
+			)
+		elif auto:
 			message = (
 				f"Booking confirmed for {amenity_doc.amenity_name} on {target_date} "
 				f"({s_time} - {e_time})"
@@ -549,6 +687,18 @@ def create_booking_request(
 			"request_status": req.status,
 			"occurrence_count": 1,
 			"auto_approved": bool(auto),
+			"require_payment": cint(paid_meta.get("require_payment")),
+			"payment_status": paid_meta.get("payment_status") or "Not Required",
+			"amount": flt(paid_meta.get("amount") or 0),
+			"currency": paid_meta.get("currency") or "TZS",
+			"seater_label": paid_meta.get("seater_label"),
+			"duration_hours": paid_meta.get("duration_hours"),
+			"amenity_rate": paid_meta.get("amenity_rate"),
+			"payment_hold_minutes": (
+				cint(getattr(amenity_doc, "payment_hold_minutes", 0))
+				if paid_meta.get("require_payment")
+				else 0
+			),
 			"doc": booking_doc.as_dict() if booking_doc else req.as_dict(),
 		}
 	except Exception as e:

@@ -3334,50 +3334,158 @@ def resolve_ticket(ticket_id=None, defect_found=None, resolution_details=None):
         return {"status": "error", "message": str(e)}
 
 
+def _normalize_issue_rating(rating_val):
+	"""Accept mobile 1–5 stars (or 0–1 fraction). Return (stars_1_to_5, db_value).
+
+	Issue.rating is a Rating field in meta, but on this site the column is INT —
+	store whole stars 1–5. If a future site uses 0–1 floats, still accept fractions
+	from clients and convert to stars for storage.
+	"""
+	from frappe.utils import flt
+
+	if rating_val is None or rating_val == "":
+		return None, None
+	try:
+		raw = flt(rating_val)
+	except Exception:
+		return None, None
+	if raw <= 0:
+		return None, None
+	if raw < 1.0:
+		# Client sent 0–1 fraction (Frappe Rating style)
+		stars = int(round(raw * 5))
+	else:
+		stars = int(round(raw))
+	stars = max(1, min(5, stars))
+	return stars, stars
+
+
+def _tenant_may_rate_issue(issue):
+	"""Tenants may rate their own customer's tickets; staff/managers may assist."""
+	roles = frappe.get_roles(frappe.session.user)
+	user_type = _get_user_type(roles)
+	if not user_type:
+		user_type = _infer_mobile_user_type_from_doctypes()
+	if "System Manager" in roles or user_type in MOBILE_OFFICER_MANAGER_ROLES:
+		return True
+	if user_type == "Mobile VIVA Tenant":
+		ctx = get_tenant_context_for_user()
+		customer_id = ctx.get("customer") if ctx else None
+		if customer_id and issue.customer == customer_id:
+			return True
+		# Fallback: raised_by matches session user
+		if (issue.raised_by or "").strip().lower() == (frappe.session.user or "").strip().lower():
+			return True
+		return False
+	# Technicians/subcontractors should not submit tenant rating
+	return False
+
+
 @frappe.whitelist(methods=["POST"])
 def close_ticket_with_feedback(ticket_id=None, rating=None, customer_feedback=None):
-    """Close a ticket and optionally submit customer feedback."""
-    try:
-        if frappe.session.user == "Guest":
-            frappe.throw(_("Authentication required"), frappe.AuthenticationError)
+	"""Close a ticket and optionally submit customer feedback."""
+	return submit_tenant_rating_and_feedback(
+		ticket_id=ticket_id,
+		rating=rating,
+		customer_feedback=customer_feedback,
+	)
 
-        payload = _parse_request_payload({
-            "ticket_id": ticket_id,
-            "rating": rating,
-            "customer_feedback": customer_feedback,
-        })
-        ticket_id = (payload.get("ticket_id") or payload.get("issue_id") or "").strip()
-        feedback = (payload.get("customer_feedback") or payload.get("feedback") or "").strip()
-        rating_val = payload.get("rating")
 
-        if not ticket_id:
-            return {"status": "error", "message": "ticket_id is required"}
-        if not frappe.db.exists("Issue", ticket_id):
-            return {"status": "error", "message": "Issue not found"}
+@frappe.whitelist(methods=["POST"])
+def submit_tenant_rating_and_feedback(ticket_id=None, rating=None, customer_feedback=None):
+	"""Tenant rates a Resolved ticket, saves feedback, closes Issue, broadcasts status.
 
-        issue = frappe.get_doc("Issue", ticket_id)
-        old_status = issue.status
-        issue.status = "Closed"
-        if feedback and hasattr(issue, "customer_feedback"):
-            issue.customer_feedback = feedback
+	Expected JSON / form args:
+	- ticket_id (aliases: issue_id, issue, name) — Issue name
+	- rating — integer 1–5 (also accepts 0–1 fraction)
+	- customer_feedback — optional text
 
-        issue.flags.ignore_mandatory = True
-        issue.save(ignore_permissions=True)
-        frappe.db.commit()
+	Always returns ``{status: success|error, message, ...}`` (HTTP 200 with envelope).
+	"""
+	try:
+		if frappe.session.user == "Guest":
+			return {"status": "error", "message": "Authentication required"}
 
-        _broadcast_ticket_status_change(issue, old_status, "Closed", feedback)
+		payload = _parse_request_payload(
+			{
+				"ticket_id": ticket_id,
+				"rating": rating,
+				"customer_feedback": customer_feedback,
+			}
+		)
+		ticket_id = (
+			payload.get("ticket_id")
+			or payload.get("issue_id")
+			or payload.get("issue")
+			or payload.get("name")
+			or ""
+		)
+		ticket_id = str(ticket_id).strip()
+		feedback = (
+			payload.get("customer_feedback")
+			or payload.get("feedback")
+			or payload.get("comment")
+			or ""
+		)
+		feedback = str(feedback).strip()
 
-        return {
-            "status": "success",
-            "message": "Ticket closed successfully",
-            "ticket_id": ticket_id,
-            "ticket_status": "Closed",
-            "customer_feedback": feedback,
-            "rating": rating_val,
-        }
-    except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "close_ticket_with_feedback")
-        return {"status": "error", "message": str(e)}
+		if not ticket_id:
+			return {"status": "error", "message": "ticket_id is required"}
+		if not frappe.db.exists("Issue", ticket_id):
+			return {"status": "error", "message": "Issue not found"}
+
+		stars, rating_db = _normalize_issue_rating(payload.get("rating"))
+		if stars is None:
+			return {
+				"status": "error",
+				"message": "rating is required and must be an integer from 1 to 5",
+			}
+
+		issue = frappe.get_doc("Issue", ticket_id)
+		if not _tenant_may_rate_issue(issue):
+			return {"status": "error", "message": "Not permitted to rate this ticket"}
+
+		current = (issue.status or "").strip()
+		if current not in ("Resolved", "Closed"):
+			return {
+				"status": "error",
+				"message": (
+					f"Only Resolved tickets can be rated (current status: {current or 'blank'}). "
+					"Wait until maintenance marks the ticket Resolved."
+				),
+			}
+
+		old_status = issue.status
+		if feedback and issue.meta.has_field("customer_feedback"):
+			issue.customer_feedback = feedback
+		issue.status = "Closed"
+		# Allow tenant close even if materials_required still open (desk Close still blocked)
+		issue.flags.skip_materials_required_on_close = True
+		issue.flags.ignore_mandatory = True
+		issue.flags.ignore_permissions = True
+		issue.save(ignore_permissions=True)
+		# Issue.rating meta is "Rating" but DB column is INT — set stars 1–5 via db_set
+		# so Frappe's 0–1 Rating coercion cannot collapse the value.
+		if issue.meta.has_field("rating") and rating_db is not None:
+			frappe.db.set_value("Issue", ticket_id, "rating", int(rating_db), update_modified=False)
+		frappe.db.commit()
+		issue.reload()
+
+		_broadcast_ticket_status_change(issue, old_status, "Closed", feedback)
+
+		return {
+			"status": "success",
+			"message": "Thank you — feedback submitted and ticket closed",
+			"ticket_id": ticket_id,
+			"ticket_status": "Closed",
+			"rating": stars,
+			"customer_feedback": feedback,
+		}
+	except frappe.PermissionError:
+		return {"status": "error", "message": "Not permitted"}
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "submit_tenant_rating_and_feedback")
+		return {"status": "error", "message": str(e) or "Could not submit feedback"}
 
 
 @frappe.whitelist(methods=["POST"])

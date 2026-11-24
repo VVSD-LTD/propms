@@ -9,6 +9,8 @@ from propms.api.v1.amenities import (
 	get_available_slots as _get_available_slots,
 	get_amenity_day_availability as _get_amenity_day_availability,
 	create_booking as _create_booking,
+	quote_amenity_booking as _quote_amenity_booking,
+	checkout_amenity_booking as _checkout_amenity_booking,
 	get_my_bookings as _get_my_bookings,
 	cancel_booking as _cancel_booking,
 	approve_amenity_booking as _approve_amenity_booking,
@@ -48,6 +50,9 @@ def create_booking(
 	notes=None,
 	lease=None,
 	property_unit=None,
+	seater_label=None,
+	duration_hours=None,
+	amenity_rate=None,
 ):
 	return _create_booking(
 		amenity=amenity,
@@ -58,6 +63,40 @@ def create_booking(
 		notes=notes,
 		lease=lease,
 		property_unit=property_unit,
+		seater_label=seater_label,
+		duration_hours=duration_hours,
+		amenity_rate=amenity_rate,
+	)
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def quote_amenity_booking(
+	amenity=None,
+	seater_label=None,
+	duration_hours=None,
+	start_time=None,
+	booking_date=None,
+	end_time=None,
+):
+	return _quote_amenity_booking(
+		amenity=amenity,
+		seater_label=seater_label,
+		duration_hours=duration_hours,
+		start_time=start_time,
+		booking_date=booking_date,
+		end_time=end_time,
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def checkout_amenity_booking(
+	request_id=None, payment_method="MOBILE_MONEY", phone_number=None, amount=None
+):
+	return _checkout_amenity_booking(
+		request_id=request_id,
+		payment_method=payment_method,
+		phone_number=phone_number,
+		amount=amount,
 	)
 
 

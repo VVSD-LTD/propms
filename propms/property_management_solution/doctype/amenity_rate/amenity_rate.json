@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "creation": "2026-11-23 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "seater_label",
+  "seats",
+  "duration_hours",
+  "amount"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "description": "Optional. e.g. 4-seater. Leave blank if amenity has a single price tier.",
+   "fieldname": "seater_label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Seater"
+  },
+  {
+   "columns": 1,
+   "description": "Optional max persons for this seater option.",
+   "fieldname": "seats",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Seats"
+  },
+  {
+   "columns": 1,
+   "description": "Package length in hours (e.g. 1, 4, 8).",
+   "fieldname": "duration_hours",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Duration (Hours)",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "non_negative": 1,
+   "reqd": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-11-23 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Property Management Solution",
+ "name": "Amenity Rate",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

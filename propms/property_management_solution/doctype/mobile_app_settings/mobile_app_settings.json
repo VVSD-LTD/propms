@@ -33,6 +33,8 @@
   "livekit_api_secret",
   "id_card_settings_tab",
   "id_card_fee_item",
+  "amenities_settings_tab",
+  "amenity_payment_item",
   "enforce_first_login"
  ],
  "fields": [
@@ -188,6 +190,19 @@
    "fieldname": "id_card_fee_item",
    "fieldtype": "Link",
    "label": "ID Card Fee Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "amenities_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "Amenities"
+  },
+  {
+   "default": "Conference Hall Hire charges",
+   "description": "ERPNext Item used on paid amenity Sales Invoices from the mobile app. Amounts come from each Amenity's Rate table.",
+   "fieldname": "amenity_payment_item",
+   "fieldtype": "Link",
+   "label": "Amenity Payment Item",
    "options": "Item"
   },
   {

@@ -30,16 +30,21 @@
   "cleanup_buffer_mins",
   "rules_section",
   "auto_approval",
+  "require_payment",
+  "payment_hold_minutes",
   "cancel_before_hours",
   "column_break_rules",
   "allow_recurring",
   "max_series_days",
+  "payment_rates_section",
+  "payment_rates",
   "content_section",
   "cover_image",
   "gallery_images",
   "description",
   "facilities",
-  "guidelines"
+  "guidelines",
+  "important_information"
  ],
  "fields": [
   {
@@ -220,6 +225,25 @@
    "label": "Auto-Approval"
   },
   {
+   "default": "0",
+   "depends_on": "eval:doc.requires_booking",
+   "description": "On = tenant must pay in the mobile app (Selcom) before the booking is confirmed. Off = free booking (current flow).",
+   "fieldname": "require_payment",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Require Payment"
+  },
+  {
+   "default": "15",
+   "depends_on": "eval:doc.require_payment",
+   "description": "Minutes an unpaid/pending mobile payment hold keeps the slot. After this, the Open request expires and the slot frees. Also expires at booking start if still unpaid. 0 = only expire at booking start (not recommended).",
+   "fieldname": "payment_hold_minutes",
+   "fieldtype": "Int",
+   "label": "Payment Hold (Minutes)",
+   "non_negative": 1
+  },
+  {
    "default": "2",
    "description": "Tenant may cancel until this many hours before start.",
    "fieldname": "cancel_before_hours",
@@ -243,6 +267,21 @@
    "fieldname": "max_series_days",
    "fieldtype": "Int",
    "label": "Max Series Days"
+  },
+  {
+   "depends_on": "eval:doc.require_payment",
+   "description": "Package prices for the mobile app. Seater is optional. Item for the invoice is set in Mobile App Settings → Amenities.",
+   "fieldname": "payment_rates_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Rates"
+  },
+  {
+   "depends_on": "eval:doc.require_payment",
+   "fieldname": "payment_rates",
+   "fieldtype": "Table",
+   "label": "Rates (Seater × Duration)",
+   "mandatory_depends_on": "eval:doc.require_payment",
+   "options": "Amenity Rate"
   },
   {
    "fieldname": "content_section",
@@ -275,6 +314,12 @@
    "fieldname": "guidelines",
    "fieldtype": "Text Editor",
    "label": "Guidelines"
+  },
+  {
+   "description": "Shown on Confirm Booking → Important Information in the mobile app. Use one bullet or paragraph per line. Distinct from Guidelines (rules). Do not include live payment-hold or approval lines — the app adds those from Payment Hold and Auto-Approval.",
+   "fieldname": "important_information",
+   "fieldtype": "Text Editor",
+   "label": "Important Information"
   }
  ],
  "grid_page_length": 50,

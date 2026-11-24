@@ -300,15 +300,22 @@ def get_items_group():
 
 
 def validate_materials_required(doc):
+    # Mobile tenant rating/close may set this flag — desk Resolve/Close still enforces billing.
+    if getattr(doc.flags, "skip_materials_required_on_close", False):
+        return
+    if doc.status not in ("Resolved", "Closed"):
+        return
     have_items = 0
     for item in (doc.get("materials_required") or []):
         if item.material_status != "Self Consumption":
             have_items += 1
-    if have_items > 0 and doc.status == "Closed":
+    if have_items > 0:
+        action = "resolved" if doc.status == "Resolved" else "closed"
         frappe.throw(
             _(
-                "The materials required has items and so the job card cannot be closed. Please confirm billing status for the materials required."
-            )
+                "Materials Required still has billable item(s), so this job card cannot be {0}. "
+                "Confirm billing (or Self Consumption) for Materials Required first, then set status to {1}."
+            ).format(action, doc.status)
         )
 
 

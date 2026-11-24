@@ -40,6 +40,17 @@
   "column_break_notes1",
   "approved_by",
   "approved_on",
+  "payment_section",
+  "require_payment",
+  "payment_status",
+  "seater_label",
+  "duration_hours",
+  "column_break_pay",
+  "amount",
+  "currency",
+  "sales_invoice",
+  "selcom_order_id",
+  "paid_on",
   "connections_tab"
  ],
  "fields": [
@@ -283,6 +294,78 @@
    "fieldname": "approved_on",
    "fieldtype": "Datetime",
    "label": "Approved On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_section",
+   "fieldtype": "Section Break",
+   "label": "Payment"
+  },
+  {
+   "default": "0",
+   "fieldname": "require_payment",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Require Payment",
+   "read_only": 1
+  },
+  {
+   "default": "Not Required",
+   "fieldname": "payment_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Payment Status",
+   "options": "Not Required\nUnpaid\nPending\nPaid\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "seater_label",
+   "fieldtype": "Data",
+   "label": "Seater",
+   "read_only": 1
+  },
+  {
+   "fieldname": "duration_hours",
+   "fieldtype": "Float",
+   "label": "Duration (Hours)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_pay",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "default": "TZS",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "selcom_order_id",
+   "fieldtype": "Data",
+   "label": "Selcom Order Id",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paid_on",
+   "fieldtype": "Datetime",
+   "label": "Paid On",
    "read_only": 1
   },
   {

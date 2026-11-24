@@ -23,8 +23,15 @@ def create_booking(
 	notes=None,
 	lease=None,
 	property_unit=None,
+	seater_label=None,
+	duration_hours=None,
+	amenity_rate=None,
 ):
-	"""Create booking request (and Confirmed Booking when amenity auto_approval=1)."""
+	"""Create booking request (and Confirmed Booking when amenity auto_approval=1).
+
+	Paid amenities: pass ``amenity_rate`` (preferred) or seater_label + duration_hours.
+	Returns unpaid Open request for Flutter to call checkout_amenity_booking.
+	"""
 	from propms.api.v1.amenities.request import create_booking_request
 
 	return create_booking_request(
@@ -36,4 +43,7 @@ def create_booking(
 		notes=notes,
 		lease=lease,
 		property_unit=property_unit,
+		seater_label=seater_label,
+		duration_hours=duration_hours,
+		amenity_rate=amenity_rate,
 	)

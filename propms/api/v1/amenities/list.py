@@ -3,6 +3,9 @@
 
 from __future__ import unicode_literals
 
+import json
+import re
+
 import frappe
 from frappe import _
 from frappe.utils import cint
@@ -41,6 +44,74 @@ def _load_amenity_gallery(amenity_name):
 	return images or []
 
 
+def serialize_important_information(raw):
+	"""Normalize Desk Text Editor / JSON / plain text → list of strings for mobile.
+
+	Accepts:
+	- JSON array of strings
+	- JSON array of {\"text\": \"...\"}
+	- HTML (Text Editor): ``<li>``, ``<p>``, ``<br>``
+	- Plain text with newlines
+	"""
+	if raw is None:
+		return []
+	if isinstance(raw, (list, tuple)):
+		out = []
+		for item in raw:
+			if isinstance(item, dict):
+				text = (item.get("text") or item.get("line") or "").strip()
+			else:
+				text = str(item or "").strip()
+			if text:
+				out.append(text)
+		return out
+
+	text = str(raw).strip()
+	if not text:
+		return []
+
+	# JSON payload stored as text
+	if text[0] in ("[", "{"):
+		try:
+			parsed = json.loads(text)
+			return serialize_important_information(parsed)
+		except Exception:
+			pass
+
+	# HTML list items first
+	lis = re.findall(r"<li[^>]*>(.*?)</li>", text, flags=re.I | re.S)
+	if lis:
+		out = []
+		for chunk in lis:
+			line = re.sub(r"<[^>]+>", " ", chunk)
+			line = re.sub(r"\s+", " ", line).strip()
+			if line:
+				out.append(line)
+		if out:
+			return out
+
+	# Break on <br> / </p> / newlines, strip tags
+	normalized = text
+	normalized = re.sub(r"(?i)<br\s*/?>", "\n", normalized)
+	normalized = re.sub(r"(?i)</p\s*>", "\n", normalized)
+	normalized = re.sub(r"(?i)</div\s*>", "\n", normalized)
+	normalized = re.sub(r"<[^>]+>", " ", normalized)
+	normalized = (
+		normalized.replace("&nbsp;", " ")
+		.replace("&amp;", "&")
+		.replace("&lt;", "<")
+		.replace("&gt;", ">")
+		.replace("&quot;", '"')
+	)
+
+	out = []
+	for line in normalized.splitlines():
+		line = re.sub(r"\s+", " ", line).strip(" \t\r\n•\-–—*")
+		if line:
+			out.append(line)
+	return out
+
+
 def _amenity_list_fields():
 	return [
 		"name",
@@ -59,12 +130,15 @@ def _amenity_list_fields():
 		"booking_time_step_mins",
 		"cleanup_buffer_mins",
 		"auto_approval",
+		"require_payment",
+		"payment_hold_minutes",
 		"cancel_before_hours",
 		"requires_booking",
 		"max_advance_days",
 		"allow_recurring",
 		"max_series_days",
 		"guidelines",
+		"important_information",
 		"is_active",
 		"is_published",
 	]
@@ -99,14 +173,6 @@ def get_amenities(category=None, published=None):
 		if cat and cat != "all":
 			filters["category"] = cat
 
-		amenities = frappe.get_all(
-			"Amenity",
-			filters=filters,
-			fields=_amenity_list_fields(),
-			order_by="is_published desc, category asc, amenity_name asc",
-			ignore_permissions=True,
-		)
-
 		from propms.api.v1.amenities.hours import (
 			WEEKDAY_NAMES,
 			_time_hms,
@@ -114,6 +180,20 @@ def get_amenities(category=None, published=None):
 		)
 
 		meta_fields = {f.fieldname for f in frappe.get_meta("Amenity").fields}
+		list_fields = [f for f in _amenity_list_fields() if f in meta_fields or f in (
+			"name",
+		)]
+		# Always allow core name
+		if "name" not in list_fields:
+			list_fields.insert(0, "name")
+
+		amenities = frappe.get_all(
+			"Amenity",
+			filters=filters,
+			fields=list_fields,
+			order_by="is_published desc, category asc, amenity_name asc",
+			ignore_permissions=True,
+		)
 		day_hours_by_parent = {}
 		if amenities and frappe.db.exists("DocType", "Amenity Day Hours"):
 			for row in frappe.get_all(
@@ -138,11 +218,36 @@ def get_amenities(category=None, published=None):
 			for parent, rows in day_hours_by_parent.items():
 				rows.sort(key=lambda r: order.get(r.get("day_of_week") or "", 99))
 
+		has_require_payment = "require_payment" in meta_fields
 		for a in amenities:
 			gallery = _load_amenity_gallery(a.name)
 			a["gallery_images"] = gallery
 			a["is_published"] = 1 if a.get("is_published") else 0
 			a["is_active"] = 1 if a.get("is_active") else 0
+			a["require_payment"] = (
+				1 if has_require_payment and cint(a.get("require_payment")) else 0
+			)
+			a["payment_hold_minutes"] = (
+				cint(a.get("payment_hold_minutes"))
+				if a["require_payment"] and "payment_hold_minutes" in meta_fields
+				else 0
+			)
+			if "important_information" in meta_fields:
+				a["important_information"] = serialize_important_information(
+					a.get("important_information")
+				)
+			else:
+				a["important_information"] = []
+			# Lightweight list: rates only when payment required (detail has full rows)
+			if a["require_payment"] and frappe.db.exists("DocType", "Amenity Rate"):
+				from propms.api.v1.amenities.payment import serialize_payment_rates
+
+				a["rates"] = serialize_payment_rates(
+					frappe.get_cached_doc("Amenity", a.name)
+				)
+			else:
+				a["rates"] = []
+			a["payment_rates"] = a["rates"]
 			if not a.get("cover_image") and gallery:
 				a["cover_image"] = gallery[0].get("image")
 			a["day_hours"] = day_hours_by_parent.get(a.name) or []
@@ -227,6 +332,20 @@ def get_amenity_detail(amenity=None):
 		amenity_data["open_time"] = open_s
 		amenity_data["close_time"] = close_s
 		amenity_data.update(serialize_holiday_hours(doc))
+		amenity_data["require_payment"] = 1 if cint(getattr(doc, "require_payment", 0)) else 0
+		amenity_data["payment_hold_minutes"] = (
+			cint(getattr(doc, "payment_hold_minutes", 0))
+			if amenity_data["require_payment"]
+			else 0
+		)
+		from propms.api.v1.amenities.payment import serialize_payment_rates
+
+		rates = serialize_payment_rates(doc) if amenity_data["require_payment"] else []
+		amenity_data["rates"] = rates
+		amenity_data["payment_rates"] = rates  # alias
+		amenity_data["important_information"] = serialize_important_information(
+			getattr(doc, "important_information", None)
+		)
 
 		return {
 			"status": "success",

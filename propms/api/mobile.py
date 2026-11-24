@@ -1173,6 +1173,9 @@ def create_amenity_booking(
     notes=None,
     lease=None,
     property_unit=None,
+    seater_label=None,
+    duration_hours=None,
+    amenity_rate=None,
 ):
     from propms.api.v1.amenities import create_booking as v1_create_booking
     return v1_create_booking(
@@ -1184,6 +1187,42 @@ def create_amenity_booking(
         notes=notes,
         lease=lease,
         property_unit=property_unit,
+        seater_label=seater_label,
+        duration_hours=duration_hours,
+        amenity_rate=amenity_rate,
+    )
+
+
+@frappe.whitelist(methods=["GET", "POST"])
+def quote_amenity_booking(
+    amenity=None,
+    seater_label=None,
+    duration_hours=None,
+    start_time=None,
+    booking_date=None,
+    end_time=None,
+):
+    from propms.api.v1.amenities import quote_amenity_booking as v1
+    return v1(
+        amenity=amenity,
+        seater_label=seater_label,
+        duration_hours=duration_hours,
+        start_time=start_time,
+        booking_date=booking_date,
+        end_time=end_time,
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def checkout_amenity_booking(
+    request_id=None, payment_method="MOBILE_MONEY", phone_number=None, amount=None
+):
+    from propms.api.v1.amenities import checkout_amenity_booking as v1
+    return v1(
+        request_id=request_id,
+        payment_method=payment_method,
+        phone_number=phone_number,
+        amount=amount,
     )
 
 

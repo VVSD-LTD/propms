@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import cint, now_datetime
 
 from propms.api.v1.amenities.doctypes import (
 	AMENITY_BOOKING,
@@ -93,6 +93,17 @@ def _fulfill_open_request(req_name, notify=True, commit=True):
 	req, err = _claim_open_request(req_name)
 	if err:
 		return err
+
+	# Paid amenities must be Paid before staff can approve / fulfill
+	if cint(getattr(req, "require_payment", 0)) and (req.payment_status or "") != "Paid":
+		return {
+			"status": "error",
+			"message": _(
+				"This amenity requires payment. Wait until the tenant has paid before approving."
+			),
+			"payment_status": req.payment_status,
+			"request_id": req.name,
+		}
 
 	result = fulfill_request_to_series_and_bookings(req, notify=notify, commit=commit)
 	if result.get("status") == "success" and getattr(req, "series", None):
